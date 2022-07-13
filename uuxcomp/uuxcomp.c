@@ -344,12 +344,13 @@ int main (int argc, char *argv[])
         strcat(uux_cmd, argv[i]);
     }
 
-
+#if 0
     FILE *test = fopen("/home/rafael2k/files/rhizomatica/hermes/hermes-net/uuxcomp/test.xz", "w");
     fwrite(compressed_message, 1, compressed_size, test);
     fclose(test);
-
     exit(1);
+#endif
+
     uux_fp = popen(uux_cmd, "w");
     // write the compressed message
     fwrite(compressed_message, 1, compressed_size, uux_fp);
