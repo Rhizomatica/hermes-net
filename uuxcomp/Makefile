@@ -21,12 +21,12 @@
 CC=gcc
 prefix=/usr
 CFLAGS=-g -Wall -pedantic -Wno-format-overflow -std=gnu11 -pthread -fstack-protector
-LDFLAGS=-lb64
+LDFLAGS=-lb64 -llzma
 
 all: uuxcomp crmail
 
-uuxcomp: uuxcomp.c
-	$(CC) $(CFLAGS) uuxcomp.c -o uuxcomp $(LDFLAGS)
+uuxcomp: uuxcomp.c xz_compression.c xz_compression.h
+	$(CC) $(CFLAGS) uuxcomp.c xz_compression.c -o uuxcomp $(LDFLAGS)
 
 crmail: crmail.c
 	$(CC) $(CFLAGS) crmail.c -o crmail $(LDFLAGS)

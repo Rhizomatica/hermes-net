@@ -22,40 +22,6 @@
 #include <lzma.h>
 
 
-static void
-show_usage_and_exit(const char *argv0)
-{
-	fprintf(stderr, "Usage: %s PRESET < INFILE > OUTFILE\n"
-			"PRESET is a number 0-9 and can optionally be "
-			"followed by `e' to indicate extreme preset\n",
-			argv0);
-	exit(EXIT_FAILURE);
-}
-
-
-static uint32_t
-get_preset(int argc, char **argv)
-{
-	// One argument whose first char must be 0-9.
-	if (argc != 2 || argv[1][0] < '0' || argv[1][0] > '9')
-		show_usage_and_exit(argv[0]);
-
-	// Calculate the preste level 0-9.
-	uint32_t preset = argv[1][0] - '0';
-
-	// If there is a second char, it must be 'e'. It will set
-	// the LZMA_PRESET_EXTREME flag.
-	if (argv[1][1] != '\0') {
-		if (argv[1][1] != 'e' || argv[1][2] != '\0')
-			show_usage_and_exit(argv[0]);
-
-		preset |= LZMA_PRESET_EXTREME;
-	}
-
-	return preset;
-}
-
-
 static bool
 init_encoder(lzma_stream *strm, uint32_t preset)
 {
@@ -105,16 +71,11 @@ init_encoder(lzma_stream *strm, uint32_t preset)
 
 
 static bool
-compress(lzma_stream *strm, FILE *infile, FILE *outfile)
+compress(lzma_stream *strm, char *output_buffer, size_t *output_buffer_size, char *input_buffer, size_t input_buffer_size)
 {
 	// This will be LZMA_RUN until the end of the input file is reached.
 	// This tells lzma_code() when there will be no more input.
 	lzma_action action = LZMA_RUN;
-
-	// Buffers to temporarily hold uncompressed input
-	// and compressed output.
-	uint8_t inbuf[BUFSIZ];
-	uint8_t outbuf[BUFSIZ];
 
 	// Initialize the input and output pointers. Initializing next_in
 	// and avail_in isn't really necessary when we are going to encode
@@ -127,33 +88,19 @@ compress(lzma_stream *strm, FILE *infile, FILE *outfile)
 	// always reset total_in and total_out to zero. But the encoder
 	// initialization doesn't touch next_in, avail_in, next_out, or
 	// avail_out.
-	strm->next_in = NULL;
-	strm->avail_in = 0;
-	strm->next_out = outbuf;
-	strm->avail_out = sizeof(outbuf);
+	strm->next_in = input_buffer;
+	strm->avail_in = input_buffer_size;
+
+	strm->next_out = output_buffer;
+	strm->avail_out = *output_buffer_size;
+
+
+
+	action = LZMA_FINISH;
 
 	// Loop until the file has been successfully compressed or until
 	// an error occurs.
 	while (true) {
-		// Fill the input buffer if it is empty.
-		if (strm->avail_in == 0 && !feof(infile)) {
-			strm->next_in = inbuf;
-			strm->avail_in = fread(inbuf, 1, sizeof(inbuf),
-					infile);
-
-			if (ferror(infile)) {
-				fprintf(stderr, "Read error: %s\n",
-						strerror(errno));
-				return false;
-			}
-
-			// Once the end of the input file has been reached,
-			// we need to tell lzma_code() that no more input
-			// will be coming and that it should finish the
-			// encoding.
-			if (feof(infile))
-				action = LZMA_FINISH;
-		}
 
 		// Tell liblzma do the actual encoding.
 		//
@@ -175,23 +122,18 @@ compress(lzma_stream *strm, FILE *infile, FILE *outfile)
 		// If the output buffer is full or if the compression finished
 		// successfully, write the data from the output bufffer to
 		// the output file.
-		if (strm->avail_out == 0 || ret == LZMA_STREAM_END) {
+		if (strm->avail_out == 0)
+		{
+			fprintf(stderr, "Output buffer not big enough!\n");
+			return false;
+		}
+		if (ret == LZMA_STREAM_END)
+		{
 			// When lzma_code() has returned LZMA_STREAM_END,
 			// the output buffer is likely to be only partially
 			// full. Calculate how much new data there is to
 			// be written to the output file.
-			size_t write_size = sizeof(outbuf) - strm->avail_out;
-
-			if (fwrite(outbuf, 1, write_size, outfile)
-					!= write_size) {
-				fprintf(stderr, "Write error: %s\n",
-						strerror(errno));
-				return false;
-			}
-
-			// Reset next_out and avail_out.
-			strm->next_out = outbuf;
-			strm->avail_out = sizeof(outbuf);
+			*output_buffer_size -= strm->avail_out;
 		}
 
 		// Normally the return value of lzma_code() will be LZMA_OK
@@ -259,11 +201,11 @@ compress(lzma_stream *strm, FILE *infile, FILE *outfile)
 }
 
 
-extern int
-main(int argc, char **argv)
+int xz_compress(char *output_buffer, size_t *output_buffer_size, char *input_buffer, size_t input_buffer_size)
 {
 	// Get the preset number from the command line.
-	uint32_t preset = get_preset(argc, argv);
+	uint32_t preset = 9 | LZMA_PRESET_EXTREME;
+
 
 	// Initialize a lzma_stream structure. When it is allocated on stack,
 	// it is simplest to use LZMA_STREAM_INIT macro like below. When it
@@ -276,7 +218,7 @@ main(int argc, char **argv)
 	// stdin to stdout.
 	bool success = init_encoder(&strm, preset);
 	if (success)
-		success = compress(&strm, stdin, stdout);
+		success = compress(&strm, output_buffer, output_buffer_size, input_buffer, input_buffer_size);
 
 	// Free the memory allocated for the encoder. If we were encoding
 	// multiple files, this would only need to be done after the last

@@ -46,6 +46,8 @@
 
 #include <b64/cdecode.h>
 
+#include "xz_compression.h"
+
 int main (int argc, char *argv[])
 {
     char *message_payload; // dynamic size, read from stdin
@@ -128,17 +130,7 @@ int main (int argc, char *argv[])
     }
     fprintf(debug_output, "Daemon creation succeed!\n");
 
-#if DEBUG_MODE > 1
-    // parse command lines
-    for (int i = 1; i < argc; i++)
-    {
-        fprintf(debug_output, "arg[%d]:%s\n", i, argv[i]);
-    }
-
-    fwrite(message_payload, 1, message_size, debug_output);
-#endif
-
-
+    // here we go... parsing the stuff...
     char_ptr = strstr(message_payload, "Content-Type: multipart/mixed;");
     if (char_ptr == NULL)
     {
@@ -316,6 +308,8 @@ int main (int argc, char *argv[])
 
     free(blob);
 
+    message_size = needle;
+
     // search for: "Content-Type: image/jpeg"
     // search for: "Content-Type: audio/aac"
     // Open the payload D. file
@@ -327,9 +321,19 @@ int main (int argc, char *argv[])
  compress:
     fprintf(debug_output, "Compressing now.\n");
 
+#if DEBUG_MODE > 1
+    // parse command lines
+    for (int i = 1; i < argc; i++)
+    {
+        fprintf(debug_output, "arg[%d]:%s\n", i, argv[i]);
+    }
 
-    // use lzma sample...
+    fwrite(output_message, 1, message_size, debug_output);
+#endif
 
+    char *compressed_message = malloc(message_size * 1.5);
+    size_t compressed_size = message_size * 1.5;
+    xz_compress(compressed_message, &compressed_size, output_message, message_size);
 
     char uux_cmd[BUF_SIZE];
     sprintf(uux_cmd, "uux");
@@ -340,14 +344,21 @@ int main (int argc, char *argv[])
         strcat(uux_cmd, argv[i]);
     }
 
+
+    FILE *test = fopen("/home/rafael2k/files/rhizomatica/hermes/hermes-net/uuxcomp/test.xz", "w");
+    fwrite(compressed_message, 1, compressed_size, test);
+    fclose(test);
+
+    exit(1);
     uux_fp = popen(uux_cmd, "w");
     // write the compressed message
+    fwrite(compressed_message, 1, compressed_size, uux_fp);
     pclose(uux_fp);
 
     if (output_message != message_payload)
         free(output_message);
     free(message_payload);
-
+    free(compressed_message);
 
     return EXIT_SUCCESS;
 }
