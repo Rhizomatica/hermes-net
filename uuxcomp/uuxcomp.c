@@ -353,7 +353,7 @@ int main (int argc, char *argv[])
             if (has_open_par && has_close_par)
             {
                 temp_buf[0] = '"';
-                size_t text_size = strlen(argv[1]);
+                size_t text_size = strlen(argv[i]);
                 strncpy(temp_buf + 1, argv[i], text_size);
                 temp_buf[text_size + 1] = '"';
                 temp_buf[text_size + 2] = 0;
