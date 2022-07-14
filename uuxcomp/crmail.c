@@ -29,8 +29,12 @@
 
 #include <b64/cencode.h>
 
+#include "xz_decompression.h"
+
 #define MAX_FILENAME 4096
 #define S_BUF 128
+
+#define BUF_SIZE 4096
 
 #define ENC_TYPE_NONE 0
 #define ENC_TYPE_AUDIO 1
@@ -41,16 +45,13 @@ int main (int argc, char *argv[])
 {
 
     // Variables declaration
-    char uncompress_cmd[MAX_FILENAME];
     char decode_cmd[MAX_FILENAME];
-    char tmp_mail[MAX_FILENAME];
     char *blob;
     char rmail_cmd[MAX_FILENAME];
 
     struct stat st;
-    off_t file_size, decoded_media_file_size;
-
-    FILE *tmp_mail_fp;
+    off_t decoded_media_file_size;
+    size_t file_size;
 
     char *char_ptr;
     char *char_ptr1;
@@ -69,38 +70,44 @@ int main (int argc, char *argv[])
     int encoding_type = ENC_TYPE_NONE;
 
     // Code starts here
+    char tmp_mail[MAX_FILENAME];
+    FILE *tmp_mail_fp;
     sprintf(tmp_mail, "/tmp/crmail.%d", getpid ());
 
-    sprintf(uncompress_cmd, "(gzip -dc > %s)", tmp_mail);
+    // check if we are dealing with ver 1 gz or ver 2 xz
 
-    system (uncompress_cmd);
+    // read stdin
+    char *message_payload; // dynamic size, read from stdin
+    size_t message_size;
+    char tmp_buffer[BUF_SIZE];
+    size_t buffer_size;
 
-    if (stat(tmp_mail, &st) != 0)
+    message_size = fread(tmp_buffer, 1, BUF_SIZE, stdin);
+    message_payload = malloc(message_size);
+    memcpy(message_payload, tmp_buffer, message_size);
+    while ( !feof(stdin) )
     {
-        printf("%s could not be opened.\n", tmp_mail);
-        return EXIT_FAILURE;
-    }
-    file_size = st.st_size;
-
-    if (file_size == 0)
-    {
-        printf("%s has zero size.\n", tmp_mail);
-        return EXIT_FAILURE;
-    }
-
-    // check if we have image/x-vvc or audio/x-lpcnet...
-    tmp_mail_fp = fopen(tmp_mail, "r");
-
-    if (tmp_mail_fp == NULL)
-    {
-        printf("%s could not be opened.\n", tmp_mail);
-        return EXIT_FAILURE;
+        size_t needle = message_size;
+        buffer_size = fread(tmp_buffer, 1, BUF_SIZE, stdin);
+        message_size += buffer_size;
+        message_payload = realloc(message_payload, message_size);
+        memcpy(message_payload + needle, tmp_buffer, buffer_size);
     }
 
+#if 0
+    FILE *test = fopen("uuxcomp-message.xz", "w");
+    fwrite(message_payload, 1, message_size, test);
+    fclose(test);
+#endif
+
+    file_size = message_size * 20;
     blob = malloc(file_size);
 
-    fread(blob, file_size, 1, tmp_mail_fp);
 
+    xz_decompress(blob, &file_size, message_payload, message_size);
+
+    tmp_mail_fp = fopen(tmp_mail, "w");
+    fwrite(blob, 1, file_size, tmp_mail_fp);
     fclose(tmp_mail_fp);
 
     char_ptr = strstr(blob, "Content-Type: image/x-vvc");
@@ -271,6 +278,7 @@ send_mail:
 
     unlink(tmp_mail);
     free(blob);
+    free(message_payload);
 
     return EXIT_SUCCESS;
 }

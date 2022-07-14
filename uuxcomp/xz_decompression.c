@@ -59,7 +59,7 @@ init_decoder(lzma_stream *strm)
 	// /usr/include/lzma/container.h depending on the install prefix)
 	// for details.
 	lzma_ret ret = lzma_stream_decoder(
-			strm, UINT64_MAX, LZMA_CONCATENATED);
+			strm, UINT64_MAX, 0);
 
 	// Return successfully if the initialization went fine.
 	if (ret == LZMA_OK)
@@ -101,7 +101,7 @@ init_decoder(lzma_stream *strm)
 
 
 static bool
-decompress(lzma_stream *strm, const char *inname, FILE *infile, FILE *outfile)
+decompress(lzma_stream *strm, char *output_buffer, size_t *output_buffer_size, char *input_buffer, size_t input_buffer_size)
 {
 	// When LZMA_CONCATENATED flag was used when initializing the decoder,
 	// we need to tell lzma_code() when there will be no more input.
@@ -115,49 +115,20 @@ decompress(lzma_stream *strm, const char *inname, FILE *infile, FILE *outfile)
 	// case some unused data may be left in strm->next_in.
 	lzma_action action = LZMA_RUN;
 
-	uint8_t inbuf[BUFSIZ];
-	uint8_t outbuf[BUFSIZ];
+	strm->next_in = input_buffer;
+	strm->avail_in = input_buffer_size;
 
-	strm->next_in = NULL;
-	strm->avail_in = 0;
-	strm->next_out = outbuf;
-	strm->avail_out = sizeof(outbuf);
+	strm->next_out = output_buffer;
+	strm->avail_out = *output_buffer_size;
+
+	action = LZMA_FINISH;
 
 	while (true) {
-		if (strm->avail_in == 0 && !feof(infile)) {
-			strm->next_in = inbuf;
-			strm->avail_in = fread(inbuf, 1, sizeof(inbuf),
-					infile);
-
-			if (ferror(infile)) {
-				fprintf(stderr, "%s: Read error: %s\n",
-						inname, strerror(errno));
-				return false;
-			}
-
-			// Once the end of the input file has been reached,
-			// we need to tell lzma_code() that no more input
-			// will be coming. As said before, this isn't required
-			// if the LZMA_CONCATENATED flag isn't used when
-			// initializing the decoder.
-			if (feof(infile))
-				action = LZMA_FINISH;
-		}
-
 		lzma_ret ret = lzma_code(strm, action);
 
-		if (strm->avail_out == 0 || ret == LZMA_STREAM_END) {
-			size_t write_size = sizeof(outbuf) - strm->avail_out;
-
-			if (fwrite(outbuf, 1, write_size, outfile)
-					!= write_size) {
-				fprintf(stderr, "Write error: %s\n",
-						strerror(errno));
-				return false;
-			}
-
-			strm->next_out = outbuf;
-			strm->avail_out = sizeof(outbuf);
+		if (ret == LZMA_STREAM_END)
+		{
+			*output_buffer_size -= strm->avail_out;
 		}
 
 		if (ret != LZMA_OK) {
@@ -231,57 +202,36 @@ decompress(lzma_stream *strm, const char *inname, FILE *infile, FILE *outfile)
 				break;
 			}
 
-			fprintf(stderr, "%s: Decoder error: "
+			fprintf(stderr, "Decoder error: "
 					"%s (error code %u)\n",
-					inname, msg, ret);
+					msg, ret);
 			return false;
 		}
 	}
 }
 
 
-extern int
-main(int argc, char **argv)
+
+bool xz_decompress(char *output_buffer, size_t *output_buffer_size, char *input_buffer, size_t input_buffer_size)
 {
-	if (argc <= 1) {
-		fprintf(stderr, "Usage: %s FILES...\n", argv[0]);
+	lzma_stream strm = LZMA_STREAM_INIT;
+
+	bool success;
+
+	if (!init_decoder(&strm))
+	{
+		// Decoder initialization failed. There's no point
+		// to retry it so we need to exit.
 		return EXIT_FAILURE;
 	}
 
-	lzma_stream strm = LZMA_STREAM_INIT;
+	success = decompress(&strm, output_buffer, output_buffer_size, input_buffer, input_buffer_size);
 
-	bool success = true;
-
-	// Try to decompress all files.
-	for (int i = 1; i < argc; ++i) {
-		if (!init_decoder(&strm)) {
-			// Decoder initialization failed. There's no point
-			// to retry it so we need to exit.
-			success = false;
-			break;
-		}
-
-		FILE *infile = fopen(argv[i], "rb");
-
-		if (infile == NULL) {
-			fprintf(stderr, "%s: Error opening the "
-					"input file: %s\n",
-					argv[i], strerror(errno));
-			success = false;
-		} else {
-			success &= decompress(&strm, argv[i], infile, stdout);
-			fclose(infile);
-		}
-	}
+	// success = decompress(&strm, argv[i], infile, stdout);
 
 	// Free the memory allocated for the decoder. This only needs to be
 	// done after the last file.
 	lzma_end(&strm);
 
-	if (fclose(stdout)) {
-		fprintf(stderr, "Write error: %s\n", strerror(errno));
-		success = false;
-	}
-
-	return success ? EXIT_SUCCESS : EXIT_FAILURE;
+	return success;
 }

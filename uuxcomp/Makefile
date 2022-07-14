@@ -28,8 +28,8 @@ all: uuxcomp crmail
 uuxcomp: uuxcomp.c xz_compression.c xz_compression.h
 	$(CC) $(CFLAGS) uuxcomp.c xz_compression.c -o uuxcomp $(LDFLAGS)
 
-crmail: crmail.c
-	$(CC) $(CFLAGS) crmail.c -o crmail $(LDFLAGS)
+crmail: crmail.c xz_decompression.c xz_decompression.h
+	$(CC) $(CFLAGS) crmail.c xz_decompression.c -o crmail $(LDFLAGS)
 
 .PHONY: clean install
 clean:

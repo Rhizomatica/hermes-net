@@ -94,8 +94,6 @@ compress(lzma_stream *strm, char *output_buffer, size_t *output_buffer_size, cha
 	strm->next_out = output_buffer;
 	strm->avail_out = *output_buffer_size;
 
-
-
 	action = LZMA_FINISH;
 
 	// Loop until the file has been successfully compressed or until
