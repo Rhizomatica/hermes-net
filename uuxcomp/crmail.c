@@ -99,7 +99,10 @@ int main (int argc, char *argv[])
     fwrite(message_payload, 1, message_size, test);
     fclose(test);
 #endif
-
+    // check for magic...
+    // xz is: FD 37 7A 58  5A
+    // gzip is 1F 8B
+    // the uncompressed size of of the gunzip is expressed in the last 4 bytes of the file...
 
     file_size = get_uncompressed_size(message_payload, message_size);
 
