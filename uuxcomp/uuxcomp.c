@@ -329,23 +329,43 @@ int main (int argc, char *argv[])
     sprintf(uux_cmd, "uux");
     for (int i = 1; i < argc; i++)
     {
-        // do we need to escape "!" and other cmd line stuff, like space?
+        // do we need to escape "!" and "(" and ")" and other cmd line stuff, like space?
         // this code just espapes the first occurence
         strcat(uux_cmd, " ");
         char *has_bang = strchr(argv[i], '!');
-        if (!has_bang)
+        char *has_open_par = strchr(argv[i], '(');
+        char *has_close_par = strchr(argv[i], ')');
+
+        if (!has_bang && !has_open_par && !has_close_par)
             strcat(uux_cmd, argv[i]);
         else
         {
-            char temp_buf[S_BUF];
-            size_t first_part_size = has_bang - argv[i];
-            strncpy(temp_buf, argv[i], first_part_size);
-            strncpy(temp_buf + first_part_size + 1, has_bang ,S_BUF - 1);
-            temp_buf[first_part_size] = '\\';
+            char temp_buf[BUF_SIZE];
+
+            if (has_bang)
+            {
+                size_t first_part_size = has_bang - argv[i];
+                strncpy(temp_buf, argv[i], first_part_size);
+                strncpy(temp_buf + first_part_size + 1, has_bang ,S_BUF - 1);
+                temp_buf[first_part_size] = '\\';
+            }
+
+            if (has_open_par && has_close_par)
+            {
+                temp_buf[0] = '"';
+                size_t text_size = strlen(argv[1]);
+                strncpy(temp_buf + 1, argv[i], text_size);
+                temp_buf[text_size + 1] = '"';
+                temp_buf[text_size + 2] = 0;
+            }
+
             strcat(uux_cmd, temp_buf);
+
         }
 
     }
+
+
 
 
 #if DEBUG_MODE > 1
