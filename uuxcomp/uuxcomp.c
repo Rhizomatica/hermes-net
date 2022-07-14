@@ -345,7 +345,7 @@ int main (int argc, char *argv[])
     }
 
 #if 0
-    FILE *test = fopen("/home/rafael2k/files/rhizomatica/hermes/hermes-net/uuxcomp/test.xz", "w");
+    FILE *test = fopen("/root/uuxcomp-debug.test.xz", "w");
     fwrite(compressed_message, 1, compressed_size, test);
     fclose(test);
     exit(1);

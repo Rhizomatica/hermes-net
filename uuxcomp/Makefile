@@ -1,5 +1,5 @@
-# UUCOMP
-# Copyright (C) 2019-2021 Rhizomatica
+# UUXCOMP
+# Copyright (C) 2022 Rhizomatica
 # Author: Rafael Diniz <rafael@riseup.net>
 #
 # This is free software; you can redistribute it and/or modify
@@ -37,11 +37,4 @@ clean:
 
 install: uuxcomp crmail
 	install -D uuxcomp $(DESTDIR)$(prefix)/bin/uuxcomp
-	install -D crmail $(DESTDIR)$(prefix)/bin/crmail
-	install -D ../scripts/compress_image.sh $(DESTDIR)$(prefix)/bin/compress_image.sh
-	install -D ../scripts/compress_audio.sh $(DESTDIR)$(prefix)/bin/compress_audio.sh
-	install -D ../scripts/decompress_image.sh $(DESTDIR)$(prefix)/bin/decompress_image.sh
-	install -D ../scripts/decompress_audio.sh $(DESTDIR)$(prefix)/bin/decompress_audio.sh
-	install -D ../scripts/compress.sh $(DESTDIR)$(prefix)/bin/compress.sh
-	install -D ../scripts/mailkill.sh $(DESTDIR)$(prefix)/bin/mailkill.sh
-	install -D ../scripts/mail_manager.sh $(DESTDIR)$(prefix)/bin/mail_manager.sh
+#	install -D crmail $(DESTDIR)$(prefix)/bin/crmail
