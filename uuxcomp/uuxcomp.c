@@ -321,16 +321,6 @@ int main (int argc, char *argv[])
  compress:
     fprintf(debug_output, "Compressing now.\n");
 
-#if DEBUG_MODE > 1
-    // parse command lines
-    for (int i = 1; i < argc; i++)
-    {
-        fprintf(debug_output, "arg[%d]:%s\n", i, argv[i]);
-    }
-
-    fwrite(output_message, 1, message_size, debug_output);
-#endif
-
     char *compressed_message = malloc(message_size * 1.5);
     size_t compressed_size = message_size * 1.5;
     xz_compress(compressed_message, &compressed_size, output_message, message_size);
@@ -340,15 +330,42 @@ int main (int argc, char *argv[])
     for (int i = 1; i < argc; i++)
     {
         // do we need to escape "!" and other cmd line stuff, like space?
+        // this code just espapes the first occurence
         strcat(uux_cmd, " ");
-        strcat(uux_cmd, argv[i]);
+        char *has_bang = strchr(argv[i], '!');
+        if (!has_bang)
+            strcat(uux_cmd, argv[i]);
+        else
+        {
+            char temp_buf[S_BUF];
+            size_t first_part_size = has_bang - argv[i];
+            strncpy(temp_buf, argv[i], first_part_size);
+            strncpy(temp_buf + first_part_size + 1, has_bang ,S_BUF - 1);
+            temp_buf[first_part_size] = '\\';
+            strcat(uux_cmd, temp_buf);
+        }
+
     }
 
-#if 0
-    FILE *test = fopen("/root/uuxcomp-debug.test.xz", "w");
+
+#if DEBUG_MODE > 1
+    // parse command lines
+    for (int i = 1; i < argc; i++)
+    {
+        fprintf(debug_output, "input arg[%d]:%s\n", i, argv[i]);
+    }
+    fprintf(debug_output, "\n\n---cmd:\n");
+    fprintf(debug_output, uux_cmd);
+
+    // message before compression:
+    // fwrite(output_message, 1, message_size, debug_output);
+#endif
+
+
+#if DEBUG_MODE > 1
+    FILE *test = fopen("/var/log/uucp/uuxcomp-message.xz", "w");
     fwrite(compressed_message, 1, compressed_size, test);
     fclose(test);
-    exit(1);
 #endif
 
     uux_fp = popen(uux_cmd, "w");
