@@ -1,18 +1,23 @@
-///////////////////////////////////////////////////////////////////////////////
-//
-/// \file       02_decompress.c
-/// \brief      Decompress .xz files to stdout
-///
-/// Usage:      ./02_decompress INPUT_FILES... > OUTFILE
-///
-/// Example:    ./02_decompress foo.xz bar.xz > foobar
-//
-//  Author:     Lasse Collin
-//
-//  This file has been put into the public domain.
-//  You can do whatever you want with this file.
-//
-///////////////////////////////////////////////////////////////////////////////
+/* uuxcomp: xz utils
+ * Copyright (C) 2022 Rhizomatica
+ * Author: Rafael Diniz <rafael@riseup.net>
+ *
+ * This is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this software; see the file COPYING.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street,
+ * Boston, MA 02110-1301, USA.
+ *
+ */
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -20,6 +25,37 @@
 #include <string.h>
 #include <errno.h>
 #include <lzma.h>
+
+// https://stackoverflow.com/questions/2171775/how-to-get-the-uncompressed-size-of-an-lzma2-file-xz-liblzma#tab-top
+size_t get_uncompressed_size(char *data, size_t file_size)
+{
+	lzma_stream_flags stream_flags;
+
+	// 12 is the size of the footer per the file-spec...
+	const uint8_t *footer_ptr = data + file_size - LZMA_STREAM_HEADER_SIZE;
+
+	// Decode the footer, so we have the backward_size pointing to the index
+	lzma_stream_footer_decode(&stream_flags, (const uint8_t *)footer_ptr);
+	/// This is the index pointer, where the size is ultimately stored...
+	const uint8_t *index_ptr = footer_ptr - stream_flags.backward_size;
+
+	lzma_index *index;
+	uint64_t memlimit = 65536;
+	size_t in_pos = 0;
+	// decode the index we calculated
+	lzma_index_buffer_decode(&index, &memlimit, NULL, index_ptr, &in_pos, footer_ptr - index_ptr);
+	// Just make sure the whole index was decoded, otherwise, we might be
+	// dealing with something utterly corrupt
+	if (in_pos != stream_flags.backward_size)
+	{
+		lzma_index_end(index, NULL);
+		return -1;
+	}
+	// Finally get the size
+	lzma_vli uSize = lzma_index_uncompressed_size(index);
+	lzma_index_end(index, NULL);
+	return (size_t) uSize;
+}
 
 
 static bool

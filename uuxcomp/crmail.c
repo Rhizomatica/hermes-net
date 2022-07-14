@@ -1,5 +1,5 @@
-/* uucomp: crmail
- * Copyright (C) 2021 Rhizomatica
+/* uuxcomp: crmail
+ * Copyright (C) 2022 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
@@ -100,9 +100,10 @@ int main (int argc, char *argv[])
     fclose(test);
 #endif
 
-    file_size = message_size * 20;
-    blob = malloc(file_size);
 
+    file_size = get_uncompressed_size(message_payload, message_size);
+
+    blob = malloc(file_size);
 
     xz_decompress(blob, &file_size, message_payload, message_size);
 
