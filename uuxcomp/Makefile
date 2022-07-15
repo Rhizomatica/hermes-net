@@ -21,15 +21,15 @@
 CC=gcc
 prefix=/usr
 CFLAGS=-g -Wall -pedantic -Wno-format-overflow -std=gnu11 -pthread -fstack-protector
-LDFLAGS=-lb64 -llzma
+LDFLAGS=-lb64 -llzma -lz
 
 all: uuxcomp crmail
 
 uuxcomp: uuxcomp.c xz_compression.c xz_compression.h
 	$(CC) $(CFLAGS) uuxcomp.c xz_compression.c -o uuxcomp $(LDFLAGS)
 
-crmail: crmail.c xz_decompression.c xz_decompression.h
-	$(CC) $(CFLAGS) crmail.c xz_decompression.c -o crmail $(LDFLAGS)
+crmail: crmail.c xz_decompression.c xz_decompression.h gz_compress.c gz_compress.h
+	$(CC) $(CFLAGS) crmail.c xz_decompression.c gz_compress.c -o crmail $(LDFLAGS)
 
 .PHONY: clean install
 clean:

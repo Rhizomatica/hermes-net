@@ -28,8 +28,10 @@
 #include <sys/stat.h>
 
 #include <b64/cencode.h>
+#include <zlib.h>
 
 #include "xz_decompression.h"
+#include "gz_compress.h"
 
 #define MAX_FILENAME 4096
 #define S_BUF 128
@@ -37,8 +39,9 @@
 #define BUF_SIZE 4096
 
 #define ENC_TYPE_NONE 0
-#define ENC_TYPE_AUDIO 1
-#define ENC_TYPE_IMAGE 2
+#define ENC_TYPE_AUDIO_LPCNET 1
+#define ENC_TYPE_AUDIO_NESC 2
+#define ENC_TYPE_IMAGE 3
 
 
 int main (int argc, char *argv[])
@@ -51,7 +54,7 @@ int main (int argc, char *argv[])
 
     struct stat st;
     off_t decoded_media_file_size;
-    size_t file_size;
+    size_t file_size = 0;
 
     char *char_ptr;
     char *char_ptr1;
@@ -74,10 +77,8 @@ int main (int argc, char *argv[])
     FILE *tmp_mail_fp;
     sprintf(tmp_mail, "/tmp/crmail.%d", getpid ());
 
-    // check if we are dealing with ver 1 gz or ver 2 xz
-
     // read stdin
-    char *message_payload; // dynamic size, read from stdin
+    uint8_t *message_payload; // dynamic size, read from stdin
     size_t message_size;
     char tmp_buffer[BUF_SIZE];
     size_t buffer_size;
@@ -99,38 +100,62 @@ int main (int argc, char *argv[])
     fwrite(message_payload, 1, message_size, test);
     fclose(test);
 #endif
-    // check for magic...
-    // xz is: FD 37 7A 58  5A
-    // gzip is 1F 8B
-    // the uncompressed size of of the gunzip is expressed in the last 4 bytes of the file...
 
-    file_size = get_uncompressed_size(message_payload, message_size);
+    // if XZ
+    // xz magic is: FD 37 7A 58  5A
+    if (message_payload[0] == 0xfd && message_payload[1] == 0x37 && message_payload[2] == 0x7a && message_payload[3] == 0x58 && message_payload[4] == 0x5a)
+    {
+        file_size = get_uncompressed_size(message_payload, message_size);
 
-    blob = malloc(file_size);
+        blob = malloc(file_size);
 
-    xz_decompress(blob, &file_size, message_payload, message_size);
+        xz_decompress(blob, &file_size, message_payload, message_size);
+    }
+    else if (message_payload[0] == 0x1f && message_payload[1] == 0x8B)
+    {
+        // the uncompressed size of of the gunzip is expressed in the last 4 bytes of the file...
+        file_size = ((size_t)(message_payload[message_size - 1]) << 24 | (size_t)(message_payload[message_size - 2] << 16) | (size_t)(message_payload[message_size - 3] << 8) | (size_t)(message_payload[message_size - 4]));
 
+        blob = malloc(file_size);
+
+        gz_decompress(message_payload, message_size, blob, file_size);
+
+    }
+    else
+    {
+        printf ("No compressed payload found... just forwarding as is...\n");
+        blob = message_payload;
+        file_size = message_size;
+    }
+
+
+    printf("writing decompressed file to: %s\n", tmp_mail);
     tmp_mail_fp = fopen(tmp_mail, "w");
     fwrite(blob, 1, file_size, tmp_mail_fp);
     fclose(tmp_mail_fp);
 
+    // we need to iterate for multipart... improve this in general...
     char_ptr = strstr(blob, "Content-Type: image/x-vvc");
-
     if (char_ptr != NULL)
     {
         printf("IMAGE found.\n");
         encoding_type = ENC_TYPE_IMAGE;
     }
 
-    if (encoding_type == ENC_TYPE_NONE)
+    // not image... checking if there is audio
+    char_ptr = strstr(blob, "Content-Type: audio/x-lpcnet");
+    if (char_ptr != NULL)
     {
-        // not image... checking if there is audio
-        char_ptr = strstr(blob, "Content-Type: audio/x-lpcnet");
-        if (char_ptr != NULL)
-        {
-            printf("AUDIO found.\n");
-            encoding_type = ENC_TYPE_AUDIO;
-        }
+        printf("LPC_NET AUDIO found.\n");
+        encoding_type = ENC_TYPE_AUDIO_LPCNET;
+    }
+
+    // not image... checking if there is audio
+    char_ptr = strstr(blob, "Content-Type: audio/x-nesc");
+    if (char_ptr != NULL)
+    {
+        printf("NESC AUDIO found.\n");
+        encoding_type = ENC_TYPE_AUDIO_NESC;
     }
 
 
@@ -148,8 +173,12 @@ int main (int argc, char *argv[])
     if (encoding_type == ENC_TYPE_IMAGE)
         sprintf(encoded_media_filename, "/tmp/crmail_encoded.%d.vvc", getpid ());
 
-    if (encoding_type == ENC_TYPE_AUDIO)
+    if (encoding_type == ENC_TYPE_AUDIO_LPCNET)
         sprintf(encoded_media_filename, "/tmp/crmail_encoded.%d.lpcnet", getpid ());
+
+    if (encoding_type == ENC_TYPE_AUDIO_NESC)
+        sprintf(encoded_media_filename, "/tmp/crmail_encoded.%d.nesc", getpid ());
+
 
     encoded_media = fopen(encoded_media_filename, "w");
 
@@ -170,7 +199,7 @@ int main (int argc, char *argv[])
         sprintf(decode_cmd, "decompress_image.sh %s %s", encoded_media_filename, decoded_media_filename);
     }
 
-    if (encoding_type == ENC_TYPE_AUDIO)
+    if (encoding_type == ENC_TYPE_AUDIO_LPCNET || encoding_type == ENC_TYPE_AUDIO_NESC)
     {
         sprintf(decoded_media_filename, "/tmp/crmail_decoded.%d.aac", getpid ());
         sprintf(decode_cmd, "decompress_audio.sh %s %s", encoded_media_filename, decoded_media_filename);
@@ -192,7 +221,7 @@ int main (int argc, char *argv[])
 
     if (encoding_type == ENC_TYPE_IMAGE)
         fprintf(tmp_mail_fp, "Content-Type: image/jpeg\n");
-    if (encoding_type == ENC_TYPE_AUDIO)
+    if (encoding_type == ENC_TYPE_AUDIO_LPCNET || encoding_type == ENC_TYPE_AUDIO_NESC)
         fprintf(tmp_mail_fp, "Content-Type: audio/aac\n");
 
     fwrite(char_ptr1, char_ptr3 - char_ptr1, 1, tmp_mail_fp);
@@ -281,8 +310,15 @@ send_mail:
     system(rmail_cmd);
 
     unlink(tmp_mail);
-    free(blob);
-    free(message_payload);
+    if (blob == message_payload)
+    {
+        free(blob);
+    }
+    else
+    {
+        free(message_payload);
+        free(blob);
+    }
 
     return EXIT_SUCCESS;
 }

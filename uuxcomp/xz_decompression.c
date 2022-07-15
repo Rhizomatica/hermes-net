@@ -27,7 +27,7 @@
 #include <lzma.h>
 
 // https://stackoverflow.com/questions/2171775/how-to-get-the-uncompressed-size-of-an-lzma2-file-xz-liblzma#tab-top
-size_t get_uncompressed_size(char *data, size_t file_size)
+size_t get_uncompressed_size(uint8_t *data, size_t file_size)
 {
 	lzma_stream_flags stream_flags;
 
@@ -137,7 +137,7 @@ init_decoder(lzma_stream *strm)
 
 
 static bool
-decompress(lzma_stream *strm, char *output_buffer, size_t *output_buffer_size, char *input_buffer, size_t input_buffer_size)
+decompress(lzma_stream *strm, uint8_t *output_buffer, size_t *output_buffer_size, uint8_t *input_buffer, size_t input_buffer_size)
 {
 	// When LZMA_CONCATENATED flag was used when initializing the decoder,
 	// we need to tell lzma_code() when there will be no more input.
@@ -248,7 +248,7 @@ decompress(lzma_stream *strm, char *output_buffer, size_t *output_buffer_size, c
 
 
 
-bool xz_decompress(char *output_buffer, size_t *output_buffer_size, char *input_buffer, size_t input_buffer_size)
+bool xz_decompress(uint8_t *output_buffer, size_t *output_buffer_size, uint8_t *input_buffer, size_t input_buffer_size)
 {
 	lzma_stream strm = LZMA_STREAM_INIT;
 

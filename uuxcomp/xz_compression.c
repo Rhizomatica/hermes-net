@@ -76,7 +76,7 @@ init_encoder(lzma_stream *strm, uint32_t preset)
 
 
 static bool
-compress(lzma_stream *strm, char *output_buffer, size_t *output_buffer_size, char *input_buffer, size_t input_buffer_size)
+compress(lzma_stream *strm, uint8_t *output_buffer, size_t *output_buffer_size, uint8_t *input_buffer, size_t input_buffer_size)
 {
 	// This will be LZMA_RUN until the end of the input file is reached.
 	// This tells lzma_code() when there will be no more input.
