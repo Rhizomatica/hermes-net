@@ -134,28 +134,32 @@ int main (int argc, char *argv[])
     fwrite(blob, 1, file_size, tmp_mail_fp);
     fclose(tmp_mail_fp);
 
+    char *tmp_ptr;
     // we need to iterate for multipart... improve this in general...
-    char_ptr = strstr(blob, "Content-Type: image/x-vvc");
-    if (char_ptr != NULL)
+    tmp_ptr = strstr(blob, "Content-Type: image/x-vvc");
+    if (tmp_ptr != NULL)
     {
         printf("IMAGE found.\n");
         encoding_type = ENC_TYPE_IMAGE;
+        char_ptr = tmp_ptr;
     }
 
     // not image... checking if there is audio
-    char_ptr = strstr(blob, "Content-Type: audio/x-lpcnet");
-    if (char_ptr != NULL)
+    tmp_ptr = strstr(blob, "Content-Type: audio/x-lpcnet");
+    if (tmp_ptr != NULL)
     {
         printf("LPC_NET AUDIO found.\n");
         encoding_type = ENC_TYPE_AUDIO_LPCNET;
+        char_ptr = tmp_ptr;
     }
 
     // not image... checking if there is audio
-    char_ptr = strstr(blob, "Content-Type: audio/x-nesc");
-    if (char_ptr != NULL)
+    tmp_ptr = strstr(blob, "Content-Type: audio/x-nesc");
+    if (tmp_ptr != NULL)
     {
         printf("NESC AUDIO found.\n");
         encoding_type = ENC_TYPE_AUDIO_NESC;
+        char_ptr = tmp_ptr;
     }
 
 
