@@ -24,8 +24,16 @@
 #define DEBUG_MODE 2 // 0, 1 and 2
 #define DEBUG_FILENAME "/var/log/uucp/uuxcomp_debug.txt"
 
+// for old version 1 of our stack,
+#define USE_GZ 1
+// for version 2, use XZ compression
+#define USE_XZ 0
+
 // use Fraunhofer Neural End-2-End Speech Coder instead of LPCNet
 #define USE_NESC 1
+
+
+
 
 #define MAX_FILENAME 4096
 #define S_BUF 128
@@ -47,6 +55,11 @@
 #include <b64/cdecode.h>
 
 #include "xz_compression.h"
+#include "gz_compress.h"
+
+#if ((USE_GZ == 1) && (USE_XZ == 1)) || ((USE_GZ == 0) && (USE_XZ == 0))
+#error Wrong compression configuration
+#endif
 
 int main (int argc, char *argv[])
 {
@@ -78,10 +91,7 @@ int main (int argc, char *argv[])
 
     char *blob = NULL;
 
-#if DEBUG_MODE > 0
     FILE *debug_output;
-#endif
-
 
 
     if (argc < 2)
@@ -323,7 +333,15 @@ int main (int argc, char *argv[])
 
     char *compressed_message = malloc(message_size * 1.5);
     size_t compressed_size = message_size * 1.5;
-    xz_compress(compressed_message, &compressed_size, output_message, message_size);
+#if USE_XZ == 1
+    xz_compress((uint8_t *) compressed_message, &compressed_size, (uint8_t *) output_message, message_size);
+#endif
+
+#if USE_GZ == 1
+    gz_compress((uint8_t *) output_message, message_size, (uint8_t *) compressed_message, &compressed_size);
+#endif
+
+    printf("compressed size =  %lu\n", compressed_size);
 
     char uux_cmd[BUF_SIZE];
     sprintf(uux_cmd, "uux");
@@ -383,9 +401,16 @@ int main (int argc, char *argv[])
 
 
 #if DEBUG_MODE > 1
+
+#if USE_GZ == 1
+    FILE *test = fopen("/var/log/uucp/uuxcomp-message.gz", "w");
+#endif
+#if USE_XZ == 1
     FILE *test = fopen("/var/log/uucp/uuxcomp-message.xz", "w");
+#endif
     fwrite(compressed_message, 1, compressed_size, test);
     fclose(test);
+
 #endif
 
     uux_fp = popen(uux_cmd, "w");

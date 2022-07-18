@@ -107,9 +107,11 @@ int main (int argc, char *argv[])
     {
         file_size = get_uncompressed_size(message_payload, message_size);
 
+        printf("decompressed size = %lu\n", file_size);
+
         blob = malloc(file_size);
 
-        xz_decompress(blob, &file_size, message_payload, message_size);
+        xz_decompress((uint8_t *) blob, &file_size, message_payload, message_size);
     }
     else if (message_payload[0] == 0x1f && message_payload[1] == 0x8B)
     {
@@ -118,13 +120,13 @@ int main (int argc, char *argv[])
 
         blob = malloc(file_size);
 
-        gz_decompress(message_payload, message_size, blob, file_size);
+        gz_decompress(message_payload, message_size, (uint8_t *) blob, &file_size);
 
     }
     else
     {
         printf ("No compressed payload found... just forwarding as is...\n");
-        blob = message_payload;
+        blob = (char *) message_payload;
         file_size = message_size;
     }
 
@@ -314,7 +316,7 @@ send_mail:
     system(rmail_cmd);
 
     unlink(tmp_mail);
-    if (blob == message_payload)
+    if ((uint8_t *)blob == message_payload)
     {
         free(blob);
     }

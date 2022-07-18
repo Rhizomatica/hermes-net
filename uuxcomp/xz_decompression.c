@@ -35,7 +35,10 @@ size_t get_uncompressed_size(uint8_t *data, size_t file_size)
 	const uint8_t *footer_ptr = data + file_size - LZMA_STREAM_HEADER_SIZE;
 
 	// Decode the footer, so we have the backward_size pointing to the index
-	lzma_stream_footer_decode(&stream_flags, (const uint8_t *)footer_ptr);
+	lzma_ret unused = lzma_stream_footer_decode(&stream_flags, (const uint8_t *)footer_ptr);
+	if ( unused != LZMA_OK )
+		return -1;
+
 	/// This is the index pointer, where the size is ultimately stored...
 	const uint8_t *index_ptr = footer_ptr - stream_flags.backward_size;
 

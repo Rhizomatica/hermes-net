@@ -25,8 +25,8 @@ LDFLAGS=-lb64 -llzma -lz
 
 all: uuxcomp crmail
 
-uuxcomp: uuxcomp.c xz_compression.c xz_compression.h
-	$(CC) $(CFLAGS) uuxcomp.c xz_compression.c -o uuxcomp $(LDFLAGS)
+uuxcomp: uuxcomp.c xz_compression.c xz_compression.h gz_compress.c gz_compress.h
+	$(CC) $(CFLAGS) uuxcomp.c xz_compression.c gz_compress.c -o uuxcomp $(LDFLAGS)
 
 crmail: crmail.c xz_decompression.c xz_decompression.h gz_compress.c gz_compress.h
 	$(CC) $(CFLAGS) crmail.c xz_decompression.c gz_compress.c -o crmail $(LDFLAGS)
