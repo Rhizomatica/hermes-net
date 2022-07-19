@@ -205,11 +205,11 @@ int main(int argc, char *argv[])
 
         srv_cmd[4] = CMD_SET_LED_STATUS;
     }
-    else if (!strcmp(command, "get_bypass_status"))
+    else if (!strcmp(command, "get_connected_status"))
     {
         srv_cmd[4] = CMD_GET_CONNECTED_STATUS;
     }
-    else if (!strcmp(command, "set_bypass_status"))
+    else if (!strcmp(command, "set_connected_status"))
     {
         if (argument_set == false)
             goto manual;

@@ -85,7 +85,7 @@
 #define DEFAULT_USB_CAL 48
 #define DEFAULT_VFO 52
 #define DEFAULT_VFO_MODE  56
-#define DEFAULT_BYPASS_STATE 60
+#define DEFAULT_UNUSED_STATE 60 // Unused (old default by-pass status)
 #define DEFAULT_SERIAL_NR 64
 #define DEFAULT_REF_THRESHOLD 68
 
