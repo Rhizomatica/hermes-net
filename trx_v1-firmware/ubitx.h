@@ -9,12 +9,12 @@
  *
  */
 
-#define ANT_GOOD  (A0)        // Signal to display antenna green led
-#define ANT_HIGH_SWR    (A1)        // Signal to display antenna red led
-#define BY_PASS     (A2)        // PA by-pass
-#define LED_CONTROL (A3)        // LED control light
-#define ANALOG_FWD  (A6)        // Forward power measure
-#define ANALOG_REF  (A7)        // Reflected power measure
+#define ANT_GOOD      (A0)        // Signal to display antenna green led
+#define ANT_HIGH_SWR  (A1)        // Signal to display antenna red led
+#define LED_CONNECTED (A2)        // Connected LED
+#define LED_CONTROL   (A3)        // Power LED
+#define ANALOG_FWD    (A6)        // Forward power measure
+#define ANALOG_REF    (A7)        // Reflected power measure
 
 /**
  *  The second set of 16 pins on the Raduino's bottom connector are have the three clock outputs and the digital lines to control the rig.
@@ -28,13 +28,13 @@
 
 
 #define TX_RX    (7)           // Pin from the Nano to the radio to switch to TX (HIGH) and RX(LOW)
-#define CW_TONE  (6)         // Generates a square wave sidetone while sending the CW. 
-#define TX_LPF_A (12)        // The 30 MHz LPF is permanently connected in the output of the PA... 
-#define CAL_CLK (5)        // CLK #0
-#define TX_LPF_B (4)        //  ...Alternatively, either 3.5 MHz, 7 MHz or 14 Mhz LPFs are...
-#define TX_LPF_C (3)        //  ...switched inline depending upon the TX frequency
+#define CW_TONE  (6)           // Generates a square wave sidetone while sending the CW.
+#define TX_LPF_A (12)          // The 30 MHz LPF is permanently connected in the output of the PA...
+#define CAL_CLK  (5)           // CLK #0 loopback (for calibration)
+#define TX_LPF_B (4)           //  ...Alternatively, either 3.5 MHz, 7 MHz or 14 Mhz LPFs are...
+#define TX_LPF_C (3)           //  ...switched inline depending upon the TX frequency
 #define CW_KEY   (11)          //  Pin goes high during CW keydown to transmit the carrier. 
-#define PPS_IN   (2)          //  GPS 1PPS input
+#define PPS_IN   (2)           //  GPS 1PPS input
 
 
 /** pin assignments
@@ -73,7 +73,7 @@
 #define USB_CAL 8
 #define VFO 12
 #define VFO_MODE  16 // 2: LSB, 3: USB
-#define BYPASS_STATE 20 // 1- bypass
+#define UNUSED 20 // Unused (old by-pass status)
 #define SERIAL_NR 24 // serial number
 #define REF_THRESHOLD 28 // reflected threshold for protection
 
@@ -139,7 +139,7 @@ extern char inTx;                //it is set to 1 if in transmit mode (whatever 
 extern char isUSB;               //upper sideband was selected, this is reset to the default for the 
 extern unsigned char txFilter;   //which of the four transmit filters are in use
 
-extern uint8_t by_pass; // PA by-pass
+extern bool connected_status; // PA by-pass
 
 extern bool is_swr_protect_enabled;
 
@@ -183,7 +183,7 @@ void checkSWRProtection();
 void checkFWD();
 void checkREF();
 void setLed(bool enabled);
-void setPAbypass(bool enabled);
+void setConnected(bool enabled);
 void triggerProtectionReset();
 void setSerial(unsigned long serial_nr);
 

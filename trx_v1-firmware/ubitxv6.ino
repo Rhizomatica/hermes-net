@@ -77,7 +77,7 @@ char inTx = 0;                //it is set to 1 if in transmit mode
 char isUSB = 0;               //upper sideband was selected
 uint8_t txFilter = 0;   //which of the four transmit filters are in use
 
-uint8_t by_pass = 0; // PA by-pass
+bool connected_status = false; // PA by-pass
 
 bool is_swr_protect_enabled = false;
 
@@ -282,24 +282,6 @@ void read_settings_from_eeprom()
     if (usbCarrier > 11060000l || usbCarrier < 11048000l)
         usbCarrier = 11052000l;
 
-#ifndef NO_BYPASS
-    EEPROM.get(BYPASS_STATE, x);
-#else
-    by_pass = 0;
-#endif
-
-    switch(x){
-    case 0:
-        by_pass = 0;
-        break;
-    case 1:
-        by_pass = 1;
-        break;
-    default:
-        by_pass = 0;
-    }
-
-
     EEPROM.get(VFO, frequency);
 
 
@@ -354,6 +336,8 @@ void initSettings(){
     led_antenna_green = 1;
 
     is_swr_protect_enabled = false;
+
+    connected_status = false;
 }
 
 void initTimers()
@@ -384,8 +368,8 @@ void initPorts()
     pinMode(ANALOG_FWD, INPUT);
     pinMode(ANALOG_REF, INPUT);
 
-    pinMode(BY_PASS, OUTPUT);
-    digitalWrite(BY_PASS, by_pass ? 1 : 0);
+    pinMode(LED_CONNECTED, OUTPUT);
+    digitalWrite(LED_CONNECTED, connected_status ? 1 : 0);
 
     pinMode(LED_CONTROL, OUTPUT);
     digitalWrite(LED_CONTROL, led_status ? 1 : 0);
@@ -464,13 +448,10 @@ void setLed(bool enabled)
         digitalWrite(LED_CONTROL, LOW);
 }
 
-void setPAbypass(bool enabled)
+void setConnected(bool enabled)
 {
-    by_pass = enabled;
-    digitalWrite(BY_PASS, by_pass ? HIGH : LOW);
-#ifndef NO_BYPASS
-    EEPROM.put(BYPASS_STATE, by_pass);
-#endif
+    connected_status = enabled;
+    digitalWrite(LED_CONNECTED, connected_status ? HIGH : LOW);
 }
 
 void setSerial(unsigned long serial_nr)

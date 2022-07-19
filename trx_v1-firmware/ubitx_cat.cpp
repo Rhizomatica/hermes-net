@@ -196,7 +196,7 @@ void processCATCommand(byte* cmd)
         break;
 
     case CMD_GET_BYPASS_STATUS: // GET BYPASS STATUS
-        if (by_pass)
+        if (connected_status)
             response[0] = CMD_RESP_GET_BYPASS_STATUS_ON;
         else
             response[0] = CMD_RESP_GET_BYPASS_STATUS_OFF;
@@ -204,7 +204,7 @@ void processCATCommand(byte* cmd)
       break;
 
     case CMD_SET_BYPASS_STATUS: // SET BYPASS STATUS
-        setPAbypass(cmd[0]);
+        setConnected(cmd[0]);
         response[0] = CMD_RESP_SET_BYPASS_STATUS_ACK;
         Serial.write(response,1);
         break;
