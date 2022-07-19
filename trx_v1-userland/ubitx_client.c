@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
     }
     else if (!strcmp(command, "get_bypass_status"))
     {
-        srv_cmd[4] = CMD_GET_BYPASS_STATUS;
+        srv_cmd[4] = CMD_GET_CONNECTED_STATUS;
     }
     else if (!strcmp(command, "set_bypass_status"))
     {
@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
         if (!strcmp(command_argument, "0") || !strcmp(command_argument, "false") || !strcmp(command_argument, "off") || !strcmp(command_argument, "OFF"))
             srv_cmd[0] = 0x00;
 
-        srv_cmd[4] = CMD_SET_BYPASS_STATUS;
+        srv_cmd[4] = CMD_SET_CONNECTED_STATUS;
     }
     else if (!strcmp(command, "get_serial"))
     {
@@ -360,7 +360,7 @@ int main(int argc, char *argv[])
         case CMD_RESP_SET_MASTERCAL_ACK:
         case CMD_RESP_SET_BFO_ACK:
         case CMD_RESP_SET_LED_STATUS_ACK:
-        case CMD_RESP_SET_BYPASS_STATUS_ACK:
+        case CMD_RESP_SET_CONNECTED_STATUS_ACK:
         case CMD_RESP_SET_SERIAL_ACK:
         case CMD_RESP_RESET_PROTECTION_ACK:
         case CMD_RESP_SET_REF_THRESHOLD_ACK:
@@ -394,11 +394,11 @@ int main(int argc, char *argv[])
         case CMD_RESP_GET_PROTECTION_OFF:
             printf("PROTECTION_OFF\n");
             break;
-        case CMD_RESP_GET_BYPASS_STATUS_ON:
-            printf("BYPASS_ON\n");
+        case CMD_RESP_GET_CONNECTED_STATUS_ON:
+            printf("LED_ON\n");
             break;
-        case CMD_RESP_GET_BYPASS_STATUS_OFF:
-            printf("BYPASS_OFF\n");
+        case CMD_RESP_GET_CONNECTED_STATUS_OFF:
+            printf("LED_OFF\n");
             break;
         case CMD_RESP_GET_FREQ_ACK:
             memcpy (&freq, connector->response_service+1, 4);

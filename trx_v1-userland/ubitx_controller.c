@@ -201,9 +201,9 @@ int cat_rcv(void *arg)
             case CMD_RESP_GET_LED_STATUS_ON:
             case CMD_RESP_GET_LED_STATUS_OFF:
             case CMD_RESP_SET_LED_STATUS_ACK:
-            case CMD_RESP_GET_BYPASS_STATUS_ON:
-            case CMD_RESP_GET_BYPASS_STATUS_OFF:
-            case CMD_RESP_SET_BYPASS_STATUS_ACK:
+            case CMD_RESP_GET_CONNECTED_STATUS_ON:
+            case CMD_RESP_GET_CONNECTED_STATUS_OFF:
+            case CMD_RESP_SET_CONNECTED_STATUS_ACK:
             case CMD_RESP_SET_SERIAL_ACK:
             case CMD_RESP_RESET_PROTECTION_ACK:
             case CMD_RESP_SET_REF_THRESHOLD_ACK:

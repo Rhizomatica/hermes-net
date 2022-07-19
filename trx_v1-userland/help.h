@@ -83,11 +83,11 @@ const char format_str[] = "* ptt_on\n"
 "  * 0 | 1\n"
 "  * Resp: OK | ERROR\n\n"
 
-"* get_bypass_status\n"
+"* get_connected_status\n"
 "  * No Argument\n"
-"  * Resp: BYPASS_ON | BYPASS_OFF | ERROR\n\n"
+"  * Resp: LED_ON | LED_OFF | ERROR\n\n"
 
-"* set_bypass_status\n"
+"* set_connected_status\n"
 "  * 0 | 1\n"
 "  * Resp: OK | ERROR\n\n"
 
