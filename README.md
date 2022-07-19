@@ -1,5 +1,6 @@
 # hermes-net
-Network subsystems of the HERMES telecommunication system
+
+Network subsystems of the HERMES telecommunication system: https://rhizomatica.org/hermes .
 
 
 ## uuxcomp
@@ -12,3 +13,9 @@ also providing an rmail wrapper to decompress the content at destination host.
 
 This folder contains all the scripts needed by the HERMES system. Examples
 include email management and media transcoding scripts.
+
+## Authors
+
+Most of the code was written by Rafael Diniz <rafael@rhizomatica.org> with contributions
+by Carlos Paulino <chgp@riseup.net>.
+
