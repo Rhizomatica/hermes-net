@@ -37,4 +37,4 @@ clean:
 
 install: uuxcomp crmail
 	install -D uuxcomp $(DESTDIR)$(prefix)/bin/uuxcomp
-#	install -D crmail $(DESTDIR)$(prefix)/bin/crmail
+	install -D crmail $(DESTDIR)$(prefix)/bin/crmail

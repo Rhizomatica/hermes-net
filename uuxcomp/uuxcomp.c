@@ -21,13 +21,13 @@
 
 #define VERSION "0.1"
 
-#define DEBUG_MODE 2 // 0, 1 and 2
+#define DEBUG_MODE 1 // 0, 1 and 2
 #define DEBUG_FILENAME "/var/log/uucp/uuxcomp_debug.txt"
 
 // for old version 1 of our stack,
-#define USE_GZ 1
+#define USE_GZ 0
 // for version 2, use XZ compression
-#define USE_XZ 0
+#define USE_XZ 1
 
 // use Fraunhofer Neural End-2-End Speech Coder instead of LPCNet
 #define USE_NESC 1
