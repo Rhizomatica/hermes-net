@@ -117,7 +117,7 @@ const char format_str[] = "* ptt_on\n"
 
 "* gps_calibrate\n"
 "  * No Argument\n"
-"  * Resp: OK (start 10s GPS-based calibration procedure) | ERROR\n\n"
+"  * Resp: OK (start 10s GPS-based calibration procedure) | NO_GPS | ERROR\n\n"
 
 "* restore_radio_defaults\n"
 "  * No Argument\n"

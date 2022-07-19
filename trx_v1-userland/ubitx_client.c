@@ -400,6 +400,9 @@ int main(int argc, char *argv[])
         case CMD_RESP_GET_CONNECTED_STATUS_OFF:
             printf("LED_OFF\n");
             break;
+        case CMD_RESP_GPS_NOT_PRESENT:
+            printf("NO_GPS\n");
+            break;
         case CMD_RESP_GET_FREQ_ACK:
             memcpy (&freq, connector->response_service+1, 4);
             printf("%u\n", freq);

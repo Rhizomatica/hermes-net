@@ -210,6 +210,7 @@ int cat_rcv(void *arg)
             case CMD_RESP_SET_RADIO_DEFAULTS_ACK:
             case CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK:
             case CMD_RESP_GPS_CALIBRATE_ACK:
+            case CMD_RESP_GPS_NOT_PRESENT:
                 conn->response_service_type = CMD_RESP_SHORT;
                 conn->response_service[0] = buf[0];
                 break;

@@ -115,11 +115,11 @@ by the argument type and possible responses.
   * 0 | 1
   * Resp: OK | ERROR
 
-* get_bypass_status
+* get_connection_status
   * No Argument
-  * Resp: BYPASS_ON | BYPASS_OFF | ERROR
+  * Resp: LED_ON | LED_OFF | ERROR
 
-* set_bypass_status
+* set_connection_status
   * 0 | 1
   * Resp: OK | ERROR
 
@@ -149,7 +149,7 @@ by the argument type and possible responses.
 
 * gps_calibrate
   * No Argument
-  * Resp: OK (start 10s GPS-based calibration procedure) | ERROR
+  * Resp: OK (start 10s GPS-based calibration procedure) | NO_GPS | ERROR
 
 * restore_radio_defaults
   * No Argument
@@ -161,8 +161,8 @@ by the argument type and possible responses.
 
 ## C compiler defines
 
-   Set the firmware Makefile for different radio versions. Set NO_BYPASS for
-   the version of the radio without the by-pass board.
+   Set the firmware Makefile for different radio versions. Set HAS_GPS for
+   the version of the radio with GPS board inside.
 
 ## Raduino modifications
 
