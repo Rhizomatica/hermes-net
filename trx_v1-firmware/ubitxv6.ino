@@ -62,7 +62,10 @@
 #include <EEPROM.h>
 #include "ubitx.h"
 #include "ubitx_cat.h"
+
+#ifdef HAS_GPS
 #include "ubitx_calibration.h"
+#endif
 
 uint32_t usbCarrier; // bfo
 uint32_t frequency = 7150000UL; //frequency is the current frequency on the dial
@@ -388,11 +391,10 @@ void initPorts()
     digitalWrite(TX_LPF_B, 0);
     digitalWrite(TX_LPF_C, 0);
 
+#ifdef HAS_GPS
     pinMode(CAL_CLK, INPUT);
-
-  // Inititalize GPS 1pps input
     pinMode(PPS_IN, INPUT);
-
+#endif
     // one day we'll have CW back!
     // pinMode(CW_KEY, OUTPUT);
     // digitalWrite(CW_KEY, 0);
@@ -410,8 +412,10 @@ void setup()
   setFrequency(frequency);
   initTimers();
 
+#ifdef HAS_GPS
   // when the radio boots up, we do a initial callibration
   enable_calibration();
+#endif
 }
 
 
@@ -535,6 +539,7 @@ uint16_t pace;
 
 void loop(){
 
+#ifdef HAS_GPS
     if (gps_pps_tick)
     {
         gps_pps_tick = false;
@@ -549,6 +554,7 @@ void loop(){
             setMasterCal(calibration);
         }
     }
+#endif
 
     checkCAT();
 

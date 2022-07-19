@@ -135,6 +135,8 @@
 
 #define CMD_RESP_GPS_CALIBRATE_ACK 0xd1
 
+#define CMD_RESP_GPS_NOT_PRESENT 0xd2
+
 #define CMD_RESP_WRONG_COMMAND 0xc0
 
 // used for PTT responses

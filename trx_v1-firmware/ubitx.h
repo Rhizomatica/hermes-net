@@ -26,6 +26,7 @@
  *  - CW_KEY line : turns on the carrier for CW
  */
 
+#ifdef HAS_GPS
 
 #define TX_RX    (7)           // Pin from the Nano to the radio to switch to TX (HIGH) and RX(LOW)
 #define CW_TONE  (6)           // Generates a square wave sidetone while sending the CW.
@@ -36,6 +37,17 @@
 #define CW_KEY   (11)          //  Pin goes high during CW keydown to transmit the carrier. 
 #define PPS_IN   (2)           //  GPS 1PPS input
 
+#else
+
+#define TX_RX    (7)           // Pin from the Nano to the radio to switch to TX (HIGH) and RX(LOW)
+#define CW_TONE  (6)         // Generates a square wave sidetone while sending the CW.
+#define TX_LPF_A (5)        // The 30 MHz LPF is permanently connected in the output of the PA...
+#define TX_LPF_B (4)        //  ...Alternatively, either 3.5 MHz, 7 MHz or 14 Mhz LPFs are...
+#define TX_LPF_C (3)        //  ...switched inline depending upon the TX frequency
+#define CW_KEY   (2)          //  Pin goes high during CW keydown to transmit the carrier.
+                            // ... The CW_KEY is needed in addition to the TX/RX key as the...
+                            // ...key can be up within a tx period
+#endif
 
 /** pin assignments
 14  T_IRQ           2 std   changed
@@ -157,7 +169,7 @@ extern uint16_t reflected_threshold;
 
 extern uint32_t milisec_count;
 
-extern uint16_t tcount ;
+extern uint16_t tcount;
 extern uint32_t mult;
 extern uint32_t XtalFreq;
 

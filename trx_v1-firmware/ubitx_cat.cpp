@@ -24,8 +24,11 @@
 #include <Arduino.h>
 #include "ubitx.h"
 #include "ubitx_cat.h"
-#include "ubitx_calibration.h"
 #include "../include/radio_cmds.h"
+
+#ifdef HAS_GPS
+#include "ubitx_calibration.h"
+#endif
 
 /* reset function declaration */
 void(*resetFunc) (void) = 0;
@@ -236,9 +239,13 @@ void processCATCommand(byte* cmd)
         break;
 
     case CMD_GPS_CALIBRATE: // CMD_GPS_CALIBRATE
+#ifdef HAS_GPS
         if (calibration_enabled == false)
             enable_calibration();
         response[0] = CMD_RESP_GPS_CALIBRATE_ACK;
+#else
+        response[0] = CMD_RESP_GPS_NOT_PRESENT;
+#endif
         Serial.write(response,1);
         break;
 

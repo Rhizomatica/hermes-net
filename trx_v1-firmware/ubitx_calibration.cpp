@@ -19,6 +19,8 @@
 
 */
 
+#ifdef HAS_GPS
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -88,3 +90,5 @@ ISR(TIMER1_OVF_vect)
     mult++;                                          //Increment multiplier
     TIFR1 = (1<<TOV1);                               //Clear overlow flag 
 }
+
+#endif
