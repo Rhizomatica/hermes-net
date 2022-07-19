@@ -1,5 +1,5 @@
 # uBitxv6 Rhizomatica tools
-# Copyright (C) 2019-2021 Rhizomatica
+# Copyright (C) 2019-2022 Rhizomatica
 # Author: Rafael Diniz <rafael@riseup.net>
 #
 # This is free software; you can redistribute it and/or modify
@@ -37,5 +37,5 @@ clean:
 install: ubitx_controller ubitx_client
 	install -D ubitx_client $(DESTDIR)$(prefix)/bin/ubitx_client
 	install -D ubitx_controller $(DESTDIR)$(prefix)/bin/ubitx_controller
-	install -m 644 -D ../initscript/ubitx.service $(DESTDIR)/etc/systemd/system/ubitx.service
-	install -m 644 -D ../rules/99-radio.rules /etc/udev/rules.d/99-radio.rules
+	install -m 644 -D ../system_services/init/ubitx.service $(DESTDIR)/etc/systemd/system/ubitx.service
+	install -m 644 -D ../system_services/udev/99-radio.rules $(DESTDIR)/etc/udev/rules.d/99-radio.rules
