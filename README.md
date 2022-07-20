@@ -13,6 +13,10 @@ To install, run:
 
 * make install
 
+Additionally, if installing in a gateway station, run:
+
+* make install_gateway
+
 To compile the firmware, run:
 
 * make trx_v1-firmware
@@ -20,6 +24,8 @@ To compile the firmware, run:
 To upload the firmware to the Arduino Nano based transceiver, run:
 
 * make ispload
+
+
 
 
 # Sub-projects

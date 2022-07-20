@@ -18,9 +18,9 @@
 # Boston, MA 02110-1301, USA.
 #
 
-.PHONY: clean install trx_v1-firmware trx_v1-userland uuxcomp
+.PHONY: clean install trx_v1-firmware trx_v1-userland uuxcomp uucpd
 
-all: trx_v1-userland uuxcomp
+all: trx_v1-userland uuxcomp uucpd
 
 
 trx_v1-firmware:
@@ -45,8 +45,12 @@ install: trx_v1-userland uuxcomp uucpd
 	$(MAKE) -C uuxcomp install
 	$(MAKE) -C uucpd install
 
+install_gateway: install
+	$(MAKE) -C uucpd install_gateway
+
 
 clean:
 	$(MAKE) -C trx_v1-userland clean
 	$(MAKE) -C trx_v1-firmware clean
 	$(MAKE) -C uuxcomp clean
+	$(MAKE) -C uucpd clean

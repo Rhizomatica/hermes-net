@@ -1,4 +1,4 @@
-Source: rhizo-uuardop
+Source: hermes-net
 Section: network
 Priority: optional
 Maintainer: Rafael Diniz <rafael@rhizomatica.org>
@@ -10,6 +10,6 @@ Package: rhizo-uuardop
 Architecture: any
 Multi-Arch: foreign
 Depends: libc6 (>= 2.14)
-Description: A set of tools which allow UUCP to use ARDOP or VARA as
-             modem. With this integration, UUCP is fully functional over HF
-             links.
+Description: HERMES network subsystem. A set of tools for HERMES' transceiver,
+             UUCP integration to HF modem, email customized compression and so
+             on.

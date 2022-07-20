@@ -1,8 +1,8 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: rhizo-uuardop
+Upstream-Name: hermes-net
 Upstream-Contact: Rafael Diniz <rafael@rhizomatica.org>
 Source: www.rhizomatica.org/hermes
-Copyright: Rhizomatica 2019-2021
+Copyright: Rhizomatica 2019-2022
 License:   GPL-3+
 
  This is free software; you can redistribute it and/or modify

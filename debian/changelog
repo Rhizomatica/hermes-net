@@ -1,5 +1,5 @@
-rhizo-uuardop (0.1-1) unstable; urgency=medium
+hermes-net (0.1-1) unstable; urgency=medium
 
-  * Initial release.
+  * Initial unified release.
 
- --  Rafael Diniz <rafael@rhizomatica.org>  Thu, 15 Jul 2021 19:41:17 -0300
+ --  Rafael Diniz <rafael@rhizomatica.org>  Wed, 20 Jul 2022 11:44:21 +0300
