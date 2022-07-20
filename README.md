@@ -26,8 +26,6 @@ To upload the firmware to the Arduino Nano based transceiver, run:
 * make ispload
 
 
-
-
 # Sub-projects
 
 The repository contains all sub-projects which compose the hermes network stack.
@@ -40,11 +38,6 @@ Uuxcomp is a uucp uux wrapper to be used with postfix email transport. It
 compresses the email payload with xz and carries transcoding of specific formats, while
 also providing an rmail wrapper to decompress the content at destination host.
 
-## system_scripts
-
-This folder contains all the scripts needed by the HERMES system. Examples
-include email management and media transcoding scripts.
-
 ## trx_v1-firmware
 
 Rhizomatica's v1 µbitx-based radio transceiver Arduino Nano firmware.
@@ -52,6 +45,18 @@ Rhizomatica's v1 µbitx-based radio transceiver Arduino Nano firmware.
 ## trx_v1-userland
 
 Rhizomatica's v1 µbitx-based radio transceiver control utils. 
+
+## uucpd
+
+Previosly called rhizo-uuardopd, is composed by a control daemon which transports uucp payload
+between uucico and the HF modem. It also contains uuport, a tool to be used in a uucico
+port in pipe mode to connect uucico to the uucp daemon.
+
+## system_scripts
+
+This folder contains all the scripts needed by the HERMES system. Examples
+include email management and media transcoding scripts.
+
 
 ## include
 
