@@ -1,0 +1,15 @@
+Source: rhizo-uuardop
+Section: network
+Priority: optional
+Maintainer: Rafael Diniz <rafael@rhizomatica.org>
+Build-Depends: debhelper-compat (= 12)
+Standards-Version: 4.5.0
+Homepage: www.rhizomatica.org/hermes
+
+Package: rhizo-uuardop
+Architecture: any
+Multi-Arch: foreign
+Depends: libc6 (>= 2.14)
+Description: A set of tools which allow UUCP to use ARDOP or VARA as
+             modem. With this integration, UUCP is fully functional over HF
+             links.

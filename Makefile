@@ -36,12 +36,14 @@ trx_v1-userland:
 uuxcomp:
 	$(MAKE) -C uuxcomp
 
+uucpd:
+	$(MAKE) -C uucpd
 
 
-install: trx_v1-userland uuxcomp
+install: trx_v1-userland uuxcomp uucpd
 	$(MAKE) -C trx_v1-userland install
 	$(MAKE) -C uuxcomp install
-
+	$(MAKE) -C uucpd install
 
 
 clean:

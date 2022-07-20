@@ -1,0 +1,16 @@
+[Unit]
+Description=UUARDOPD daemon
+After=vnc.service ubitx.service
+Requires=vnc.service ubitx.service
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/uuardopd -a 127.0.0.1 -p 8300 -r vara -o shm
+KillSignal=SIGTERM
+IgnoreSIGPIPE=no
+Restart=always
+TimeoutSec=infinity
+ExecStartPre=/usr/bin/vara_watchdog.sh
+
+[Install]
+WantedBy=multi-user.target

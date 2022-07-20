@@ -1,0 +1,15 @@
+[Unit]
+Description=HERMES Gateway caller daemon
+After=vnc.service
+Requires=vnc.service
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/caller.sh
+KillSignal=SIGTERM
+IgnoreSIGPIPE=no
+Restart=always
+TimeoutSec=infinity
+
+[Install]
+WantedBy=multi-user.target
