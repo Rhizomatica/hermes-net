@@ -12,6 +12,11 @@ attachments, which includes media transcoding (scripts available in "scripts" fo
 compression (gzip and lzma supported). The media codecs packages are available at:
 http://packages.hermes.radio/
 
+# Usage
+
+Postfix uucp configuration should be changed to use uuxcomp instead of uux, and rmail should be changed to crmail. Also, crmail must be put in the uucp configuration
+as a authorized command to be executed.
+
 ## License
 
 GPL v3+

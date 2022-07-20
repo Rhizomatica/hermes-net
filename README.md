@@ -3,6 +3,28 @@
 Network subsystems of the HERMES telecommunication system: https://rhizomatica.org/hermes .
 
 
+# Compile And Install
+
+To compile the userland code, run:
+
+* make
+
+To install, run:
+
+* make install
+
+To compile the firmware, run:
+
+* make trx_v1-firmware
+
+To upload the firmware to the Arduino Nano based transceiver, run:
+
+* make ispload
+
+
+# Sub-projects
+
+The repository contains all sub-projects which compose the hermes network stack.
 Each entry in the list bellow contains a brief explanation of each directory
 in this repository.
 
