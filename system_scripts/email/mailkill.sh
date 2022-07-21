@@ -79,7 +79,6 @@ elif [ $lang = "pt" ] && [ $type = "size_limit" ]; then
 elif [ $lang = "pt" ] && [ $type = "queue_full" ]; then
   message="Seu e-mail com destino(s): ${to} enviado em ${local_time} foi cancelado porque a lista de transmissão excede o tamanho máximo. \n\nEsta é uma mensagem automática do Sistema HERMES!"
   subject="E-mail cancelado pelo sistema"
-
 fi
 
 #send email

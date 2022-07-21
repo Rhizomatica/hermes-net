@@ -40,12 +40,6 @@ uuport: uuport.o shm.o circular_buffer.o
 install: uuardopd uuport
 	install -D uuardopd $(DESTDIR)$(prefix)/bin/uuardopd
 	install -D uuport $(DESTDIR)$(prefix)/bin/uuport
-	install -m 644 -D ../system_services/init/uuardopd.service $(DESTDIR)/etc/systemd/system/uuardopd.service
-	install ../system_scripts/uucpd/vara_watchdog.sh $(DESTDIR)$(prefix)/bin
-
-install_gateway: install
-	install -m 644 -D ../system_services/init/caller.service $(DESTDIR)/etc/systemd/system/caller.service
-	install ../system_scripts/uucpd/caller.sh $(DESTDIR)$(prefix)/bin
 
 doc:
 	doxygen doxyfile

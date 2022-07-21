@@ -20,6 +20,8 @@
 
 .PHONY: clean install trx_v1-firmware trx_v1-userland uuxcomp uucpd
 
+prefix=/usr
+
 all: trx_v1-userland uuxcomp uucpd
 
 
@@ -44,10 +46,21 @@ install: trx_v1-userland uuxcomp uucpd
 	$(MAKE) -C trx_v1-userland install
 	$(MAKE) -C uuxcomp install
 	$(MAKE) -C uucpd install
+	install -m 644 -D system_services/init/ubitx.service $(DESTDIR)/etc/systemd/system/ubitx.service
+	install -m 644 -D system_services/init/uuardopd.service $(DESTDIR)/etc/systemd/system/uuardopd.service
+	install -m 644 -D system_services/udev/99-radio.rules $(DESTDIR)/etc/udev/rules.d/99-radio.rules
+	install -D system_scripts/compression/compress_image.sh $(DESTDIR)$(prefix)/bin/compress_image.sh
+	install -D system_scripts/compression/compress_audio.sh $(DESTDIR)$(prefix)/bin/compress_audio.sh
+	install -D system_scripts/compression/decompress_image.sh $(DESTDIR)$(prefix)/bin/decompress_image.sh
+	install -D system_scripts/compression/decompress_audio.sh $(DESTDIR)$(prefix)/bin/decompress_audio.sh
+	install -D system_scripts/email/mailkill.sh $(DESTDIR)$(prefix)/bin/mailkill.sh
+	install -D system_scripts/email/mail_size_enforcement.sh $(DESTDIR)$(prefix)/bin/mail_size_enforcement.sh
+	install -D system_scripts/uucpd/vara_watchdog.sh $(DESTDIR)$(prefix)/bin
+
 
 install_gateway: install
-	$(MAKE) -C uucpd install_gateway
-
+	install -m 644 -D system_services/init/caller.service $(DESTDIR)/etc/systemd/system/caller.service
+	install system_scripts/uucpd/caller.sh $(DESTDIR)$(prefix)/bin
 
 clean:
 	$(MAKE) -C trx_v1-userland clean

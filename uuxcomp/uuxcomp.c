@@ -32,7 +32,7 @@
 // use Fraunhofer Neural End-2-End Speech Coder instead of LPCNet
 #define USE_NESC 1
 
-
+#define MAIL_SIZE_SCRIPT "mail_size_enforcement.sh"
 
 
 #define MAX_FILENAME 4096
@@ -422,6 +422,9 @@ int main (int argc, char *argv[])
         free(output_message);
     free(message_payload);
     free(compressed_message);
+
+    // now we call mail size enforcement script
+    system(MAIL_SIZE_SCRIPT);
 
     return EXIT_SUCCESS;
 }
