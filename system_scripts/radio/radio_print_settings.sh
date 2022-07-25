@@ -20,6 +20,6 @@ ubitx_client -c get_ref
 echo -n "sys_led "
 ubitx_client -c get_led_status
 echo -n "connected_led "
-ubitx_client -c get_bypass_status
+ubitx_client -c get_connected_status
 echo -n "serial "
 ubitx_client -c get_serial
