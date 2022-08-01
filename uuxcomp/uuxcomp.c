@@ -56,6 +56,7 @@
 
 #include "xz_compression.h"
 #include "gz_compress.h"
+#include "daemon.h"
 
 #if ((USE_GZ == 1) && (USE_XZ == 1)) || ((USE_GZ == 0) && (USE_XZ == 0))
 #error Wrong compression configuration
@@ -103,6 +104,27 @@ int main (int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    // read stdin
+    message_size = fread(tmp_buffer, 1, BUF_SIZE, stdin);
+    message_payload = malloc(message_size);
+    memcpy(message_payload, tmp_buffer, message_size);
+    while ( !feof(stdin) )
+    {
+        size_t needle = message_size;
+        buffer_size = fread(tmp_buffer, 1, BUF_SIZE, stdin);
+        message_size += buffer_size;
+        message_payload = realloc(message_payload, message_size);
+        memcpy(message_payload + needle, tmp_buffer, buffer_size);
+    }
+
+    output_message = message_payload;
+
+    // daemonize and return the parent...
+    if (become_daemon() != 0)
+    {
+        fprintf(stderr, "Error in daemon()\n");
+    }
+
 #if DEBUG_MODE > 0
     debug_output = fopen(DEBUG_FILENAME,"a");
     if (debug_output == NULL)
@@ -114,30 +136,6 @@ int main (int argc, char *argv[])
     debug_output = stderr;
 #endif
 
-    // read stdin
-    message_size = fread(tmp_buffer, 1, BUF_SIZE, stdin);
-    fprintf(debug_output, "message_size = %lu\n", message_size);
-    fflush(debug_output);
-    message_payload = malloc(message_size);
-    memcpy(message_payload, tmp_buffer, message_size);
-    while ( !feof(stdin) )
-    {
-        size_t needle = message_size;
-        buffer_size = fread(tmp_buffer, 1, BUF_SIZE, stdin);
-        message_size += buffer_size;
-        message_payload = realloc(message_payload, message_size);
-        memcpy(message_payload + needle, tmp_buffer, buffer_size);
-        fprintf(debug_output, "message_size = %lu\n", message_size);
-        fflush(debug_output);
-    }
-
-    output_message = message_payload;
-
-    // daemonize and return the parent...
-    if (daemon(0, 0) != 0)
-    {
-        fprintf(debug_output, "Error in daemon()\n");
-    }
     fprintf(debug_output, "Daemon creation succeed!\n");
 
     // here we go... parsing the stuff...

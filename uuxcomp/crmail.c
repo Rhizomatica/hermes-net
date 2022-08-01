@@ -32,6 +32,7 @@
 
 #include "xz_decompression.h"
 #include "gz_compress.h"
+#include "daemon.h"
 
 #define DEBUG_MODE 1 // 0, 1 and 2
 #define DEBUG_FILENAME "/var/log/uucp/crmail_debug.txt"
@@ -118,6 +119,12 @@ int main (int argc, char *argv[])
     fclose(test);
 #endif
 
+    // daemonize and return the parent...
+    if (become_daemon() != 0)
+    {
+        fprintf(stderr, "Error in daemon()\n");
+    }
+
 #if DEBUG_MODE > 0
     debug_output = fopen(DEBUG_FILENAME,"a");
     if (debug_output == NULL)
@@ -129,11 +136,6 @@ int main (int argc, char *argv[])
     debug_output = stderr;
 #endif
 
-    // daemonize and return the parent...
-    if (daemon(0, 0) != 0)
-    {
-        fprintf(debug_output, "Error in daemon()\n");
-    }
     fprintf(debug_output, "Daemon creation succeed!\n");
 
 
