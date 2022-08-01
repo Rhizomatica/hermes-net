@@ -33,6 +33,9 @@
 #include "xz_decompression.h"
 #include "gz_compress.h"
 
+#define DEBUG_MODE 1 // 0, 1 and 2
+#define DEBUG_FILENAME "/var/log/uucp/crmail_debug.txt"
+
 #define MAX_FILENAME 4096
 #define S_BUF 128
 
@@ -66,6 +69,8 @@ int main (int argc, char *argv[])
     FILE *encoded_media;
     FILE *decoded_media;
 
+    FILE *debug_output;
+
     char decoded_media_filename[MAX_FILENAME];
     char encoded_media_filename[MAX_FILENAME];
 
@@ -86,6 +91,8 @@ int main (int argc, char *argv[])
     message_size = fread(tmp_buffer, 1, BUF_SIZE, stdin);
     message_payload = malloc(message_size);
     memcpy(message_payload, tmp_buffer, message_size);
+
+    // read the compressed email from stdin
     while ( !feof(stdin) )
     {
         size_t needle = message_size;
@@ -95,11 +102,40 @@ int main (int argc, char *argv[])
         memcpy(message_payload + needle, tmp_buffer, buffer_size);
     }
 
+    // prepare the rmail command
+    sprintf(rmail_cmd, "(rmail ");
+    for (int i = 1; i < argc; i++)
+    {
+        strcat (rmail_cmd, argv[i]);
+        strcat (rmail_cmd, " ");
+    }
+    sprintf (rmail_cmd+strlen(rmail_cmd), "< %s)", tmp_mail);
+
+
 #if 0
     FILE *test = fopen("uuxcomp-message.xz", "w");
     fwrite(message_payload, 1, message_size, test);
     fclose(test);
 #endif
+
+#if DEBUG_MODE > 0
+    debug_output = fopen(DEBUG_FILENAME,"a");
+    if (debug_output == NULL)
+    {
+        fprintf(stderr, "Failed to open debug output\n");
+        exit(EXIT_FAILURE);
+    }
+#else
+    debug_output = stderr;
+#endif
+
+    // daemonize and return the parent...
+    if (daemon(0, 0) != 0)
+    {
+        fprintf(debug_output, "Error in daemon()\n");
+    }
+    fprintf(debug_output, "Daemon creation succeed!\n");
+
 
     // if XZ
     // xz magic is: FD 37 7A 58  5A
@@ -107,7 +143,7 @@ int main (int argc, char *argv[])
     {
         file_size = get_uncompressed_size(message_payload, message_size);
 
-        printf("decompressed size = %lu\n", file_size);
+        fprintf(debug_output, "decompressed size = %lu\n", file_size);
 
         blob = malloc(file_size);
 
@@ -125,13 +161,13 @@ int main (int argc, char *argv[])
     }
     else
     {
-        printf ("No compressed payload found... just forwarding as is...\n");
+        fprintf(debug_output,"No compressed payload found... just forwarding as is...\n");
         blob = (char *) message_payload;
         file_size = message_size;
     }
 
 
-    printf("writing decompressed file to: %s\n", tmp_mail);
+    fprintf(debug_output, "writing decompressed file to: %s\n", tmp_mail);
     tmp_mail_fp = fopen(tmp_mail, "w");
     fwrite(blob, 1, file_size, tmp_mail_fp);
     fclose(tmp_mail_fp);
@@ -141,7 +177,7 @@ int main (int argc, char *argv[])
     tmp_ptr = strstr(blob, "Content-Type: image/x-vvc");
     if (tmp_ptr != NULL)
     {
-        printf("IMAGE found.\n");
+        fprintf(debug_output, "IMAGE found.\n");
         encoding_type = ENC_TYPE_IMAGE;
         char_ptr = tmp_ptr;
     }
@@ -150,7 +186,7 @@ int main (int argc, char *argv[])
     tmp_ptr = strstr(blob, "Content-Type: audio/x-lpcnet");
     if (tmp_ptr != NULL)
     {
-        printf("LPC_NET AUDIO found.\n");
+        fprintf(debug_output, "LPC_NET AUDIO found.\n");
         encoding_type = ENC_TYPE_AUDIO_LPCNET;
         char_ptr = tmp_ptr;
     }
@@ -159,7 +195,7 @@ int main (int argc, char *argv[])
     tmp_ptr = strstr(blob, "Content-Type: audio/x-nesc");
     if (tmp_ptr != NULL)
     {
-        printf("NESC AUDIO found.\n");
+        fprintf(debug_output, "NESC AUDIO found.\n");
         encoding_type = ENC_TYPE_AUDIO_NESC;
         char_ptr = tmp_ptr;
     }
@@ -190,7 +226,7 @@ int main (int argc, char *argv[])
 
     if (encoded_media == NULL)
     {
-        printf("%s could not be opened.\n", encoded_media_filename);
+        fprintf(debug_output, "%s could not be opened.\n", encoded_media_filename);
         goto send_mail;
     }
 
@@ -218,7 +254,7 @@ int main (int argc, char *argv[])
 
     if (tmp_mail_fp == NULL)
     {
-        printf("%s could not be opened.\n", tmp_mail);
+        fprintf(debug_output, "%s could not be opened.\n", tmp_mail);
         return EXIT_FAILURE;
     }
 
@@ -238,7 +274,7 @@ int main (int argc, char *argv[])
     // to the "new" email
     if (stat(decoded_media_filename, &st) != 0)
     {
-        printf("%s could not be opened.\n", decoded_media_filename);
+        fprintf(debug_output, "%s could not be opened.\n", decoded_media_filename);
         fclose(tmp_mail_fp);
         goto send_mail;
     }
@@ -246,7 +282,7 @@ int main (int argc, char *argv[])
 
     if (decoded_media_file_size == 0)
     {
-        printf("%s has zero size.\n", decoded_media_filename);
+        fprintf(debug_output, "%s has zero size.\n", decoded_media_filename);
         fclose(tmp_mail_fp);
         goto send_mail;
     }
@@ -255,7 +291,7 @@ int main (int argc, char *argv[])
 
     if (decoded_media == NULL)
     {
-        printf("%s could not be opened.\n", decoded_media_filename);
+        fprintf(debug_output, "%s could not be opened.\n", decoded_media_filename);
         fclose(tmp_mail_fp);
         goto send_mail;
     }
@@ -271,7 +307,7 @@ int main (int argc, char *argv[])
 
     char *b64_blob = malloc(4 * decoded_media_file_size);
 
-    printf("b64 raw data size = %ld\n", decoded_media_file_size);
+    fprintf(debug_output, "b64 raw data size = %ld\n", decoded_media_file_size);
 
     int rc;
     rc = base64_encode_block(decoded_media_blob, decoded_media_file_size, b64_blob, &b64_state);
@@ -303,15 +339,7 @@ int main (int argc, char *argv[])
     free(decoded_media_blob);
 
 send_mail:
-    sprintf(rmail_cmd, "(rmail ");
-    for (int i = 1; i < argc; i++)
-    {
-        strcat (rmail_cmd, argv[i]);
-        strcat (rmail_cmd, " ");
-    }
-    sprintf (rmail_cmd+strlen(rmail_cmd), "< %s)", tmp_mail);
-
-    printf("Running: %s\n", rmail_cmd);
+    fprintf(debug_output, "Running: %s\n", rmail_cmd);
 
     system(rmail_cmd);
 
