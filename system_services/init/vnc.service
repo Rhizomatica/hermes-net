@@ -1,0 +1,12 @@
+[Unit]
+Description=vnc server
+After=syslog.target network.target
+
+[Service]
+Type=forking
+WorkingDirectory=/root
+ExecStart=/usr/bin/vncserver :1 -depth 16 -geometry 1024x800 -localhost no
+KillSignal=SIGKILL
+
+[Install]
+WantedBy=multi-user.target

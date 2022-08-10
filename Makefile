@@ -48,6 +48,7 @@ install: trx_v1-userland uuxcomp uucpd
 	$(MAKE) -C uucpd install
 	install -m 644 -D system_services/init/ubitx.service $(DESTDIR)/etc/systemd/system/ubitx.service
 	install -m 644 -D system_services/init/uuardopd.service $(DESTDIR)/etc/systemd/system/uuardopd.service
+	install -m 644 -D system_services/init/vnc.service $(DESTDIR)/etc/systemd/system/vnc.service
 	install -m 644 -D system_services/udev/99-radio.rules $(DESTDIR)/etc/udev/rules.d/99-radio.rules
 	install -D system_scripts/compression/compress_image.sh $(DESTDIR)$(prefix)/bin/compress_image.sh
 	install -D system_scripts/compression/compress_audio.sh $(DESTDIR)$(prefix)/bin/compress_audio.sh
