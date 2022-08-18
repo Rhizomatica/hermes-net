@@ -427,13 +427,9 @@ void checkREF()
     {
         reflected = analogRead(ANALOG_REF);
         if (reflected > reflected_threshold)
-        {
             peak_removal_counter++;
-        }
         else
-        {
             peak_removal_counter = 0;
-        }
 
         if (peak_removal_counter > REF_PEAK_REMOVAL)
         {
