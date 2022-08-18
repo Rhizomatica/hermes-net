@@ -421,10 +421,21 @@ void setup()
 
 void checkREF()
 {
+    static uint16_t peak_removal_counter = 0;
+
     if (inTx)
     {
         reflected = analogRead(ANALOG_REF);
         if (reflected > reflected_threshold)
+        {
+            peak_removal_counter++;
+        }
+        else
+        {
+            peak_removal_counter = 0;
+        }
+
+        if (peak_removal_counter > REF_PEAK_REMOVAL)
         {
             is_swr_protect_enabled = true;
             stopTx();
@@ -432,6 +443,7 @@ void checkREF()
             led_antenna_red = 1;
             digitalWrite(ANT_GOOD, led_antenna_green ? 1 : 0);
             digitalWrite(ANT_HIGH_SWR, led_antenna_red ? 1 : 0);
+            peak_removal_counter = 0;
         }
     }
 }

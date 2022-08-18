@@ -137,6 +137,8 @@
 
 #define LED_BLINK_DUR 1000 // ms
 
+#define REF_PEAK_REMOVAL 1000
+
 extern uint32_t usbCarrier;
 extern uint32_t frequency;  //frequency is the current frequency on the dial
 extern uint32_t firstIF;
