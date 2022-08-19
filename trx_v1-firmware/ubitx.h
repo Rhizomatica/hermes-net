@@ -139,6 +139,9 @@
 
 #define REF_PEAK_REMOVAL 15 // around 1s
 
+#define UPPER_MASTERCAL_OFFSET 300000
+#define LOWER_MASTERCAL_OFFSET  50000
+
 extern uint32_t usbCarrier;
 extern uint32_t frequency;  //frequency is the current frequency on the dial
 extern uint32_t firstIF;

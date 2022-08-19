@@ -546,7 +546,7 @@ void checkTimers()
 uint16_t pace;
 
 void loop(){
-
+    int32_t calibration_offset;
 #ifdef HAS_GPS
     if (gps_pps_tick)
     {
@@ -558,8 +558,12 @@ void loop(){
 
             int32_t new_cal = PLL_FREQ_DIV_CAL_FREQ_DIV7 * ((int32_t) XtalFreq - CAL_FREQ_TIMES7);
 
-            calibration += new_cal;
-            setMasterCal(calibration);
+            calibration_offset = calibration + new_cal;
+            if ( (calibration_offset < UPPER_MASTERCAL_OFFSET) && (calibration_offset > LOWER_MASTERCAL_OFFSET) )
+                setMasterCal(calibration_offset);
+            else
+                setMasterCal(calibration);
+
         }
     }
 #endif
