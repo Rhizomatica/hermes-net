@@ -24,12 +24,12 @@ AUDIO_FORMAT="${output_file##*.}"
 TEMPFILE=/tmp/temp-$$.${AUDIO_FORMAT}
 
 if [ ${AUDIO_FORMAT} = "lpcnet" ]; then
-  ffmpeg -y -i "${input_file}"  -c:a pcm_s16le -f s16le -ac 1 -ar 16000 ${TEMPFILE}
-  ${LPCNET_ENC} -encode ${TEMPFILE} "${output_file}"
+  ffmpeg -y -i "${input_file}"  -c:a pcm_s16le -f s16le -ac 1 -ar 16000 ${TEMPFILE} &> /dev/null
+  ${LPCNET_ENC} -encode ${TEMPFILE} "${output_file}" &> /dev/null
 
 elif [ ${AUDIO_FORMAT} = "nesc" ]; then
-  ffmpeg -y -i "${input_file}"  -c:a pcm_s16le -f s16le -ac 1 -ar 16000 ${TEMPFILE}
-  ${NESC_ENC} -q -b 1600 -if ${TEMPFILE} -of "${output_file}"
+  ffmpeg -y -i "${input_file}"  -c:a pcm_s16le -f s16le -ac 1 -ar 16000 ${TEMPFILE} &> /dev/null
+  ${NESC_ENC} -q -b 1600 -if ${TEMPFILE} -of "${output_file}" &> /dev/null
 
 else
   echo "Unsupported extension: ${AUDIO_FORMAT}."

@@ -14,9 +14,9 @@ TIME_TO_RUN=$(( ${LATEST_SERVER_CALL_TIME} + ${DELAY_MAINLOOP} ))
 
 while true
 do
-    hosts=($(curl -s http://localhost/api/caller/ | jq --raw-output '.[0] | .stations[]'  2> /dev/null)) 
-    timers_start=($(curl -s http://localhost/api/caller | jq --raw-output '.[] | select( .enable | contains(1)) | .starttime ' 2> /dev/null))
-    timers_stop=($(curl -s http://localhost/api/caller | jq --raw-output '.[] | select( .enable | contains(1)) | .stoptime ' 2> /dev/null))
+    hosts=($(curl -s https://localhost/api/caller/ -k | jq --raw-output '.[0] | .stations[]'  2> /dev/null))
+    timers_start=($(curl -s https://localhost/api/caller -k | jq --raw-output '.[] | select( .enable | contains(1)) | .starttime ' 2> /dev/null))
+    timers_stop=($(curl -s https://localhost/api/caller -k | jq --raw-output '.[] | select( .enable | contains(1)) | .stoptime ' 2> /dev/null))
 
     TIME_NOW=$(date -u +%s)
     if [ "${TIME_NOW}" -gt "${TIME_TO_RUN}" ]

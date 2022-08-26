@@ -7,7 +7,7 @@ NESC_DEC=${NESC_DEC:=/opt/nesc/nesc_dec}
 
 
 if [ $# -lt 2 ]; then
-  echo "Usage: $0 audio_filename.{lpcnet,nesc} output.aac"
+  echo "Usage: $0 audio_filename.{lpcnet,nesc} output.{aac,mp3,wav,...}"
   exit 1
 fi
 
@@ -19,12 +19,12 @@ AUDIO_FORMAT="${input_file##*.}"
 TEMPFILE=/tmp/temp-$$.pcm
 
 if [ ${AUDIO_FORMAT} = "lpcnet" ]; then
-  ${LPCNET_DEC} -decode "${input_file}" ${TEMPFILE}
-  ffmpeg -y -f s16le -ar 16000 -ac 1 -c:a pcm_s16le -i ${TEMPFILE} "${output_file}"
+  ${LPCNET_DEC} -decode "${input_file}" ${TEMPFILE} &> /dev/null
+  ffmpeg -y -f s16le -ar 16000 -ac 1 -c:a pcm_s16le -i ${TEMPFILE} "${output_file}" &> /dev/null
 
 elif [ ${AUDIO_FORMAT} = "nesc" ]; then
-  ${NESC_DEC} -q -if "${input_file}" -of ${TEMPFILE}
-  ffmpeg -y -f s16le -ar 16000 -ac 1 -c:a pcm_s16le -i ${TEMPFILE} "${output_file}"
+  ${NESC_DEC} -q -if "${input_file}" -of ${TEMPFILE} &> /dev/null
+  ffmpeg -y -f s16le -ar 16000 -ac 1 -c:a pcm_s16le -i ${TEMPFILE} "${output_file}" &> /dev/null
 
 else
   echo "Unsupported extension: ${AUDIO_FORMAT}."
