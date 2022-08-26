@@ -1,16 +1,16 @@
 #!/bin/bash
 
 # delay between each call
-DELAY=2
+DELAY=15
 
 # delay for errors or in moments outside any scheduled operation
-DELAY_MAINLOOP=15
+DELAY_MAINLOOP=60
 
 # central station email server uucp address
 EMAIL_SERVER="gw"
 
-LATEST_SERVER_CALL_TIME=$(date -u +%s)
-TIME_TO_RUN=$(( ${LATEST_SERVER_CALL_TIME} + ${DELAY_MAINLOOP} ))
+#LATEST_SERVER_CALL_TIME=$(date -u +%s)
+#TIME_TO_RUN=$(( ${LATEST_SERVER_CALL_TIME} + ${DELAY_MAINLOOP} ))
 
 while true
 do
@@ -18,13 +18,13 @@ do
     timers_start=($(curl -s https://localhost/api/caller -k | jq --raw-output '.[] | select( .enable | contains(1)) | .starttime ' 2> /dev/null))
     timers_stop=($(curl -s https://localhost/api/caller -k | jq --raw-output '.[] | select( .enable | contains(1)) | .stoptime ' 2> /dev/null))
 
-    TIME_NOW=$(date -u +%s)
-    if [ "${TIME_NOW}" -gt "${TIME_TO_RUN}" ]
-    then
-      uucico -D -S ${EMAIL_SERVER}
-      LATEST_SERVER_CALL_TIME=$(date -u +%s)
-      TIME_TO_RUN=$(( ${LATEST_SERVER_CALL_TIME} + ${DELAY_MAINLOOP} ))
-    fi
+    #    TIME_NOW=$(date -u +%s)
+    #    if [ "${TIME_NOW}" -gt "${TIME_TO_RUN}" ]
+    #    then
+    #      uucico -D -S ${EMAIL_SERVER}
+    #      LATEST_SERVER_CALL_TIME=$(date -u +%s)
+    #      TIME_TO_RUN=$(( ${LATEST_SERVER_CALL_TIME} + ${DELAY_MAINLOOP} ))
+    #    fi
 
     if [[ -z ${hosts} ]] || [[ -z ${timers_start} ]] || [[ -z ${timers_stop} ]]
     then
@@ -46,31 +46,32 @@ do
 	      current_minute=$((10#$(date +%M)))
 
 	      echo "Schedule  ${c}"
-#	      echo "current time ${current_hour}h ${current_minute}min"
-#	      echo "start time ${start_time_hour}h ${start_time_minute}min"
-#	      echo "end time ${end_time_hour}h ${end_time_minute}min"
+        #	      echo "current time ${current_hour}h ${current_minute}min"
+        #	      echo "start time ${start_time_hour}h ${start_time_minute}min"
+        #	      echo "end time ${end_time_hour}h ${end_time_minute}min"
 
 	      if [[ ${current_hour} -eq ${start_time_hour} &&
-		              ${current_minute} -ge ${start_time_minute} ]] ||
-               [[ ${current_hour} -gt ${start_time_hour} &&
-		                  ${current_hour} -lt ${end_time_hour} ]] ||
-               [[ ${current_hour} -eq ${end_time_hour} &&
-                      ${current_minute} -le ${end_time_minute} ]]
+		            ${current_minute} -ge ${start_time_minute} ]] ||
+             [[ ${current_hour} -gt ${start_time_hour} &&
+		              ${current_hour} -lt ${end_time_hour} ]] ||
+             [[ ${current_hour} -eq ${end_time_hour} &&
+                  ${current_minute} -le ${end_time_minute} ]]
 
-	      then
+        then
+            run_at_least_once=1
+            for t in ${hosts[*]}; do
+                echo "Calling email server ${EMAIL_SERVER}."
+                uucico -D -S ${EMAIL_SERVER}
+                sleep ${DELAY}
+                echo "Calling ${t}."
+                uucico -D -S ${t}
+                sleep ${DELAY}
+		            # here we sync with server again... as connection times can be veeery long
+            done
 
-                  run_at_least_once=1
-	          for t in ${hosts[*]}; do
-		    echo "Calling ${t}"
-		    uucico -D -S ${t}
-		    sleep ${DELAY}
-		    # here we sync with server again... as connection times can be veeery long
-		    uucico -D -S ${EMAIL_SERVER}
-	          done
-
-	      else
-	          echo "Schedule ${c} will not run now."
-	      fi
+        else
+            echo "Schedule ${c} will not run now."
+        fi
 
     done
 
