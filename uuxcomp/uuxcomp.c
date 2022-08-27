@@ -21,7 +21,7 @@
 
 #define VERSION "0.1"
 
-#define DEBUG_MODE 1 // 0, 1 and 2
+#define DEBUG_MODE 0 // 0, 1 and 2
 #define DEBUG_FILENAME "/var/log/uucp/uuxcomp_debug.txt"
 
 // for old version 1 of our stack,

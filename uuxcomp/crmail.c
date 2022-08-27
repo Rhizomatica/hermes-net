@@ -34,7 +34,7 @@
 #include "gz_compress.h"
 #include "daemon.h"
 
-#define DEBUG_MODE 1 // 0, 1 and 2
+#define DEBUG_MODE 0 // 0, 1 and 2
 #define DEBUG_FILENAME "/var/log/uucp/crmail_debug.txt"
 
 #define MAX_FILENAME 4096
