@@ -36,12 +36,23 @@ bool gps_pps_tick = false;
 bool calibration_enabled = false;
 
 uint16_t tcount = 0;
-uint32_t mult=0;
+uint32_t mult = 0;
 
-uint32_t XtalFreq=0;
+uint32_t XtalFreq = 0;
+
+uint32_t calibration_monitor = 0;
+
 
 void enable_calibration()
 {
+    calibration_monitor = millis();
+
+    // we avoid overflow
+    if ( (calibration_monitor + 12500) < calibration_monitor)
+    {
+        return;
+    }
+
     calibration_enabled = true;
 
     attachInterrupt(digitalPinToInterrupt(PPS_IN), PPSinterrupt, RISING);
@@ -55,6 +66,7 @@ void disable_calibration()
     detachInterrupt(digitalPinToInterrupt(PPS_IN));
 
     calibration_enabled = false;
+    calibration_monitor = 0;
 
 }
 

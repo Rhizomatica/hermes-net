@@ -33,6 +33,12 @@
 
 extern bool gps_pps_tick;
 extern bool calibration_enabled;
+extern uint16_t tcount;
+extern uint32_t mult;
+extern uint32_t XtalFreq;
+
+
+extern uint32_t calibration_monitor;
 
 void enable_calibration();
 void disable_calibration();

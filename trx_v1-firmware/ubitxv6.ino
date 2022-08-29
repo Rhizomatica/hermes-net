@@ -494,8 +494,23 @@ void checkTimers()
 
 
     milisec_count = millis();
+    // treating overflow
+    if (milisec_count < previous_time)
+        return;
+
     elapsed_time = milisec_count - previous_time;
     previous_time = milisec_count;
+
+    // We survive if GPS PPS is not working
+#ifdef HAS_GPS
+    if (calibration_enabled && milisec_count > (calibration_monitor + 12300))
+    {
+        disable_calibration();
+        TCCR1B = 0; TCNT1 = 0; mult = 0; tcount = 0;
+        setMasterCal(calibration);
+        gps_pps_tick = false;
+    }
+#endif
 
     fwd_timer -= (int32_t) elapsed_time;
     ref_timer -= (int32_t) elapsed_time;
