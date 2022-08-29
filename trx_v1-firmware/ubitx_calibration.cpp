@@ -73,10 +73,6 @@ void PPSinterrupt()
         mult = 0;
         TCCR1B = 7;                                  //Clock on rising edge of pin 5
     }
-    else if (tcount == 2)                               // Start counting the xxx MHz signal from Si5351A CLK0
-    {
-        si5351bx_setfreq(0, CAL_FREQ); // we change the CLK #0 to the calibration clock
-    }
     else if (tcount == 10)                         // 7s of counting
     {
         TCCR1B = 0;                                  //Turn off counter
@@ -85,6 +81,11 @@ void PPSinterrupt()
         mult = 0;
         tcount = 0;                                  //Reset the seconds counter
     }
+    else if (tcount == 2)                               // Start counting the xxx MHz signal from Si5351A CLK0
+    {
+        si5351bx_setfreq(0, CAL_FREQ); // we change the CLK #0 to the calibration clock
+    }
+
 }
 
 // Timer 1 overflow intrrupt vector.
