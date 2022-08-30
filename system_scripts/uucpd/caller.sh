@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # delay between each call
-DELAY=15
+DELAY=20
 
 # delay for errors or in moments outside any scheduled operation
 DELAY_MAINLOOP=60
