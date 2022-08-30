@@ -57,6 +57,8 @@ void enable_calibration()
 
     attachInterrupt(digitalPinToInterrupt(PPS_IN), PPSinterrupt, RISING);
 
+    si5351bx_setfreq(0, CAL_FREQ); // we change the CLK #0 to the calibration clock
+
 }
 
 void disable_calibration()
@@ -92,10 +94,6 @@ void PPSinterrupt()
         TCNT1 = 0;                                   //Reset count to zero
         mult = 0;
         tcount = 0;                                  //Reset the seconds counter
-    }
-    else if (tcount == 2)                               // Start counting the xxx MHz signal from Si5351A CLK0
-    {
-        si5351bx_setfreq(0, CAL_FREQ); // we change the CLK #0 to the calibration clock
     }
 
 }
