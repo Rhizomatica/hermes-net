@@ -50,7 +50,7 @@ Rhizomatica's v1 µbitx-based radio transceiver control utils.
 
 Previosly called rhizo-uuardopd, is composed by a control daemon which transports uucp payload
 between uucico and the HF modem. It also contains uuport, a tool to be used in a uucico
-port in pipe mode to connect uucico to the uucp daemon.
+port in pipe mode to connect uucico to the uucpd daemon.
 
 ## system_scripts
 
