@@ -54,22 +54,19 @@ port in pipe mode to connect uucico to the uucpd daemon.
 
 ## system_scripts
 
-This folder contains all the scripts needed by the HERMES system. Examples
-include email management and media transcoding scripts.
+Core scripts which performance many different tasks in network orchestration,
+like email management and media transcoding.
+
+
+## system_services
+
+System service files, like init files and udev rules.
 
 
 ## include
 
 Contains header common to more than one project.
 
-## system_scripts
-
-Core scripts which performance many different tasks in network orchestration,
-like email deletion and media transcoding.
-
-## system_services
-
-System service files, like init files and udev rules.
 
 ### Authors
 
