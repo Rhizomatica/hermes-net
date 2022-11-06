@@ -212,6 +212,8 @@ void connected_led_on(int serial_fd, int radio_type)
 
     if (radio_type == RADIO_TYPE_SHM)
     {
+        system("ubitx_client -c set_connected_status -a 1 > /dev/null");
+#if 0 // TODO: we have a problem... there is a race condition with PTT OFF
         pthread_mutex_lock(&radio_conn->cmd_mutex);
         radio_conn->service_command[0] = 0x01; // led on
         radio_conn->service_command[1] = radio_conn->service_command[2] = radio_conn->service_command[3] = 0x00;
@@ -219,6 +221,7 @@ void connected_led_on(int serial_fd, int radio_type)
         pthread_cond_signal(&radio_conn->cmd_condition);
         pthread_mutex_unlock(&radio_conn->cmd_mutex);
         // read response... no
+#endif
     }
 
 }
@@ -229,6 +232,8 @@ void connected_led_off(int serial_fd, int radio_type)
 
     if (radio_type == RADIO_TYPE_SHM)
     {
+        system("ubitx_client -c set_connected_status -a 0 > /dev/null");
+#if 0
         pthread_mutex_lock(&radio_conn->cmd_mutex);
         radio_conn->service_command[0] = 0x00; // led off
         radio_conn->service_command[1] = radio_conn->service_command[2] = radio_conn->service_command[3] = 0x00;
@@ -236,6 +241,7 @@ void connected_led_off(int serial_fd, int radio_type)
         pthread_cond_signal(&radio_conn->cmd_condition);
         pthread_mutex_unlock(&radio_conn->cmd_mutex);
         // read response... no
+#endif
     }
 }
 
