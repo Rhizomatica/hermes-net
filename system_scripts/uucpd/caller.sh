@@ -45,7 +45,7 @@ do
 	      current_hour=$((10#$(date +%H)))
 	      current_minute=$((10#$(date +%M)))
 
-	      echo "Schedule  ${c}"
+	      echo "Schedule ${c}"
         #	      echo "current time ${current_hour}h ${current_minute}min"
         #	      echo "start time ${start_time_hour}h ${start_time_minute}min"
         #	      echo "end time ${end_time_hour}h ${end_time_minute}min"
@@ -60,15 +60,15 @@ do
         then
             run_at_least_once=1
             for t in ${hosts[*]}; do
-                echo "Calling email server ${EMAIL_SERVER}."
+                echo "Calling gateway ${EMAIL_SERVER}."
                 uucico -D -S ${EMAIL_SERVER}
                 sleep ${DELAY}
-                echo "Calling ${t}."
+                echo "Calling station ${t}."
                 uucico -D -S ${t}
                 sleep ${DELAY}
-		            # here we sync with server again... as connection times can be veeery long
             done
-
+            echo "Calling gateway ${EMAIL_SERVER}."
+            uucico -D -S ${EMAIL_SERVER}
         else
             echo "Schedule ${c} will not run now."
         fi
