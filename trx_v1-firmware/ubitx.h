@@ -142,6 +142,20 @@
 #define UPPER_MASTERCAL_OFFSET 300000
 #define LOWER_MASTERCAL_OFFSET  50000
 
+// 19 bits for our status offset return value
+#define GPS_STATUS_OFFSET_SHIFT_MASK 0x7ffffL
+
+// OFFSET_SHIFT_MASK (1 for negative, 0 for positive)
+#define GPS_STATUS_OFFSET_SHIFT_SIGN(x) (x << 19)
+
+// no pps detected or PPS detected
+#define GPS_STATUS_PPS_FAIL 0L << 20
+#define GPS_STATUS_PPS_SUCCESS 1L << 20
+
+// out of range offset
+#define GPS_STATUS_OFFSET_BAD 0L << 21
+#define GPS_STATUS_OFFSET_GOOD 1L << 21
+
 extern uint32_t usbCarrier;
 extern uint32_t frequency;  //frequency is the current frequency on the dial
 extern uint32_t firstIF;
@@ -173,6 +187,8 @@ extern uint32_t serial;
 extern uint16_t reflected_threshold;
 
 extern uint32_t milisec_count;
+
+extern uint32_t gps_operation_result;
 
 /* these are functions implemented in the main file named as ubitx_xxx.ino */
 

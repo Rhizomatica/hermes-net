@@ -99,6 +99,7 @@ uint16_t reflected_threshold;
 
 uint32_t milisec_count;
 
+uint32_t gps_operation_result = GPS_STATUS_PPS_FAIL | GPS_STATUS_OFFSET_BAD;
 
 /**
  * Functions to set and restore radio defaults
@@ -571,11 +572,20 @@ void loop(){
         {
             disable_calibration();
 
+            gps_operation_result |= GPS_STATUS_PPS_SUCCESS;
+
             int32_t new_cal = PLL_FREQ_DIV_CAL_FREQ_DIV7 * ((int32_t) XtalFreq - CAL_FREQ_TIMES7);
+
+            if (new_cal < 0)
+                gps_operation_result |= GPS_STATUS_OFFSET_SHIFT_SIGN(1);
+            gps_operation_result |= (GPS_STATUS_OFFSET_SHIFT_MASK & abs(new_cal));
 
             calibration_offset = calibration + new_cal;
             if ( (calibration_offset < UPPER_MASTERCAL_OFFSET) && (calibration_offset > LOWER_MASTERCAL_OFFSET) )
+            {
                 setMasterCal(calibration_offset);
+                gps_operation_result |= GPS_STATUS_OFFSET_GOOD;
+            }
             else
                 setMasterCal(calibration);
 

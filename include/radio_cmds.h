@@ -76,6 +76,9 @@
 
 #define CMD_GPS_CALIBRATE 0xd0
 
+#define CMD_GET_STATUS 0xd3
+
+
 // radio responses
 // 5 bytes responses
 #define CMD_RESP_GET_FREQ_ACK 0xa3
@@ -88,6 +91,8 @@
 #define CMD_RESP_GET_SERIAL_ACK 0xa8
 
 #define CMD_RESP_GET_REF_THRESHOLD_ACK 0xe2
+
+#define CMD_RESP_GET_STATUS_ACK 0xd4
 
 // 1 byte responses
 #define CMD_RESP_PTT_ON_ACK 0xa9

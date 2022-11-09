@@ -249,6 +249,11 @@ void processCATCommand(byte* cmd)
         Serial.write(response,1);
         break;
 
+    case CMD_GET_STATUS: // CMD_GET_STATUS
+        response[0] = CMD_RESP_GET_STATUS_ACK;
+        memcpy(response+1, &gps_operation_result, 4);
+        Serial.write(response,5);
+        break;
 
     case CMD_SET_RADIO_DEFAULTS: // SET RADIO DEFAULTS
         set_radio_defaults();

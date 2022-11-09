@@ -264,6 +264,10 @@ int main(int argc, char *argv[])
     {
         srv_cmd[4] = CMD_RESTORE_RADIO_DEFAULTS;
     }
+    else if (!strcmp(command, "get_status"))
+    {
+        srv_cmd[4] = CMD_GET_STATUS;
+    }
     else if (!strcmp(command, "radio_reset"))
     {
         srv_cmd[4] = CMD_RADIO_RESET;
@@ -349,6 +353,7 @@ int main(int argc, char *argv[])
         printf("ERROR\n");
     else
     {
+        uint8_t status[4];
         uint32_t freq;
         uint32_t serial;
         uint16_t measure;
@@ -430,6 +435,10 @@ int main(int argc, char *argv[])
         case CMD_RESP_GET_REF_THRESHOLD_ACK:
             memcpy (&measure, connector->response_service+1, 2);
             printf("%hu\n", measure);
+            break;
+        case CMD_RESP_GET_STATUS_ACK:
+            memcpy (status, connector->response_service+1, 4);
+            printf("%02X %02X %02X %02X\n", status[0], status[1], status[2], status[3]);
             break;
 
         case CMD_RESP_WRONG_COMMAND:

@@ -42,9 +42,10 @@ uint32_t XtalFreq = 0;
 
 uint32_t calibration_monitor = 0;
 
-
 void enable_calibration()
 {
+    gps_operation_result = GPS_STATUS_PPS_FAIL | GPS_STATUS_OFFSET_BAD;
+
     calibration_monitor = millis();
 
     // we avoid overflow

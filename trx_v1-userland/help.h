@@ -111,17 +111,21 @@ const char format_str[] = "* ptt_on\n"
 "  * No Argument\n"
 "  * Resp: Reflected Threshold Level | ERROR\n\n"
 
-"* set_radio_defaults\n"
-"  * No Argument\n"
-"  * Resp: OK (set default settings) | ERROR\n\n"
-
 "* gps_calibrate\n"
 "  * No Argument\n"
 "  * Resp: OK (start 10s GPS-based calibration procedure) | NO_GPS | ERROR\n\n"
 
+"* set_radio_defaults\n"
+"  * No Argument\n"
+"  * Resp: OK (set default settings) | ERROR\n\n"
+
 "* restore_radio_defaults\n"
 "  * No Argument\n"
 "  * Resp: OK (restore default settings) | ERROR\n\n"
+
+"* get_status\n"
+"  * No Argument\n"
+"  * Resp: 4 byte status words | ERROR\n\n"
 
 "* radio_reset\n"
 "  * No Argument\n"

@@ -223,6 +223,7 @@ int cat_rcv(void *arg)
             case CMD_RESP_GET_REF_ACK:
             case CMD_RESP_GET_SERIAL_ACK:
             case CMD_RESP_GET_REF_THRESHOLD_ACK:
+            case CMD_RESP_GET_STATUS_ACK:
                 conn->response_service_type = CMD_RESP_LONG;
                 cc = read(target_fd, buf+1, 4);
                 if (cc != 4) {
