@@ -1,6 +1,6 @@
-/* ubitx_controller
- * Copyright (C) 2021-2022 Rhizomatica
- * Author: Rafael Diniz <rafael@riseup.net>
+/* ubitx_io
+ * Copyright (C) 2022 Rhizomatica
+ * Author: Rafael Diniz <rafael@rhizomatica.org>
  *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,29 +19,18 @@
  *
  */
 
-#ifndef HAVE_UBITXCONTROLLER_H__
-#define HAVE_UBITXCONTROLLER_H__
+
+#ifndef UBITX_IO_H_
+#define UBITX_IO_H_
 
 #include <stdint.h>
-#include <stdatomic.h>
+#include <stdbool.h>
 
-#define SYSV_SHM_CONTROLLER_KEY_STR 66650 // key for the controller_conn struct
+#include "ubitx_controller.h"
 
-
-typedef struct{
-
-    uint8_t service_command[5];
-    pthread_mutex_t cmd_mutex;
-    pthread_cond_t cmd_condition;
-
-    pthread_mutex_t response_mutex;
-
-    uint8_t response_service[5];
-    atomic_bool response_available;
-
-    int radio_fd;
-
-} controller_conn;
+// returns true is response was received
+// response is copied to response... so pass a valid 5 bytes pointer
+bool radio_cmd(controller_conn *connector, uint8_t *srv_cmd, uint8_t *response);
 
 
-#endif // HAVE_UBITXCONTROLLER_H__
+#endif // UBITX_IO_H_

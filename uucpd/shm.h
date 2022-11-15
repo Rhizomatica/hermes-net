@@ -33,9 +33,6 @@
 #define SYSV_SHM_KEY_IB 66666 //  in buffer key (key+1 is also used)
 #define SYSV_SHM_KEY_OB 66668 // out buffer key (key+1 is also used)
 
-// from ubitx controller
-#define SYSV_SHM_CONTROLLER_KEY_STR 66650
-
 bool shm_is_created(key_t key, size_t size);
 
 // only creates if already not created!

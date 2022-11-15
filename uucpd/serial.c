@@ -38,6 +38,10 @@
 #include "uuardopd.h"
 #include "serial.h"
 
+#include "../trx_v1-userland/ubitx_controller.h"
+#include "../trx_v1-userland/ubitx_io.h"
+#include "../include/radio_cmds.h"
+
 extern controller_conn *radio_conn;
 
 struct baudrate {
@@ -157,11 +161,11 @@ void key_on(int serial_fd, int radio_type)
 
     if (radio_type == RADIO_TYPE_SHM)
     {
-        pthread_mutex_lock(&radio_conn->cmd_mutex);
-        radio_conn->service_command[0] = radio_conn->service_command[1] = radio_conn->service_command[2] = radio_conn->service_command[3] = 0x00;
-        radio_conn->service_command[4] = 0x08;
-        pthread_cond_signal(&radio_conn->cmd_condition);
-        pthread_mutex_unlock(&radio_conn->cmd_mutex);
+        uint8_t srv_cmd[5];
+        uint8_t response[5];
+        srv_cmd[0] = srv_cmd[1] = srv_cmd[2] = srv_cmd[3] = 0x00;
+        srv_cmd[4] = CMD_PTT_ON;
+        radio_cmd(radio_conn, srv_cmd, response);
     }
 
 }
@@ -198,11 +202,11 @@ void key_off(int serial_fd, int radio_type)
 
     if (radio_type == RADIO_TYPE_SHM)
     {
-        pthread_mutex_lock(&radio_conn->cmd_mutex);
-        radio_conn->service_command[0] = radio_conn->service_command[1] = radio_conn->service_command[2] = radio_conn->service_command[3] = 0x00;
-        radio_conn->service_command[4] = 0x88;
-        pthread_cond_signal(&radio_conn->cmd_condition);
-        pthread_mutex_unlock(&radio_conn->cmd_mutex);
+        uint8_t srv_cmd[5];
+        uint8_t response[5];
+        srv_cmd[0] = srv_cmd[1] = srv_cmd[2] = srv_cmd[3] = 0x00;
+        srv_cmd[4] = CMD_PTT_OFF;
+        radio_cmd(radio_conn, srv_cmd, response);
     }
 
 }
@@ -212,16 +216,12 @@ void connected_led_on(int serial_fd, int radio_type)
 
     if (radio_type == RADIO_TYPE_SHM)
     {
-        system("ubitx_client -c set_connected_status -a 1 > /dev/null");
-#if 0 // TODO: we have a problem... there is a race condition with PTT OFF
-        pthread_mutex_lock(&radio_conn->cmd_mutex);
-        radio_conn->service_command[0] = 0x01; // led on
-        radio_conn->service_command[1] = radio_conn->service_command[2] = radio_conn->service_command[3] = 0x00;
-        radio_conn->service_command[4] = 0xa0; // CMD_SET_CONNECTED_STATUS
-        pthread_cond_signal(&radio_conn->cmd_condition);
-        pthread_mutex_unlock(&radio_conn->cmd_mutex);
-        // read response... no
-#endif
+        uint8_t srv_cmd[5];
+        uint8_t response[5];
+        srv_cmd[0] = 0x01; // led on
+        srv_cmd[1] = srv_cmd[2] = srv_cmd[3] = 0x00;
+        srv_cmd[4] = CMD_SET_CONNECTED_STATUS; // CMD_SET_CONNECTED_STATUS
+        radio_cmd(radio_conn, srv_cmd, response);
     }
 
 }
@@ -232,16 +232,12 @@ void connected_led_off(int serial_fd, int radio_type)
 
     if (radio_type == RADIO_TYPE_SHM)
     {
-        system("ubitx_client -c set_connected_status -a 0 > /dev/null");
-#if 0
-        pthread_mutex_lock(&radio_conn->cmd_mutex);
-        radio_conn->service_command[0] = 0x00; // led off
-        radio_conn->service_command[1] = radio_conn->service_command[2] = radio_conn->service_command[3] = 0x00;
-        radio_conn->service_command[4] = 0xa0; // CMD_SET_CONNECTED_STATUS
-        pthread_cond_signal(&radio_conn->cmd_condition);
-        pthread_mutex_unlock(&radio_conn->cmd_mutex);
-        // read response... no
-#endif
+        uint8_t srv_cmd[5];
+        uint8_t response[5];
+        srv_cmd[0] = 0x00; // led off
+        srv_cmd[1] = srv_cmd[2] = srv_cmd[3] = 0x00;
+        srv_cmd[4] = CMD_SET_CONNECTED_STATUS; // CMD_SET_CONNECTED_STATUS
+        radio_cmd(radio_conn, srv_cmd, response);
     }
 }
 
@@ -250,13 +246,12 @@ void sys_led_on(int serial_fd, int radio_type)
 
     if (radio_type == RADIO_TYPE_SHM)
     {
-        pthread_mutex_lock(&radio_conn->cmd_mutex);
-        radio_conn->service_command[0] = 0x01; // led on
-        radio_conn->service_command[1] = radio_conn->service_command[2] = radio_conn->service_command[3] = 0x00;
-        radio_conn->service_command[4] = 0x9e; // CMD_SET_LED_STATUS
-        pthread_cond_signal(&radio_conn->cmd_condition);
-        pthread_mutex_unlock(&radio_conn->cmd_mutex);
-        // read response... no
+        uint8_t srv_cmd[5];
+        uint8_t response[5];
+        srv_cmd[0] = 0x01; // led on
+        srv_cmd[1] = srv_cmd[2] = srv_cmd[3] = 0x00;
+        srv_cmd[4] = CMD_SET_LED_STATUS; // CMD_SET_LED_STATUS
+        radio_cmd(radio_conn, srv_cmd, response);
     }
 
 }
@@ -267,13 +262,12 @@ void sys_led_off(int serial_fd, int radio_type)
 
     if (radio_type == RADIO_TYPE_SHM)
     {
-        pthread_mutex_lock(&radio_conn->cmd_mutex);
-        radio_conn->service_command[0] = 0x00; // led off
-        radio_conn->service_command[1] = radio_conn->service_command[2] = radio_conn->service_command[3] = 0x00;
-        radio_conn->service_command[4] = 0x9e; // CMD_SET_LED_STATUS
-        pthread_cond_signal(&radio_conn->cmd_condition);
-        pthread_mutex_unlock(&radio_conn->cmd_mutex);
-        // read response... no
+        uint8_t srv_cmd[5];
+        uint8_t response[5];
+        srv_cmd[0] = 0x00; // led off
+        srv_cmd[1] = srv_cmd[2] = srv_cmd[3] = 0x00;
+        srv_cmd[4] = CMD_SET_LED_STATUS; // CMD_SET_LED_STATUS
+        radio_cmd(radio_conn, srv_cmd, response);
     }
 
 }

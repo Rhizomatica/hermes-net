@@ -40,6 +40,7 @@
 
 #include "serial.h"
 #include "ubitx_controller.h"
+#include "ubitx_io.h"
 #include "../include/radio_cmds.h"
 
 #include "shm.h"
@@ -66,8 +67,7 @@ int main(int argc, char *argv[])
     char command[64];
     char command_argument[64];
     uint8_t srv_cmd[5];
-    bool is_ptt = false;
-    bool exit_early = false;
+    uint8_t response[5];
     bool argument_set = false;
 
     if (argc < 3)
@@ -109,12 +109,10 @@ int main(int argc, char *argv[])
     if (!strcmp(command, "ptt_on"))
     {
         srv_cmd[4] = CMD_PTT_ON;
-        is_ptt = true;
     }
     else if (!strcmp(command, "ptt_off"))
     {
         srv_cmd[4] = CMD_PTT_OFF;
-        is_ptt = true;
     }
     else if (!strcmp(command, "get_frequency"))
     {
@@ -271,7 +269,6 @@ int main(int argc, char *argv[])
     else if (!strcmp(command, "radio_reset"))
     {
         srv_cmd[4] = CMD_RADIO_RESET;
-        exit_early = true;
     }
     else
     {
@@ -283,73 +280,24 @@ int main(int argc, char *argv[])
     signal (SIGQUIT, finish);
     signal (SIGTERM, finish);
 
-    if (shm_is_created(SYSV_SHM_KEY_STR, sizeof(controller_conn)) == false)
+    if (shm_is_created(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn)) == false)
     {
         fprintf(stderr, "Connector SHM not created. Is ubitx_controller running?\n");
         return EXIT_FAILURE;
     }
 
-    // todo: add a response lock
-    connector = shm_attach(SYSV_SHM_KEY_STR, sizeof(controller_conn));
-
+    connector = shm_attach(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn));
     tmp_connector = connector;
 
-    // lock response lock before main_command_lock (plz change name)
+    bool cmd_resp = radio_cmd(connector, srv_cmd, response);
 
-    pthread_mutex_lock(&connector->response_mutex);
-
-    pthread_mutex_lock(&connector->cmd_mutex);
-
-    memcpy(connector->service_command, srv_cmd, 5);
-
-    // we clear any previous response not properly read. Some real-time use
-    // cases don't read the response (eg. uuardopd) so it is ok to ignore.
-    if (connector->response_available == 1)
-    {
-        // fprintf(stderr, "Previous queue response not read!\n");
-        connector->response_available = 0;
-    }
-
-    pthread_cond_signal(&connector->cmd_condition);
-    pthread_mutex_unlock(&connector->cmd_mutex);
-
-    if (is_ptt)
-    {
-        switch (connector->ptt_last_response)
-        {
-        case CMD_RESP_PTT_ON_ACK:
-        case CMD_RESP_PTT_OFF_ACK:
-            printf("OK\n");
-            break;
-        case CMD_RESP_PTT_ON_NACK:
-        case CMD_RESP_PTT_OFF_NACK:
-            printf("NOK\n");
-            break;
-        case CMD_ALERT_PROTECTION_ON:
-            printf("SWR\n");
-            break;
-        default:
-            printf("ERROR\n");
-        }
-
-        goto get_out;
-    }
-
-    if (exit_early)
+    if (srv_cmd[4] == CMD_RADIO_RESET)
     {
         printf("OK\n");
-        goto get_out;
+        return EXIT_SUCCESS;
     }
 
-    // ~30 ms max wait
-    int tries = 0;
-    while (connector->response_available == 0 && tries < 30)
-    {
-        usleep(1000); // 1 ms
-        tries++;
-    }
-
-    if (connector->response_available == 0)
+    if (cmd_resp == false)
         printf("ERROR\n");
     else
     {
@@ -358,8 +306,11 @@ int main(int argc, char *argv[])
         uint32_t serial;
         uint16_t measure;
 
-        switch(connector->response_service[0])
+
+        switch(response[0])
         {
+        case CMD_RESP_PTT_ON_ACK:
+        case CMD_RESP_PTT_OFF_ACK:
         case CMD_RESP_SET_FREQ_ACK:
         case CMD_RESP_SET_MODE_ACK:
         case CMD_RESP_SET_MASTERCAL_ACK:
@@ -374,7 +325,13 @@ int main(int argc, char *argv[])
         case CMD_RESP_GPS_CALIBRATE_ACK:
             printf("OK\n");
             break;
-            // continue here...
+        case CMD_RESP_PTT_ON_NACK:
+        case CMD_RESP_PTT_OFF_NACK:
+            printf("NOK\n");
+            break;
+        case CMD_ALERT_PROTECTION_ON:
+            printf("SWR\n");
+            break;
         case CMD_RESP_GET_MODE_USB:
             printf("USB\n");
             break;
@@ -446,11 +403,7 @@ int main(int argc, char *argv[])
             printf("ERROR\n");
         }
 
-        connector->response_available = 0;
-
     }
 
-get_out:
-    pthread_mutex_unlock(&connector->response_mutex);
     return EXIT_SUCCESS;
 }

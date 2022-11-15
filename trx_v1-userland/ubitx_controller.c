@@ -168,26 +168,15 @@ int cat_rcv(void *arg)
 
             switch(buf[0])
             {
-                // ptt responses...
+	    // 1 byte responses
+		// ptt responses
             case CMD_RESP_PTT_ON_ACK:
             case CMD_RESP_PTT_ON_NACK:
             case CMD_RESP_PTT_OFF_ACK:
             case CMD_RESP_PTT_OFF_NACK:
-                conn->ptt_last_response = buf[0];
-                continue;
-                break;
-
             case CMD_ALERT_PROTECTION_ON:
-                conn->ptt_last_response = buf[0];
-                conn->protection_alert = 1;
-                continue;
-                break;
 
-            case CMD_RESP_WRONG_COMMAND:
-                // continue;
-                // break;
-
-                // 1 byte responses
+		// all other responses
             case CMD_RESP_SET_FREQ_ACK:
             case CMD_RESP_SET_MODE_ACK:
             case CMD_RESP_GET_MODE_USB:
@@ -211,7 +200,7 @@ int cat_rcv(void *arg)
             case CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK:
             case CMD_RESP_GPS_CALIBRATE_ACK:
             case CMD_RESP_GPS_NOT_PRESENT:
-                conn->response_service_type = CMD_RESP_SHORT;
+            case CMD_RESP_WRONG_COMMAND:
                 conn->response_service[0] = buf[0];
                 break;
 
@@ -224,7 +213,6 @@ int cat_rcv(void *arg)
             case CMD_RESP_GET_SERIAL_ACK:
             case CMD_RESP_GET_REF_THRESHOLD_ACK:
             case CMD_RESP_GET_STATUS_ACK:
-                conn->response_service_type = CMD_RESP_LONG;
                 cc = read(target_fd, buf+1, 4);
                 if (cc != 4) {
                     // fix this - store the data read in a buffer!
@@ -307,8 +295,6 @@ bool initialize_message(controller_conn *connector)
 
     connector->radio_fd = -1;
     connector->response_available = 0;
-    connector->protection_alert = 0;
-    connector->ptt_last_response = CMD_RESP_PTT_OFF_ACK;
 
     return EXIT_SUCCESS;
 }
@@ -334,15 +320,14 @@ int main(int argc, char *argv[])
 
     controller_conn *connector;
 
-    if (shm_is_created(SYSV_SHM_KEY_STR, sizeof(controller_conn)))
+    if (shm_is_created(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn)))
     {
         fprintf(stderr, "Connector SHM is already created!\nDestroying it and creating again.\n");
-        shm_destroy(SYSV_SHM_KEY_STR, sizeof(controller_conn));
+        shm_destroy(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn));
     }
-    shm_create(SYSV_SHM_KEY_STR, sizeof(controller_conn));
+    shm_create(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn));
 
-    connector = shm_attach(SYSV_SHM_KEY_STR, sizeof(controller_conn));
-    // tmp_conn = connector;
+    connector = shm_attach(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn));
 
     initialize_message(connector);
 

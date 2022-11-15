@@ -29,7 +29,7 @@ all: uuardopd uuport
 %.o : %.c %.h
 	gcc -c $(CFLAGS) $< -o $@
 
-uuardopd: ardop.o shm.o common.o net.o circular_buffer.o uuardopd.o call_uucico.o serial.o vara.o
+uuardopd: ardop.o shm.o common.o net.o circular_buffer.o uuardopd.o call_uucico.o serial.o vara.o ../trx_v1-userland/ubitx_io.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 uuport: uuport.o shm.o circular_buffer.o
@@ -45,4 +45,4 @@ doc:
 	doxygen doxyfile
 
 clean:
-	rm -rf uuardopd uuport *.o *~ doc
+	rm -rf uuardopd uuport *.o ../trx_v1-userland/ubitx_io.o *~ doc

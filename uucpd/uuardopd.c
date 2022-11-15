@@ -1,5 +1,5 @@
 /* Rhizo-uuhf: Tools to integrate HF TNCs to UUCP
- * Copyright (C) 2019-2021 Rhizomatica
+ * Copyright (C) 2019-2022 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
@@ -51,6 +51,8 @@
 #include "vara.h"
 #include "shm.h"
 #include "circular_buffer.h"
+
+#include "../trx_v1-userland/ubitx_controller.h"
 
 // temporary global variable to enable sockets closure
 rhizo_conn *tmp_conn = NULL;
