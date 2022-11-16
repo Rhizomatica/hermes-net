@@ -63,7 +63,7 @@ by the argument type and possible responses.
   * Frequency
   * Resp: OK | ERROR
 
--* get_bfo
+* get_bfo
   * No Argument
   * Resp: Frequency | ERROR
 
