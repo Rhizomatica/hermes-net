@@ -20,7 +20,8 @@
 
 CC=gcc
 prefix=/usr
-CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector
+# CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector
+CFLAGS=-Wall -pedantic -std=gnu11 -pthread -fstack-protector
 
 all: ubitx_controller ubitx_client
 

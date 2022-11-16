@@ -301,7 +301,7 @@ int main(int argc, char *argv[])
         printf("ERROR\n");
     else
     {
-        uint8_t status[4];
+        uint32_t status;
         uint32_t freq;
         uint32_t serial;
         uint16_t measure;
@@ -394,8 +394,16 @@ int main(int argc, char *argv[])
             printf("%hu\n", measure);
             break;
         case CMD_RESP_GET_STATUS_ACK:
-            memcpy (status, connector->response_service+1, 4);
-            printf("%02X %02X %02X %02X\n", status[0], status[1], status[2], status[3]);
+            memcpy (&status, connector->response_service+1, 4);
+            bool pps_status = (status >> 20) & 0x1;
+            bool offset_adjustment_status = (status >> 21) & 0x1;
+            int32_t offset = status & 0x7ffffL;
+            bool offset_neg_sign = (status >> 19) & 0x1;
+            if (offset_neg_sign)
+                offset = -offset;
+            printf("PPS_STATUS %s\n", pps_status ? "OK":"FAIL");
+            printf("OFFSET_CAL_STATUS %s\n", offset_adjustment_status ? "OK":"FAIL");
+            printf("LATEST_OFFSET_CAL %d\n", offset);
             break;
 
         case CMD_RESP_WRONG_COMMAND:

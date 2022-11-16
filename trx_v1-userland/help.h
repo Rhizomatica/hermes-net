@@ -125,7 +125,10 @@ const char format_str[] = "* ptt_on\n"
 
 "* get_status\n"
 "  * No Argument\n"
-"  * Resp: 4 byte status words | ERROR\n\n"
+"  * Resp: 3 lines output with a constant word and a response:\n"
+"  * PPS_STATUS OK | FAIL\n"
+"  * OFFSET_CAL_STATUS OK | FAIL\n"
+"  * LATEST_OFFSET_CAL Offset\n\n"
 
 "* radio_reset\n"
 "  * No Argument\n"

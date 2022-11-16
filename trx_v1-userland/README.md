@@ -127,6 +127,13 @@ by the argument type and possible responses.
   * No Argument
   * Resp: OK (restore default settings) | ERROR
 
+* get_status
+  * No Argument
+  * Resp: 3 lines output with a constant word and a response:
+  * PPS_STATUS OK | FAIL
+  * OFFSET_CAL_STATUS OK | FAIL
+  * LATEST_OFFSET_CAL Offset
+
 * radio_reset
   * No Argument
   * Resp: OK (and the ubitx_controller exits immediately)
