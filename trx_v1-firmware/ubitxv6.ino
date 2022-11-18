@@ -63,7 +63,7 @@
 #include "ubitx.h"
 #include "ubitx_cat.h"
 
-#ifdef HAS_GPS
+#if RADUINO_VER > 0
 #include "ubitx_calibration.h"
 #endif
 
@@ -260,6 +260,10 @@ void startTx(){
     inTx = 1;
 
     setFrequency(frequency);
+
+#if RADUINO_VER == 2
+    digitalWrite(TX_LED, 1);
+#endif
 }
 
 void stopTx(){
@@ -269,6 +273,9 @@ void stopTx(){
     si5351bx_setfreq(0, usbCarrier);  //set back the cardrier oscillator anyway, cw tx switches it off
 
     setFrequency(frequency);
+#if RADUINO_VER == 2
+    digitalWrite(TX_LED, 0);
+#endif
 }
 
 
@@ -378,8 +385,10 @@ void initPorts()
     pinMode(LED_CONTROL, OUTPUT);
     digitalWrite(LED_CONTROL, led_status ? 1 : 0);
 
+#if RADUINO_VER < 2
     pinMode(CW_TONE, OUTPUT);
     digitalWrite(CW_TONE, 0);
+#endif
 
     pinMode(TX_RX,OUTPUT);
     digitalWrite(TX_RX, 0);
@@ -392,9 +401,19 @@ void initPorts()
     digitalWrite(TX_LPF_B, 0);
     digitalWrite(TX_LPF_C, 0);
 
-#ifdef HAS_GPS
+#if RADUINO_VER > 0
     pinMode(CAL_CLK, INPUT);
     pinMode(PPS_IN, INPUT);
+#endif
+
+#if RADUINO_VER == 2
+    pinMode(TX_LED, OUTPUT);
+    digitalWrite(TX_LED, 0);
+
+    pinMode(VDC_IN, INPUT);
+    // pinMode(AUX1, INPUT);
+    // pinMode(AUX2, INPUT);
+    // pinMode(AUX3, INPUT);
 #endif
     // one day we'll have CW back!
     // pinMode(CW_KEY, OUTPUT);
@@ -413,7 +432,7 @@ void setup()
   setFrequency(frequency);
   initTimers();
 
-#ifdef HAS_GPS
+#if RADUINO_VER > 0
   // when the radio boots up, we do a initial callibration
   enable_calibration();
 #endif
@@ -503,7 +522,7 @@ void checkTimers()
     previous_time = milisec_count;
 
     // We survive if GPS PPS is not working
-#ifdef HAS_GPS
+#if RADUINO_VER > 0
     if (calibration_enabled && milisec_count > (calibration_monitor + 12300))
     {
         disable_calibration();
@@ -563,7 +582,7 @@ uint16_t pace;
 
 void loop(){
     int32_t calibration_offset;
-#ifdef HAS_GPS
+#if RADUINO_VER > 0
     if (gps_pps_tick)
     {
         gps_pps_tick = false;

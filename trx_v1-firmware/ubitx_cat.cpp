@@ -26,7 +26,7 @@
 #include "ubitx_cat.h"
 #include "../include/radio_cmds.h"
 
-#ifdef HAS_GPS
+#if RADUINO_VER > 0
 #include "ubitx_calibration.h"
 #endif
 
@@ -239,7 +239,7 @@ void processCATCommand(byte* cmd)
         break;
 
     case CMD_GPS_CALIBRATE: // CMD_GPS_CALIBRATE
-#ifdef HAS_GPS
+#if RADUINO_VER > 0
         if (calibration_enabled == false)
             enable_calibration();
         response[0] = CMD_RESP_GPS_CALIBRATE_ACK;

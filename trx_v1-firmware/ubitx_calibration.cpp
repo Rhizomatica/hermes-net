@@ -19,7 +19,7 @@
 
 */
 
-#ifdef HAS_GPS
+#if RADUINO_VER > 0
 
 #include <stdint.h>
 #include <stdbool.h>

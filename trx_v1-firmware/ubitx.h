@@ -9,13 +9,6 @@
  *
  */
 
-#define ANT_GOOD      (A0)        // Signal to display antenna green led
-#define ANT_HIGH_SWR  (A1)        // Signal to display antenna red led
-#define LED_CONNECTED (A2)        // Connected LED
-#define LED_CONTROL   (A3)        // Power LED
-#define ANALOG_FWD    (A6)        // Forward power measure
-#define ANALOG_REF    (A7)        // Reflected power measure
-
 /**
  *  The second set of 16 pins on the Raduino's bottom connector are have the three clock outputs and the digital lines to control the rig.
  *  This assignment is as follows :
@@ -26,7 +19,44 @@
  *  - CW_KEY line : turns on the carrier for CW
  */
 
-#ifdef HAS_GPS
+#if RADUINO_VER == 2
+
+#define TX_RX    (7)           // Pin from the Nano to the radio to switch to TX (HIGH) and RX(LOW)
+#define TX_LPF_A (12)          // The 30 MHz LPF is permanently connected in the output of the PA...
+#define CAL_CLK  (5)           // CLK #0 loopback (for calibration)
+#define TX_LPF_B (4)           //  ...Alternatively, either 3.5 MHz, 7 MHz or 14 Mhz LPFs are...
+#define TX_LPF_C (3)           //  ...switched inline depending upon the TX frequency
+#define CW_KEY   (11)          //  Pin goes high during CW keydown to transmit the carrier.
+#define PPS_IN   (2)           //  GPS 1PPS input
+                               //
+#define VDC_IN   (A0)          // 12V input reference
+//  Divisor resistivo de 14,5Vdc para 5Vdc
+// Vout = Vin * [ R4 / (R3 + R4) ]
+// Vout = 14,5 * [ 250 / ( 470 + 250 ) ]
+// Vin = 14,5V
+// R3 = 470 ohm
+// R4 = 250 ohm
+// Vout = 5,0V
+// I = 20,14mA
+#define AUX1  (A1)
+#define AUX2  (A2)
+#define AUX3  (A3)
+
+#define ANT_GOOD      (8)        // Signal to display antenna green led
+#define ANT_HIGH_SWR  (9)        // Signal to display antenna red led
+#define LED_CONNECTED (10)        // Connected LED
+#define LED_CONTROL   (13)        // Power LED
+#define TX_LED        (6)         // TX Led
+
+
+#define ANALOG_FWD    (A6)        // Forward power measure
+#define ANALOG_REF    (A7)        // Reflected power measure
+
+
+#endif
+
+// Modified Raduino with GPS
+#if RADUINO_VER == 1
 
 #define TX_RX    (7)           // Pin from the Nano to the radio to switch to TX (HIGH) and RX(LOW)
 #define CW_TONE  (6)           // Generates a square wave sidetone while sending the CW.
@@ -37,7 +67,17 @@
 #define CW_KEY   (11)          //  Pin goes high during CW keydown to transmit the carrier. 
 #define PPS_IN   (2)           //  GPS 1PPS input
 
-#else
+#define ANT_GOOD      (A0)        // Signal to display antenna green led
+#define ANT_HIGH_SWR  (A1)        // Signal to display antenna red led
+#define LED_CONNECTED (A2)        // Connected LED
+#define LED_CONTROL   (A3)        // Power LED
+#define ANALOG_FWD    (A6)        // Forward power measure
+#define ANALOG_REF    (A7)        // Reflected power measure
+
+#endif
+
+// Raduino without mods
+#if RADUINO_VER == 0
 
 #define TX_RX    (7)           // Pin from the Nano to the radio to switch to TX (HIGH) and RX(LOW)
 #define CW_TONE  (6)         // Generates a square wave sidetone while sending the CW.
@@ -47,6 +87,14 @@
 #define CW_KEY   (2)          //  Pin goes high during CW keydown to transmit the carrier.
                             // ... The CW_KEY is needed in addition to the TX/RX key as the...
                             // ...key can be up within a tx period
+
+#define ANT_GOOD      (A0)        // Signal to display antenna green led
+#define ANT_HIGH_SWR  (A1)        // Signal to display antenna red led
+#define LED_CONNECTED (A2)        // Connected LED
+#define LED_CONTROL   (A3)        // Power LED
+#define ANALOG_FWD    (A6)        // Forward power measure
+#define ANALOG_REF    (A7)        // Reflected power measure
+
 #endif
 
 /** pin assignments
