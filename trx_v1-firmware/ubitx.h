@@ -42,12 +42,11 @@
 #define AUX2  (A2)
 #define AUX3  (A3)
 
-#define ANT_GOOD      (8)        // Signal to display antenna green led
+#define TX_LED        (6)        // TX Led
+#define LED_CONNECTED (13)       // Connected LED
+#define ANT_GOOD      (10)       // Signal to display antenna green led
 #define ANT_HIGH_SWR  (9)        // Signal to display antenna red led
-#define LED_CONNECTED (10)        // Connected LED
-#define LED_CONTROL   (13)        // Power LED
-#define TX_LED        (6)         // TX Led
-
+#define LED_CONTROL   (8)        // Power LED
 
 #define ANALOG_FWD    (A6)        // Forward power measure
 #define ANALOG_REF    (A7)        // Reflected power measure
