@@ -54,8 +54,11 @@
 
 #include <b64/cdecode.h>
 
+#include <cmime.h>
+
 #include "xz_compression.h"
 #include "gz_compress.h"
+#include "utils.h"
 #include "daemon.h"
 
 #if ((USE_GZ == 1) && (USE_XZ == 1)) || ((USE_GZ == 0) && (USE_XZ == 0))
@@ -100,7 +103,6 @@ int main (int argc, char *argv[])
         fprintf(stderr, "-- uuxcomp version %s by rhizomatica --\n\n", VERSION);
         fprintf(stderr, "Usage:\n");
         fprintf(stderr, "uuxcomp [uux parameters]\n");
-        // fprintf(stderr, "Eg.: uuxcomp C.NT4DkChAAoLT C.NT8Rg3xAAoNX ...\n");
         return EXIT_FAILURE;
     }
 
@@ -137,6 +139,91 @@ int main (int argc, char *argv[])
 #endif
 
     fprintf(debug_output, "Daemon creation succeed!\n");
+
+    /*  CHOP SOME HEADERS OFF */
+    // we skip the first like which seems like a UUCP stuff
+    char *line_break = uuxcomp_determine_linebreak(message_payload);
+    char first_line[512];
+    char *processed_msg_payload = strstr(message_payload, line_break) + strlen(line_break);
+    int first_line_size = strlen(message_payload) - strlen(processed_msg_payload);
+    strncpy(first_line, message_payload, first_line_size);
+    first_line[first_line_size] = 0;
+
+    CMimeMessage_T *message = cmime_message_new();
+    int ret_val = cmime_message_from_string(&message, processed_msg_payload, 1);
+    char *msg_header = cmime_message_to_string(message);
+    int old_header_size = strlen(msg_header);
+    free(msg_header);
+    if (ret_val != 0)
+        goto compress;
+    CMimeListElem_T *elem = NULL, *elem_to_remove = NULL;
+    CMimeHeader_T *header = NULL;
+    CMimeHeader_T *header_deleted = NULL;
+    char *header_name = NULL;
+    int received_count = 0;
+    // first we delete some fat headers
+    elem = cmime_list_head(message->headers);
+    while(elem != NULL)
+    {
+        header = (CMimeHeader_T *) cmime_list_data(elem);
+        header_name = cmime_header_get_name(header);
+
+        elem_to_remove = elem;
+        elem = elem->next;
+
+        if ( (!strcmp(header_name, "DKIM-Signature")) ||
+             (!strcmp(header_name, "Authentication-Results")) ||
+             (!strcmp(header_name, "X-Virus-Scanned")) ||
+             (!strcmp(header_name, "Autocrypt")) )
+        {
+            cmime_list_remove(message->headers, elem_to_remove, (void *)&header_deleted);
+            cmime_header_free(header_deleted);
+        }
+
+        if (!strcmp(header_name, "Received"))
+        {
+            received_count++;
+        }
+    }
+    // then we remove all Received header apart of the last (which is the first to be added)
+    if (received_count > 1)
+    {
+        int received_aux = 0;
+        elem = cmime_list_head(message->headers);
+        while(elem != NULL)
+        {
+            header = (CMimeHeader_T *) cmime_list_data(elem);
+            header_name = cmime_header_get_name(header);
+            elem_to_remove = elem;
+            elem = elem->next;
+            if (!strcmp(header_name, "Received"))
+            {
+                received_aux++;
+                if (received_aux < received_count)
+                {
+                    cmime_list_remove(message->headers, elem_to_remove, (void *)&header_deleted);
+                    cmime_header_free(header_deleted);
+                }
+            }
+        }
+    }
+    // printing the headers for debug purpose...
+    char *msg_header_stripped = cmime_message_to_string(message);
+    int new_header_size = strlen(msg_header_stripped);
+
+    size_t new_message_size = message_size - old_header_size + new_header_size;
+    char *tmp_msg_payload = malloc(new_message_size);
+    strcpy(tmp_msg_payload, first_line);
+    strcat(tmp_msg_payload, msg_header_stripped);
+    strcat(tmp_msg_payload, message_payload + first_line_size + old_header_size);
+
+    free(msg_header_stripped);
+    free(message_payload);
+
+    message_payload = tmp_msg_payload;
+    message_size = new_message_size;
+    // printf("%s",message_payload);
+    /* END CHOP SOME HEADERS OFF */
 
     // here we go... parsing the stuff...
     char_ptr = strstr(message_payload, "Content-Type: multipart/mixed;");
