@@ -44,8 +44,8 @@
 
 #define TX_LED        (6)        // TX Led
 #define LED_CONNECTED (13)       // Connected LED
-#define ANT_GOOD      (10)       // Signal to display antenna green led
-#define ANT_HIGH_SWR  (9)        // Signal to display antenna red led
+#define ANT_GOOD      (9)       // Signal to display antenna green led
+#define ANT_HIGH_SWR  (10)        // Signal to display antenna red led
 #define LED_CONTROL   (8)        // Power LED
 
 #define ANALOG_FWD    (A6)        // Forward power measure
