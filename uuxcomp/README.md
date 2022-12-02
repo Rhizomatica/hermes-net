@@ -8,8 +8,7 @@ Source location of original uucomp is: https://opensource.apple.com/source/uucp/
 # Features
 
 Rhizomatica's uuxcomp provides rewriting features for email's audio and image
-attachments, which includes media transcoding (scripts available in "scripts" folder), and
-compression (gzip and lzma supported). The media codecs packages are available at:
+attachments, which includes media transcoding (scripts available in https://github.com/Rhizomatica/hermes-net/tree/main/system_scripts/compression ), and compression (gzip and lzma supported). The media codecs packages are available at:
 http://packages.hermes.radio/
 
 # Usage
