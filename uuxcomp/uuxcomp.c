@@ -95,6 +95,8 @@ int main (int argc, char *argv[])
 
     char *blob = NULL;
 
+    bool is_deltachat = false;
+
     FILE *debug_output;
 
 
@@ -171,10 +173,17 @@ int main (int argc, char *argv[])
         elem_to_remove = elem;
         elem = elem->next;
 
+        if ( !strcmp(header_name, "Chat-Version") )
+            is_deltachat = true;
+
         if ( (!strcmp(header_name, "DKIM-Signature")) ||
              (!strcmp(header_name, "Authentication-Results")) ||
              (!strcmp(header_name, "X-Virus-Scanned")) ||
-             (!strcmp(header_name, "Autocrypt")) )
+             (!strcmp(header_name, "Autocrypt")) ||
+             (!strcmp(header_name, "X-Google-DKIM-Signature")) ||
+             (!strcmp(header_name, "X-Gm-Message-State")) ||
+             (!strcmp(header_name, "X-Google-Smtp-Source")) ||
+             (!strcmp(header_name, "X-Received")) )
         {
             cmime_list_remove(message->headers, elem_to_remove, (void *)&header_deleted);
             cmime_header_free(header_deleted);
@@ -224,6 +233,10 @@ int main (int argc, char *argv[])
     message_size = new_message_size;
     // printf("%s",message_payload);
     /* END CHOP SOME HEADERS OFF */
+
+    // our parser only works for DC at the moment, skip this is not a DC message
+    if (is_deltachat == false)
+        goto compress;
 
     // here we go... parsing the stuff...
     char_ptr = strstr(message_payload, "Content-Type: multipart/mixed;");
