@@ -121,8 +121,6 @@ int main (int argc, char *argv[])
         memcpy(message_payload + needle, tmp_buffer, buffer_size);
     }
 
-    output_message = message_payload;
-
     // daemonize and return the parent...
     if (become_daemon() != 0)
     {
@@ -231,6 +229,8 @@ int main (int argc, char *argv[])
 
     message_payload = tmp_msg_payload;
     message_size = new_message_size;
+    output_message = message_payload;
+
     // printf("%s",message_payload);
     /* END CHOP SOME HEADERS OFF */
 
