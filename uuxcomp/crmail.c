@@ -37,6 +37,8 @@
 #define DEBUG_MODE 0 // 0, 1 and 2
 #define DEBUG_FILENAME "/var/log/uucp/crmail_debug.txt"
 
+#define ADD_CHAT_HEADER 1
+
 #define MAX_FILENAME 4096
 #define S_BUF 128
 
@@ -47,6 +49,7 @@
 #define ENC_TYPE_AUDIO_NESC 2
 #define ENC_TYPE_IMAGE 3
 
+#include "utils.h"
 
 int main (int argc, char *argv[])
 {
@@ -168,6 +171,32 @@ int main (int argc, char *argv[])
         file_size = message_size;
     }
 
+
+#if ADD_CHAT_HEADER == 1
+    // skip first rmail line
+    // check which is the line terminator
+    // add:
+    // Chat-Version: 1.0
+    char *line_break = uuxcomp_determine_linebreak(blob);
+    char new_header[512];
+    sprintf(new_header,"Chat-Version: 1.0%s",line_break);
+    int new_header_size = strlen(new_header);
+
+    if (!strstr(blob, new_header))
+    {
+
+        char *msg_payload = strstr(blob, line_break) + strlen(line_break);
+        int first_line_size = file_size - strlen(msg_payload);
+
+        char *edited_message = malloc(file_size + new_header_size);
+        memcpy(edited_message, blob, first_line_size);
+        memcpy(edited_message + first_line_size, new_header, new_header_size);
+        memcpy(edited_message + first_line_size + new_header_size, msg_payload, strlen(msg_payload));
+        free(blob);
+        blob = edited_message;
+        file_size += new_header_size;
+    }
+#endif
 
     fprintf(debug_output, "writing decompressed file to: %s\n", tmp_mail);
     tmp_mail_fp = fopen(tmp_mail, "w");
