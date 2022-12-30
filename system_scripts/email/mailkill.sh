@@ -82,4 +82,4 @@ elif [ $lang = "pt" ] && [ $type = "queue_full" ]; then
 fi
 
 #send email
-echo -e ${message} | mail  -s "${subject}" ${from}
+echo -e ${message} | mail -a "Chat-Version: 1.0" -s "${subject}" ${from}
