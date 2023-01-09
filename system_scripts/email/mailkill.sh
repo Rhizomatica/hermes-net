@@ -11,7 +11,7 @@ if [ $# -eq 3 ]; then
   type=${2}
   uuid=${3}
 elif [ $# -eq 2 ]; then
-  lang="es"
+  lang=$(curl -s "https://localhost/api/sys/language" -k 2> /dev/null)
   type=${1}
   uuid=${2}
 fi
