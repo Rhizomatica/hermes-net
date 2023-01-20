@@ -29,7 +29,7 @@ int main (int argc, char *argv[])
     int serial_fd = open_serial_port("/dev/ttyUSB0");
     set_fixed_baudrate("19200", serial_fd);
 
-    key_on(serial_fd, radio_type);
+    key_off(serial_fd, radio_type);
 
 
 
