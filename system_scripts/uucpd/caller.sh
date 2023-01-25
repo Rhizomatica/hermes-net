@@ -74,8 +74,8 @@ do
                   old_mode=$(ubitx_client -c get_mode 2> /dev/null)
                   new_frequency="$(echo ${api_freqmode_call} | jq --raw-output '.frequency' 2> /dev/null)000"
                   new_mode=$(echo ${api_freqmode_call} | jq --raw-output '.mode' 2> /dev/null)
-                  ubitx_client -c set_frequency -a ${new_frequency}
-                  ubitx_client -c set_mode -a ${new_mode}
+                  ubitx_client -c set_frequency -a ${new_frequency} > /dev/null
+                  ubitx_client -c set_mode -a ${new_mode} > /dev/null
                 fi
 
                 echo "Calling station ${t}."
@@ -83,8 +83,8 @@ do
                 sleep ${DELAY}
 
                 if [[ ${freqmode_enabled} -eq 1  ]]; then
-                  ubitx_client -c set_frequency -a ${old_frequency}
-                  ubitx_client -c set_mode -a ${old_mode}
+                  ubitx_client -c set_frequency -a ${old_frequency} > /dev/null
+                  ubitx_client -c set_mode -a ${old_mode} > /dev/null
                 fi
 
             done
