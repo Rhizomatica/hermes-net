@@ -25,7 +25,7 @@ do
     #      TIME_TO_RUN=$(( ${LATEST_SERVER_CALL_TIME} + ${DELAY_MAINLOOP} ))
     #    fi
 
-    if [[ -z ${hosts} ]] || [[ -z ${timers_start} ]] || [[ -z ${timers_stop} ]]
+    if [[ -z ${timers_start} ]] || [[ -z ${timers_stop} ]]
     then
       echo "No schedule enabled or API call failed"
       sleep ${DELAY_MAINLOOP}
