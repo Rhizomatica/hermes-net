@@ -14,7 +14,6 @@ EMAIL_SERVER="gw"
 
 while true
 do
-    hosts=($(curl -s https://localhost/api/caller/ -k | jq --raw-output '.[0] | .stations[]'  2> /dev/null))
     timers_start=($(curl -s https://localhost/api/caller -k | jq --raw-output '.[] | select( .enable | contains(1)) | .starttime ' 2> /dev/null))
     timers_stop=($(curl -s https://localhost/api/caller -k | jq --raw-output '.[] | select( .enable | contains(1)) | .stoptime ' 2> /dev/null))
 
@@ -37,6 +36,8 @@ do
 
     for (( c=0; c<${#timers_start[@]}; c++ )); do
 
+	      hosts=($(curl -s https://localhost/api/caller/ -k | jq --raw-output '.[c] | .stations[]'  2> /dev/null))
+
 	      start_time_hour=$((10#$(echo ${timers_start[c]} | cut -d ':' -f 1)))
 	      start_time_minute=$((10#$(echo ${timers_start[c]} | cut -d ':' -f 2)))
 	      end_time_hour=$((10#$(echo ${timers_stop[c]} | cut -d ':' -f 1)))
@@ -45,7 +46,7 @@ do
 	      current_hour=$((10#$(date +%H)))
 	      current_minute=$((10#$(date +%M)))
 
-	      echo "Schedule ${c}"
+	      echo "Schedule ${c}, call ${hosts} start_time ${start_time_hour}:${start_time_minute}, end_time ${end_time_hour}:${end_time_minute}"
         #	      echo "current time ${current_hour}h ${current_minute}min"
         #	      echo "start time ${start_time_hour}h ${start_time_minute}min"
         #	      echo "end time ${end_time_hour}h ${end_time_minute}min"
