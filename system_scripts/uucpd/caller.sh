@@ -47,7 +47,7 @@ do
 	      current_hour=$((10#$(date +%H)))
 	      current_minute=$((10#$(date +%M)))
 
-	      echo "Schedule ${c}, call ${hosts} start_time ${start_time_hour}:${start_time_minute}, end_time ${end_time_hour}:${end_time_minute}"
+	      echo "Schedule ${c}, start_time ${start_time_hour}:${start_time_minute}, end_time ${end_time_hour}:${end_time_minute}"
         #	      echo "current time ${current_hour}h ${current_minute}min"
         #	      echo "start time ${start_time_hour}h ${start_time_minute}min"
         #	      echo "end time ${end_time_hour}h ${end_time_minute}min"
