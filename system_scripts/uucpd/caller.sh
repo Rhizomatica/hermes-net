@@ -36,7 +36,9 @@ do
 
     for (( c=0; c<${#timers_start[@]}; c++ )); do
 
-	      hosts=($(curl -s https://localhost/api/caller/ -k | jq --raw-output '.[${c}] | .stations[]' 2> /dev/null))
+	      tmp="curl -s https://localhost/api/caller/ -k | jq --raw-output '.[${c}] | .stations[]' 2> /dev/null"
+	      hosts=$(${tmp})
+
 	      start_time_hour=$((10#$(echo ${timers_start[c]} | cut -d ':' -f 1)))
 	      start_time_minute=$((10#$(echo ${timers_start[c]} | cut -d ':' -f 2)))
 	      end_time_hour=$((10#$(echo ${timers_stop[c]} | cut -d ':' -f 1)))
