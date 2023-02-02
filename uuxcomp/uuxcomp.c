@@ -192,8 +192,12 @@ int main (int argc, char *argv[])
         FILE *msg_fp = popen(cmd_message, "w");
         fwrite(body, 1, strlen(body), msg_fp);
         pclose(msg_fp);
-    }
+        // we could opt not to return... in the case, comment both lines below:
+        free(message_payload);
+        return EXIT_SUCCESS;
 
+    }
+    // END SMS
 
     // Delete some fat headers
     elem = cmime_list_head(message->headers);
