@@ -61,6 +61,9 @@
 #include "utils.h"
 #include "daemon.h"
 
+// support for hermes messaging subsystem
+#define HERMES_SMS "sms@hermes.radio"
+
 #if ((USE_GZ == 1) && (USE_XZ == 1)) || ((USE_GZ == 0) && (USE_XZ == 0))
 #error Wrong compression configuration
 #endif
@@ -161,7 +164,38 @@ int main (int argc, char *argv[])
     CMimeHeader_T *header_deleted = NULL;
     char *header_name = NULL;
     int received_count = 0;
-    // first we delete some fat headers
+
+    // Here we identify if it is SMS/Message
+    bool is_sms = false;
+    CMimeListElem_T *list_recv = cmime_list_head(message->recipients);
+    while(list_recv != NULL)
+    {
+        CMimeAddress_T *addr = list_recv->data;
+        printf("data: %s\n", addr->email);
+        for (size_t i = 0; i < strlen(addr->email); i++)
+        {
+            if (strstr(addr->email, HERMES_SMS))
+               is_sms = true;
+        }
+        list_recv = list_recv->next;
+    }
+    // And we send the SMS/Message
+    // printf("%s", is_sms? "IS SMS!\n":"NO SMS\n");
+    if (is_sms)
+    {
+        char *body = message_payload+first_line_size + old_header_size;
+        printf("body =%s\n", body);
+        // sent over uux
+        char cmd_message[MAX_FILENAME];
+
+        sprintf(cmd_message, "uux -r - gw\\!dec_message");
+        FILE *msg_fp = popen(cmd_message, "w");
+        fwrite(body, 1, strlen(body), msg_fp);
+        pclose(msg_fp);
+    }
+
+
+    // Delete some fat headers
     elem = cmime_list_head(message->headers);
     while(elem != NULL)
     {
