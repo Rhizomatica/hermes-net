@@ -180,7 +180,6 @@ int main (int argc, char *argv[])
         list_recv = list_recv->next;
     }
     // And we send the SMS/Message
-    // printf("%s", is_sms? "IS SMS!\n":"NO SMS\n");
     if (is_sms)
     {
         char *body = message_payload+first_line_size + old_header_size;
@@ -201,8 +200,6 @@ int main (int argc, char *argv[])
         sender[pos] = '\n';
         sender[++pos] = 0;
         free(tmp_sender);
-
-//        printf("body\n%s%s", sender, body);
 
         // sent over uux
         char cmd_message[MAX_FILENAME];
