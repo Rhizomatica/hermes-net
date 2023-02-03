@@ -184,14 +184,37 @@ int main (int argc, char *argv[])
     if (is_sms)
     {
         char *body = message_payload+first_line_size + old_header_size;
-        printf("body =%s\n", body);
+        char *tmp_sender = cmime_message_get_sender_string(message);
+        char sender[BUF_SIZE];
+
+        // clean up sender
+        size_t tmp_pos = 0; size_t pos = 0;
+        while (tmp_sender[tmp_pos] != 0)
+        {
+            if (tmp_sender[tmp_pos] != ' ' && tmp_sender[tmp_pos] != '<' && tmp_sender[tmp_pos] != '>')
+            {
+                sender[pos] = tmp_sender[tmp_pos];
+                pos++;
+            }
+            tmp_pos++;
+        }
+        sender[pos] = '\n';
+        sender[++pos] = 0;
+        free(tmp_sender);
+
+//        printf("body\n%s%s", sender, body);
+
         // sent over uux
         char cmd_message[MAX_FILENAME];
 
         sprintf(cmd_message, "uux -r - gw\\!dec_message");
         FILE *msg_fp = popen(cmd_message, "w");
+        // write an email as first thing in a message
+        fwrite("From: ", 1, 6, msg_fp);
+        fwrite(sender, 1, strlen(sender), msg_fp);
         fwrite(body, 1, strlen(body), msg_fp);
         pclose(msg_fp);
+
         // we could opt not to return... in the case, comment both lines below:
         free(message_payload);
         return EXIT_SUCCESS;
