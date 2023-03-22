@@ -23,7 +23,7 @@
 
 #define TX_RX    (7)           // Pin from the Nano to the radio to switch to TX (HIGH) and RX(LOW)
 #define TX_LPF_A (12)          // The 30 MHz LPF is permanently connected in the output of the PA...
-#define CAL_CLK  (5)           // CLK #0 loopback (for calibration)
+#define CAL_CLK  (5)           // CLK #3 (for calibration)
 #define TX_LPF_B (4)           //  ...Alternatively, either 3.5 MHz, 7 MHz or 14 Mhz LPFs are...
 #define TX_LPF_C (3)           //  ...switched inline depending upon the TX frequency
 #define CW_KEY   (11)          //  Pin goes high during CW keydown to transmit the carrier.
@@ -172,6 +172,10 @@
  * 11 MHz where its fifth harmonic beats with the arduino's 16 Mhz oscillator's fourth harmonic
  */
 
+#if RADUINO_VER == 2
+#define CALIBRATION_DUR 60000 // each 1 min
+#endif
+
 #define INIT_USB_FREQ 11052000UL
 // limits the tuning and working range of the ubitx between 3 MHz and 30 MHz
 #define LOWEST_FREQ     500000UL
@@ -193,7 +197,7 @@
 #define GPS_STATUS_OFFSET_SHIFT_MASK 0x7ffffL
 
 // OFFSET_SHIFT_MASK (1 for negative, 0 for positive)
-#define GPS_STATUS_OFFSET_SHIFT_SIGN(x) (x << 19)
+#define GPS_STATUS_OFFSET_SHIFT_SIGN(x) ((unsigned long) x << 19)
 
 // no pps detected or PPS detected
 #define GPS_STATUS_PPS_FAIL 0L << 20

@@ -58,8 +58,13 @@ void enable_calibration()
 
     attachInterrupt(digitalPinToInterrupt(PPS_IN), PPSinterrupt, RISING);
 
+#if RADUINO_VER == 1
     si5351bx_setfreq(0, CAL_FREQ); // we change the CLK #0 to the calibration clock
+#endif
 
+#if RADUINO_VER == 2
+    si5351bx_setfreq(3, CAL_FREQ); // we change the CLK #3 to the calibration clock
+#endif
 }
 
 void disable_calibration()

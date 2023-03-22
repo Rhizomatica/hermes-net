@@ -432,7 +432,7 @@ void setup()
   setFrequency(frequency);
   initTimers();
 
-#if RADUINO_VER > 0
+#if RADUINO_VER == 1
   // when the radio boots up, we do a initial callibration
   enable_calibration();
 #endif
@@ -512,11 +512,18 @@ void checkTimers()
     static int32_t ref_timer = SENSORS_READ_FREQ - 25;
     static int32_t led_timer = LED_BLINK_DUR; // 1s
 
+#if RADUINO_VER == 2
+    static int32_t calibration_timer = CALIBRATION_DUR; // 1min
+#endif
 
     milisec_count = millis();
     // treating overflow
     if (milisec_count < previous_time)
+    {
+        // do the proper math here!!! we will have a small glich after 50 days on!
+        previous_time = 0;
         return;
+    }
 
     elapsed_time = milisec_count - previous_time;
     previous_time = milisec_count;
@@ -571,6 +578,14 @@ void checkTimers()
         ref_timer = SENSORS_READ_FREQ;
     }
 
+#if RADUINO_VER == 2
+    calibration_timer -= (int32_t) elapsed_time;
+    if (calibration_timer < 0)
+    {
+        enable_calibration();
+        calibration_timer = CALIBRATION_DUR;
+    }
+#endif
 
 }
 
