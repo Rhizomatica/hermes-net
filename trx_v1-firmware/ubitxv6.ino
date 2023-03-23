@@ -614,15 +614,20 @@ void loop(){
                 gps_operation_result |= GPS_STATUS_OFFSET_SHIFT_SIGN(1);
             gps_operation_result |= (GPS_STATUS_OFFSET_SHIFT_MASK & abs(new_cal));
 
-            calibration_offset = calibration + new_cal;
-            if ( (calibration_offset < UPPER_MASTERCAL_OFFSET) && (calibration_offset > LOWER_MASTERCAL_OFFSET) )
-            {
-                setMasterCal(calibration_offset);
+            // as in the RADUINO_VER v2 we dont need to set the BFO back... we just dont do nothing if new_cal is 0
+            if ( RADUINO_VER == 2 && new_cal == 0 )
                 gps_operation_result |= GPS_STATUS_OFFSET_GOOD;
-            }
             else
-                setMasterCal(calibration);
-
+            {
+                calibration_offset = calibration + new_cal;
+                if ( (calibration_offset < UPPER_MASTERCAL_OFFSET) && (calibration_offset > LOWER_MASTERCAL_OFFSET) )
+                {
+                    setMasterCal(calibration_offset);
+                    gps_operation_result |= GPS_STATUS_OFFSET_GOOD;
+                }
+                else
+                    setMasterCal(calibration);
+            }
         }
     }
 #endif
