@@ -92,7 +92,7 @@ int cat_tx(void *arg)
 	}
 #endif
   // may be this should be set by sbitx after the apropriate call?
-  // conn->response_available = 1;
+  // conn->command_available = 1;
 
     }
 
@@ -161,26 +161,13 @@ bool initialize_message(controller_conn *connector)
     }
 
     connector->radio_fd = -1;
-    connector->response_available = 0;
+    connector->command_available = 0;
 
     return EXIT_SUCCESS;
 }
 
-int main(int argc, char *argv[])
+void sbitx_controller()
 {
-
-    if (argc > 5) // this is just a placeholder for now
-    {
-    manual:
-        fprintf(stderr, "Usage modes: \n%s -s serial_device -r [sbitx]\n", argv[0]);
-        fprintf(stderr, "%s -h\n", argv[0]);
-        fprintf(stderr, "\nOptions:\n");
-        fprintf(stderr, " -s serial_device           Set the serial device file path\n");
-        fprintf(stderr, " -r [sbitx]            Sets radio type (supported: sbitx)\n");
-        fprintf(stderr, " -h                         Prints this help.\n");
-        exit(EXIT_FAILURE);
-    }
-
     controller_conn *connector;
 
     if (shm_is_created(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn)))
@@ -194,37 +181,12 @@ int main(int argc, char *argv[])
 
     initialize_message(connector);
 
-    int opt;
-    while ((opt = getopt(argc, argv, "hs:r:")) != -1)
-    {
-        switch (opt)
-        {
-        case 'h':
-            goto manual;
-            break;
-        case 's':
-            // we don't use serial port directly here...
-            break;
-        case 'r':
-            // we only support the sbitx here
-            break;
-        default:
-            goto manual;
-        }
-    }
-
     signal (SIGINT, finish);
     signal (SIGQUIT, finish);
     signal (SIGTERM, finish);
 
-    if (connector->radio_fd == -1)
-    {
-        fprintf(stderr, "Could not open serial device.\n");
-        return EXIT_FAILURE;
-    }
-
     running = true;
 
-    // CAT control
-    cat_tx((void *) connector);
+    thrd_t cat_thread;
+    thrd_create(&cat_thread, cat_tx, connector);
 }

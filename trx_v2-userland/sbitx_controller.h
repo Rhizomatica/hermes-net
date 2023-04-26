@@ -40,7 +40,7 @@ typedef struct{
     pthread_mutex_t response_mutex;
 
     uint8_t response_service[5];
-    atomic_bool response_available;
+    atomic_bool command_available;
 
     int radio_fd;
 

@@ -38,29 +38,30 @@ bool radio_cmd(controller_conn *connector, uint8_t *srv_cmd, uint8_t *response)
 
     memcpy(connector->service_command, srv_cmd, 5);
 
-    // we clear any previous response not properly read, due to delayed response
-    if (connector->response_available == 1)
-        connector->response_available = 0;
-
     pthread_cond_signal(&connector->cmd_condition);
     pthread_mutex_unlock(&connector->cmd_mutex);
+
+    connector->command_available = 1;
 
     if (srv_cmd[4] == CMD_RADIO_RESET)
         goto get_out;
 
-    // ~3 ms max wait
+    // we wait max of 20ms
     int tries = 0;
-    while (connector->response_available == 0 && tries < 30)
+    while (connector->command_available == 1 && tries < 100)
     {
-        usleep(100); // 0.1 ms
+        usleep(200); // 0.2 ms
         tries++;
     }
 
-    if (connector->response_available == 1)
+    if (connector->command_available == 0)
     {
-      memcpy(response, connector->response_service, 5);
-      connector->response_available = 0;
-      ret_value = true;
+        memcpy(response, connector->response_service, 5);
+        ret_value = true;
+    }
+    else
+    {
+        fprintf(stderr, "Command NOT executed in 20ms!\n");
     }
 
  get_out:
