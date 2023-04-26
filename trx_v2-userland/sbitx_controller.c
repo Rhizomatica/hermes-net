@@ -81,8 +81,18 @@ int cat_tx(void *arg)
             exit(EXIT_SUCCESS);
         }
 
-        // may be this should be set by sbitx after the apropriate call?
-        // conn->response_available = 1;
+#if 0 // pay attention in setting the correct audio input - MIC or LOOPBACK!!
+  if (tx_input){
+    sound_input(1);
+		tx_on(TX_SOFT);
+	}
+  else {
+    sound_input(0);
+		tx_off();
+	}
+#endif
+  // may be this should be set by sbitx after the apropriate call?
+  // conn->response_available = 1;
 
     }
 

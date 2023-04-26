@@ -680,8 +680,6 @@ void rx_process(int32_t *input_rx,  int32_t *input_mic,
 		mute_count--;
 	}
 
-	//push the data to any potential modem 
-	modem_rx(rx_list->mode, output_speaker, MAX_BINS/2);
 }
 
 
@@ -744,9 +742,12 @@ void tx_process(
 		if (r->mode == MODE_2TONE)
 			i_sample = (1.0 * (vfo_read(&tone_a) 
 										+ vfo_read(&tone_b))) / 50000000000.0;
-		else if (r->mode == MODE_CW || r->mode == MODE_CWR || r->mode == MODE_FT8)
-			i_sample = modem_next_sample(r->mode) / 3;
-		else 
+		else
+#if 0
+		  if (r->mode == MODE_CW || r->mode == MODE_CWR || r->mode == MODE_FT8)
+		    i_sample = modem_next_sample(r->mode) / 3;
+		  else
+#endif
 	  	i_sample = (1.0 * input_mic[j]) / 2000000000.0;
 	
 		//don't echo the voice modes

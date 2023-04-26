@@ -1928,7 +1928,6 @@ void set_operating_freq(int dial_freq, char *response){
 
 void abort_tx(){
 	set_field("#text_in", "");
-	modem_abort();
 	tx_off();
 }
 
@@ -2148,7 +2147,7 @@ int do_text(struct field *f, cairo_t *gfx, int event, int a, int b, int c){
 		}
 		else if ((a =='\n' || a == MIN_KEY_ENTER) && !strcmp(get_field("r1:mode")->value, "FT8") 
 			&& f->value[0] != COMMAND_ESCAPE){
-			ft8_tx(f->value, atoi(get_field("#tx_pitch")->value));
+		  // ft8_tx(f->value, atoi(get_field("#tx_pitch")->value));
 			f->value[0] = 0;		
 		}
 		else if (a >= ' ' && a <= 127 && strlen(f->value) < f->max-1){
@@ -2209,7 +2208,6 @@ int do_pitch(struct field *f, cairo_t *gfx, int event, int a, int b, int c){
 		}
 		sprintf(f->value, "%d", v);
 		update_field(f);
-		modem_set_pitch(v);
 		char buff[20], response[20];
 		sprintf(buff, "rx_pitch=%d", v);
 		sdr_request(buff, response);
@@ -2496,7 +2494,7 @@ int do_macro(struct field *f, cairo_t *gfx, int event, int a, int b, int c){
 		}
 
 		if (!strcmp(mode, "FT8") && strlen(buff)){
-			ft8_tx(buff, atoi(get_field("#tx_pitch")->value));
+		  // ft8_tx(buff, atoi(get_field("#tx_pitch")->value));
 			set_field("#text_in", "");
 			//write_console(FONT_LOG_TX, buff);
 		}
@@ -2614,8 +2612,6 @@ void tx_on(int trigger){
 void tx_off(){
 	char response[100];
 
-	modem_abort();
-
 	if (in_tx){
 		sdr_request("tx=off", response);	
 		in_tx = 0;
@@ -2625,7 +2621,8 @@ void tx_off(){
 		set_operating_freq(atoi(freq->value), response);
 		update_field(get_field("r1:freq"));
 	}
-	sound_input(0); //it is a low overhead call, might as well be sure
+	// we dont wanna change sound input here!
+	//	sound_input(0); //it is a low overhead call, might as well be sure
 	printf("TX off\n");
 }
 
@@ -2773,7 +2770,6 @@ static gboolean on_key_press (GtkWidget *widget, GdkEventKey *event, gpointer us
 	//key_modifier = event->keyval;
 	switch(event->keyval){
 		case MIN_KEY_ESC:
-			modem_abort();
 			tx_off();
 			call_wipe();
 			update_log_ed();
@@ -3375,7 +3371,6 @@ gboolean ui_tick(gpointer gook){
 
 		ticks = 0;
   }
-  modem_poll(mode_id(get_field("r1:mode")->value));
 	//update_field(get_field("#text_in")); //modem might have extracted some text
 
   hamlib_slice();
