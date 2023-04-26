@@ -36,6 +36,7 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include "i2cbb.h"
 #include "webserver.h"
 #include "logbook.h"
+#include "sbitx_controller.h"
 
 /* command  buffer for commands received from the remote */
 struct Queue q_remote_commands;
@@ -3502,7 +3503,10 @@ gboolean ui_tick(gpointer gook){
 			edit_field(f_focus, MIN_KEY_DOWN);
 		else
 			edit_field(f_focus, MIN_KEY_UP);
-	}	
+	}
+
+    // if command_available == 1.... execute the command
+
 	return TRUE;
 }
 
@@ -4283,6 +4287,8 @@ int main( int argc, char* argv[] ) {
 	printf("Reading rtc...");
 	//rtc_read();
 	printf("done!\n");
+
+    sbitx_controller();
 
 //	open_url("http://127.0.0.1:8080");
 //	execute_app("chromium-browser --log-leve=3 "
