@@ -1,4 +1,4 @@
-# Userland For HERMES Radio Transceiver Version 1
+# Userland For HERMES Radio Transceiver Version 2
 
 This repository contains the userland utils for the sBitx v2
 based Rhizomatica's HF radio transceiver version 2.
@@ -10,17 +10,17 @@ To compile the project, run "make", and to install, run "make install".
 
 ## Userland Details
 
-## ubitx_client commands
+## sbitx_client commands
 
 Syntax:
-* ubitx_client -c command [-a argument]
+* sbitx_client -c command [-a argument]
 
 Examples:
-* ubitx_client -c set_frequency -a 7100000
-* ubitx_client -c get_frequency
+* sbitx_client -c set_frequency -a 7100000
+* sbitx_client -c get_frequency
 
 Some commands need the argument parameter (-a), while some don't. Following is a
-list of all commands provided by the ubitx_client. The commands are followed
+list of all commands provided by the sbitx_client. The commands are followed
 by the argument type and possible responses.
 
 * ptt_on
@@ -136,15 +136,14 @@ by the argument type and possible responses.
 
 * radio_reset
   * No Argument
-  * Resp: OK (and the ubitx_controller exits immediately)
+  * Resp: OK (and the sbitx_controller exits immediately)
 
-## ubitx_controller commands
+## sbitx_controller commands
 
-Syntax:
-* ubitx_controller -s serial_device -r [icom,ubitx]
+No parameter required.
 
-Examples:
-* ubitx_client -c /dev/ttyUSB0 -r ubitx
+Example:
+* sbitx_client
 
 ## Author
 
