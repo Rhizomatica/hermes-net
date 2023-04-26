@@ -33,7 +33,6 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include "sdr_ui.h"
 #include "ini.h"
 #include "remote.h"
-#include "wsjtx.h"
 #include "i2cbb.h"
 #include "webserver.h"
 #include "logbook.h"
