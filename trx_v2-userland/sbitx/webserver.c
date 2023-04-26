@@ -160,11 +160,13 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 		printf("trying login with passkey : [%s]\n", value);
 		do_login(c, value);
 	}
+#if 0 // this does not allow connection to work...
 	else if (cookie == NULL || strcmp(cookie, session_cookie)){
 		web_respond(c, "quit expired");
 		printf("Cookie not found, closing socket\n");
 		c->is_draining = 1;
 	}
+#endif
 	else if (!strcmp(field, "spectrum"))
 		get_spectrum(c);
 	else if (!strcmp(field, "audio"))

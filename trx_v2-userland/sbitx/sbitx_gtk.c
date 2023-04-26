@@ -3412,8 +3412,10 @@ void ui_init(int argc, char *argv[]){
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-	screen_width = gdk_screen_width();
-	screen_height = gdk_screen_height();
+//	screen_width = gdk_screen_width();
+//	screen_height = gdk_screen_height();
+  screen_width = 800;
+  screen_height = 600;
 #pragma pop
 
 	q_init(&q_web, 1000);
@@ -3452,7 +3454,7 @@ void ui_init(int argc, char *argv[]){
 		font_table[i].height = (font_table[i].height * screen_height)/480;
 	scale_ui();	
   gtk_widget_show_all(window);
-	gtk_window_fullscreen(GTK_WINDOW(window));
+//	gtk_window_fullscreen(GTK_WINDOW(window));
 	focus_field(get_field("r1:volume"));
 	webserver_start();
 }

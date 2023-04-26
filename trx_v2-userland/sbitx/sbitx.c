@@ -1062,7 +1062,7 @@ void setup(){
   setup_oscillators();
 	q_init(&qremote, 8000);
 
-	modem_init();
+	// modem_init();
 
 	add_rx(7000000, MODE_LSB, -3000, -300);
 	add_tx(7000000, MODE_LSB, -3000, -300);
