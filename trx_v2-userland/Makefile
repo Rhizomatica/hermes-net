@@ -21,21 +21,33 @@
 CC=gcc
 prefix=/usr
 # CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector
-CFLAGS=-Wall -pedantic -std=gnu11 -pthread -fstack-protector
+CFLAGS=`pkg-config --cflags gtk+-3.0` -Wall -pedantic -std=gnu11 -pthread -fstack-protector
+LDFLAGS=`pkg-config --libs gtk+-3.0` -lwiringPi -lasound -lm -lfftw3 -lfftw3f -pthread -lncurses -lsqlite3
 
 all: sbitx_controller sbitx_client
 
-sbitx_controller: sbitx_controller.c shm.c sbitx_controller.h shm.h ../include/radio_cmds.h
-	$(CC) $(CFLAGS) sbitx_controller.c shm.c -o sbitx_controller
+SOURCES=vfo.c si570.c sbitx_sound.c fft_filter.c sbitx_gtk.c sbitx_utils.c i2cbb.c si5351v2.c ini.c queue.c logbook.c telnet.c macros.c remote.c mongoose.c webserver.c sbitx.c sbitx_controller.c shm.c
+
+OBJ=$(SOURCES:.c=.o)
+
+.c.o:
+	$(CC) -c $(CFLAGS) $< -o $@
+
+sbitx_controller: $(OBJ) sbitx_controller.h shm.h ../include/radio_cmds.h
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 sbitx_client: sbitx_client.c shm.c sbitx_io.c sbitx_controller.h sbitx_io.h shm.h help.h ../include/radio_cmds.h
 	$(CC) $(CFLAGS) sbitx_client.c sbitx_io.c shm.c -o sbitx_client
 
 .PHONY: clean install
 clean:
-	rm -f *.o sbitx_client sbitx_controller
+	rm -f *.o sbitx_client sbitx_controller /home/pi/sbitx/data/user_settings.ini /home/pi/sbitx/data/sbitx.db
 
 install: sbitx_controller sbitx_client
 	install -D sbitx_client $(DESTDIR)$(prefix)/bin/sbitx_client
 	install -D sbitx_controller $(DESTDIR)$(prefix)/bin/sbitx_controller
-	install -m 644 -D ../system_services/init/sbitx.service $(DESTDIR)/etc/systemd/system/sbitx.service
+	mkdir -p /home/pi/sbitx/audio
+	mkdir -p /home/pi/sbitx/data
+	mkdir -p /home/pi/sbitx/web
+	sqlite3 /home/pi/sbitx/data/sbitx.db < data/create_db.sql
+#	install -m 644 -D ../system_services/init/sbitx.service $(DESTDIR)/etc/systemd/system/sbitx.service
