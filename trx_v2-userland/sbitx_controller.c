@@ -81,7 +81,8 @@ int cat_tx(void *arg)
             exit(EXIT_SUCCESS);
         }
 
-        conn->response_available = 1;
+        // may be this should be set by sbitx after the apropriate call?
+        // conn->response_available = 1;
 
     }
 
