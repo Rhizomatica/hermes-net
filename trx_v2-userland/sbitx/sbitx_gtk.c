@@ -32,7 +32,6 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include "sound.h"
 #include "sdr_ui.h"
 #include "ini.h"
-#include "hamlib.h"
 #include "remote.h"
 #include "wsjtx.h"
 #include "i2cbb.h"
@@ -3117,18 +3116,6 @@ void hw_init(){
 	wiringPiISR(ENC2_B, INT_EDGE_BOTH, tuning_isr);
 }
 
-void hamlib_tx(int tx_input){
-  if (tx_input){
-    sound_input(1);
-		tx_on(TX_SOFT);
-	}
-  else {
-    sound_input(0);
-		tx_off();
-	}
-}
-
-
 int get_cw_delay(){
 	return atoi(get_field("#cwdelay")->value);
 }
@@ -3373,8 +3360,7 @@ gboolean ui_tick(gpointer gook){
   }
 	//update_field(get_field("#text_in")); //modem might have extracted some text
 
-  hamlib_slice();
-	remote_slice();
+  	remote_slice();
 	save_user_settings(0);
 
  
@@ -4177,18 +4163,17 @@ int main( int argc, char* argv[] ) {
 
 	// you don't want to save the recently loaded settings
 	settings_updated = 0;
-  hamlib_start();
-	remote_start();
+  	remote_start();
 
 	printf("Reading rtc...");
 	//rtc_read();
 	printf("done!\n");
 
-	open_url("http://127.0.0.1:8080");
+//	open_url("http://127.0.0.1:8080");
 //	execute_app("chromium-browser --log-leve=3 "
 //	"--enable-features=OverlayScrollbar http://127.0.0.1:8080"
 //	"  &>/dev/null &");
-  gtk_main();
+    gtk_main();
   
   return 0;
 }

@@ -6,7 +6,7 @@ LDFLAGS=`pkg-config --libs gtk+-3.0` -lwiringPi -lasound -lm -lfftw3 -lfftw3f -p
 
 all: sbitx
 
-SOURCES=vfo.c si570.c sbitx_sound.c fft_filter.c sbitx_gtk.c sbitx_utils.c i2cbb.c si5351v2.c ini.c hamlib.c queue.c logbook.c telnet.c macros.c remote.c mongoose.c webserver.c sbitx.c
+SOURCES=vfo.c si570.c sbitx_sound.c fft_filter.c sbitx_gtk.c sbitx_utils.c i2cbb.c si5351v2.c ini.c queue.c logbook.c telnet.c macros.c remote.c mongoose.c webserver.c sbitx.c
 
 OBJ=$(SOURCES:.c=.o)
 
