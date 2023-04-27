@@ -37,6 +37,7 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include "webserver.h"
 #include "logbook.h"
 #include "sbitx_controller.h"
+#include "../include/radio_cmds.h"
 
 extern controller_conn *tmp_connector;
 
@@ -1151,7 +1152,7 @@ static int mode_id(char *mode_str){
 }
 
 static void save_user_settings(int forced){
-	static int last_save_at = 0;.
+	static int last_save_at = 0;
 	char file_path[200];	//dangerous, find the MAX_PATH and replace 200 with it
 
 	//attempt to save settings only if it has been 30 seconds since the 
