@@ -143,7 +143,7 @@ by the argument type and possible responses.
 No parameter required.
 
 Example:
-* sbitx_client
+* sbitx_controller
 
 ## Author
 
