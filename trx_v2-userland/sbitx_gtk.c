@@ -38,6 +38,8 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include "logbook.h"
 #include "sbitx_controller.h"
 
+extern controller_conn *tmp_connector;
+
 /* command  buffer for commands received from the remote */
 struct Queue q_remote_commands;
 struct Queue q_tx_text;
@@ -1149,7 +1151,7 @@ static int mode_id(char *mode_str){
 }
 
 static void save_user_settings(int forced){
-	static int last_save_at = 0;
+	static int last_save_at = 0;.
 	char file_path[200];	//dangerous, find the MAX_PATH and replace 200 with it
 
 	//attempt to save settings only if it has been 30 seconds since the 
@@ -3358,10 +3360,248 @@ void web_get_spectrum(char *buff){
 	return;
 }
 
+void processCATCommand(char* cmd, char *response)
+{
+
+    switch(cmd[4]){
+
+    case CMD_PTT_ON: // PTT On
+#if 0 // TODO
+        if (is_swr_protect_enabled)
+        {
+            response[0] = CMD_ALERT_PROTECTION_ON;
+        }
+        else
+#endif
+        if (in_tx == 0)
+        {
+            sound_input(1);
+            tx_on(TX_SOFT);
+            response[0] = CMD_RESP_PTT_ON_ACK;
+        }
+        else
+        {
+            response[0] = CMD_RESP_PTT_ON_NACK;
+        }
+        break;
+
+    case CMD_PTT_OFF: // PTT OFF
+#if 0 // TODO
+        if (is_swr_protect_enabled)
+        {
+            response[0] = CMD_ALERT_PROTECTION_ON;
+        }
+        else
+#endif
+        if (in_tx == 1)
+        {
+            sound_input(0);
+            tx_off();
+            response[0] = CMD_RESP_PTT_OFF_ACK;
+        }
+        else
+        {
+            response[0] = CMD_RESP_PTT_OFF_NACK;
+        }
+        break;
+#if 0
+    case CMD_RESET_PROTECTION: // RESET PROTECTION
+        response[0] = CMD_RESP_RESET_PROTECTION_ACK;
+        triggerProtectionReset();
+        Serial.write(response,1);
+        break;
+
+    case CMD_GET_FREQ: // GET FREQUENCY
+        response[0] = CMD_RESP_GET_FREQ_ACK;
+        memcpy(response+1, &frequency, 4);
+        Serial.write(response,5);
+        break;
+
+    case CMD_SET_FREQ: // SET FREQUENCY
+        memcpy(&frequency, cmd, 4);
+        setFrequency(frequency);
+        saveVFOs();
+        response[0] = CMD_RESP_SET_FREQ_ACK;
+        Serial.write(response,1);
+        break;
+
+    case CMD_SET_MODE: // set mode
+        if (cmd[0] == 0x00 || cmd[0] == 0x03)
+            isUSB = 0;
+        else
+            isUSB = 1;
+
+        saveVFOs();
+        setFrequency(frequency);
+
+        response[0] = CMD_RESP_SET_MODE_ACK;
+        Serial.write(response, 1);
+        break;
+
+    case CMD_GET_MODE: // GET SSB MODE
+        if (isUSB)
+            response[0] = CMD_RESP_GET_MODE_USB;
+        else
+            response[0] = CMD_RESP_GET_MODE_LSB;
+        Serial.write(response,1);
+        break;
+
+    case CMD_GET_TXRX_STATUS: // GET TX/RX STATUS
+        if (inTx)
+            response[0] = CMD_RESP_GET_TXRX_INTX;
+        else
+            response[0] = CMD_RESP_GET_TXRX_INRX;
+        Serial.write(response,1);
+        break;
+
+    case CMD_GET_PROTECTION_STATUS: // GET PROTECTION STATUS
+        if (is_swr_protect_enabled)
+            response[0] = CMD_RESP_GET_PROTECTION_ON;
+        else
+            response[0] = CMD_RESP_GET_PROTECTION_OFF;
+        Serial.write(response,1);
+        break;
+
+    case CMD_GET_MASTERCAL: // GET MASTER CAL
+        response[0] = CMD_RESP_GET_MASTERCAL_ACK;
+        memcpy(response+1, &calibration, 4);
+        Serial.write(response,5);
+        break;
+
+    case CMD_SET_MASTERCAL: // SET MASTER CAL
+        memcpy(&calibration, cmd, 4);
+        setMasterCal(calibration);
+        response[0] = CMD_RESP_SET_MASTERCAL_ACK;
+        Serial.write(response,1);
+        break;
+
+    case CMD_GET_BFO: // GET BFO
+        response[0] = CMD_RESP_GET_BFO_ACK;
+        memcpy(response+1, &usbCarrier, 4);
+        Serial.write(response,5);
+        break;
+
+    case CMD_SET_BFO: // SET BFO
+        memcpy(&usbCarrier, cmd, 4);
+        setBFO(usbCarrier);
+        response[0] = CMD_RESP_SET_BFO_ACK;
+        Serial.write(response,1);
+        break;
+
+    case CMD_GET_FWD: // GET FWD
+        response[0] = CMD_RESP_GET_FWD_ACK;
+        memcpy(response+1, &forward, 2);
+        Serial.write(response,5);
+        break;
+
+    case CMD_GET_REF: // GET REF
+        response[0] = CMD_RESP_GET_REF_ACK;
+        memcpy(response+1, &reflected, 2);
+        Serial.write(response,5);
+        break;
+
+    case CMD_GET_LED_STATUS: // GET LED STATUS
+        if (led_status)
+            response[0] = CMD_RESP_GET_LED_STATUS_ON;
+        else
+            response[0] = CMD_RESP_GET_LED_STATUS_OFF;
+        Serial.write(response,1);
+        break;
+
+    case CMD_SET_LED_STATUS: // SET LED STATUS
+        setLed(cmd[0]);
+        response[0] = CMD_RESP_SET_LED_STATUS_ACK;
+        Serial.write(response,1);
+        break;
+
+    case CMD_GET_CONNECTED_STATUS: // GET CONNECTED STATUS
+        if (connected_status)
+            response[0] = CMD_RESP_GET_CONNECTED_STATUS_ON;
+        else
+            response[0] = CMD_RESP_GET_CONNECTED_STATUS_OFF;
+        Serial.write(response,1);
+      break;
+
+    case CMD_SET_CONNECTED_STATUS: // SET CONNECTED STATUS
+        setConnected(cmd[0]);
+        response[0] = CMD_RESP_SET_CONNECTED_STATUS_ACK;
+        Serial.write(response,1);
+        break;
+
+    case CMD_GET_SERIAL: // GET SERIAL NUMBER
+        response[0] = CMD_RESP_GET_SERIAL_ACK;
+        memcpy(response+1, &serial, 4);
+        Serial.write(response,5);
+      break;
+
+    case CMD_SET_SERIAL: // SET SERIAL NUMBER
+        memcpy(&serial, cmd, 4);
+        setSerial(serial);
+        response[0] = CMD_RESP_SET_SERIAL_ACK;
+        Serial.write(response,1);
+        break;
+
+    case CMD_SET_REF_THRESHOLD: // SET REF THRESHOLD
+        memcpy(&reflected_threshold, cmd, 2);
+        save_reflected_threshold();
+        response[0] = CMD_RESP_SET_REF_THRESHOLD_ACK;
+        Serial.write(response,1);
+        break;
+
+    case CMD_GET_REF_THRESHOLD: // GET REF THRESHOLD
+        response[0] = CMD_RESP_GET_REF_THRESHOLD_ACK;
+        memcpy(response+1, &reflected_threshold, 2);
+        Serial.write(response,5);
+        break;
+
+    case CMD_GPS_CALIBRATE: // CMD_GPS_CALIBRATE
+        response[0] = CMD_RESP_GPS_NOT_PRESENT;
+        break;
+
+    case CMD_GET_STATUS: // CMD_GET_STATUS
+        response[0] = CMD_RESP_GET_STATUS_ACK;
+        memcpy(response+1, &gps_operation_result, 4);
+        Serial.write(response,5);
+        break;
+
+    case CMD_SET_RADIO_DEFAULTS: // SET RADIO DEFAULTS
+        set_radio_defaults();
+        response[0] = CMD_RESP_SET_RADIO_DEFAULTS_ACK;
+        Serial.write(response,1);
+        break;
+
+    case CMD_RESTORE_RADIO_DEFAULTS: // RESTORE RADIO DEFAULTS
+        restore_radio_defaults();
+        response[0] = CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK;
+        Serial.write(response,1);
+        break;
+
+    case CMD_RADIO_RESET: // RADIO RESET
+        resetFunc();
+        break;
+#endif
+    default:
+        response[0] = CMD_RESP_WRONG_COMMAND;
+    }
+
+}
+
+
 gboolean ui_tick(gpointer gook){
 	int static ticks = 0;
+    uint8_t srv_cmd[5];
+    uint8_t response[5];
 
 	ticks++;
+
+    if (tmp_connector->command_available == 1)
+    {
+
+        processCATCommand(connector->service_command, connector->response_service)
+        // exec the commands here..
+
+        tmp_connector->command_available = 0;
+    }
 
 	while (q_length(&q_remote_commands) > 0){
 		//read each command until the 
@@ -3505,7 +3745,6 @@ gboolean ui_tick(gpointer gook){
 			edit_field(f_focus, MIN_KEY_UP);
 	}
 
-    // if command_available == 1.... execute the command
 
 	return TRUE;
 }

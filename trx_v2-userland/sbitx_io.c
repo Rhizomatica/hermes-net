@@ -46,7 +46,7 @@ bool radio_cmd(controller_conn *connector, uint8_t *srv_cmd, uint8_t *response)
     if (srv_cmd[4] == CMD_RADIO_RESET)
         goto get_out;
 
-    // we wait max of 20ms
+    // we wait max of 20ms... worse case should be 1ms is software is running ok
     int tries = 0;
     while (connector->command_available == 1 && tries < 100)
     {
@@ -61,7 +61,8 @@ bool radio_cmd(controller_conn *connector, uint8_t *srv_cmd, uint8_t *response)
     }
     else
     {
-        fprintf(stderr, "Command NOT executed in 20ms!\n");
+        connector->command_available = 0;
+        // fprintf(stderr, "Command NOT executed in 20ms! Dropping it!\n");
     }
 
  get_out:

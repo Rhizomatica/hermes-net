@@ -44,16 +44,17 @@
 
 static bool running;
 
+controller_conn *tmp_connector = NULL;
+extern void gtk_main_quit ();
 
 void finish(int s){
     fprintf(stderr, "\nExiting...\n");
 
     running = false;
-
+    gtk_main_quit ();
     sleep(1);
 
     // do some house cleaning here.... or somewhere else?
-
     exit(EXIT_SUCCESS);
 }
 
@@ -81,16 +82,6 @@ int cat_tx(void *arg)
             exit(EXIT_SUCCESS);
         }
 
-#if 0 // pay attention in setting the correct audio input - MIC or LOOPBACK!!
-  if (tx_input){
-    sound_input(1);
-		tx_on(TX_SOFT);
-	}
-  else {
-    sound_input(0);
-		tx_off();
-	}
-#endif
   // may be this should be set by sbitx after the apropriate call?
   // conn->command_available = 1;
 
@@ -180,6 +171,8 @@ void sbitx_controller()
     connector = shm_attach(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn));
 
     initialize_message(connector);
+
+    tmp_connector = connector;
 
     signal (SIGINT, finish);
     signal (SIGQUIT, finish);

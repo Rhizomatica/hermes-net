@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
 
     if (shm_is_created(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn)) == false)
     {
-        fprintf(stderr, "Connector SHM not created. Is ubitx_controller running?\n");
+        fprintf(stderr, "Connector SHM not created. Is sbitx_controller running?\n");
         return EXIT_FAILURE;
     }
 
