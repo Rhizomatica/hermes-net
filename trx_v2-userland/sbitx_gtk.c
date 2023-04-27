@@ -3598,7 +3598,7 @@ gboolean ui_tick(gpointer gook){
     if (tmp_connector->command_available == 1)
     {
 
-        processCATCommand(tmp_connector->service_command, tmp_connector->response_service)
+        processCATCommand(tmp_connector->service_command, tmp_connector->response_service);
         // exec the commands here..
 
         tmp_connector->command_available = 0;
