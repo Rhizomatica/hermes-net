@@ -3394,7 +3394,7 @@ void processCATCommand(char* cmd, char *response)
         }
         else
 #endif
-        if (in_tx == 1)
+        if (in_tx != 0)
         {
             sound_input(0);
             tx_off();
