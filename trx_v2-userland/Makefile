@@ -49,5 +49,5 @@ install: sbitx_controller sbitx_client
 	mkdir -p /home/pi/sbitx/audio
 	mkdir -p /home/pi/sbitx/data
 	mkdir -p /home/pi/sbitx/web
-	sqlite3 /home/pi/sbitx/data/sbitx.db < data/create_db.sql
+	sqlite3 /home/pi/sbitx/data/sbitx.db < /home/pi/sbitx/data/create_db.sql
 #	install -m 644 -D ../system_services/init/sbitx.service $(DESTDIR)/etc/systemd/system/sbitx.service
