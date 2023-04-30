@@ -2683,10 +2683,10 @@ void tx_off(){
 		struct field *freq = get_field("r1:freq");
 		set_operating_freq(atoi(freq->value), response);
 		update_field(get_field("r1:freq"));
+        printf("TX off\n");
 	}
 	// we dont wanna change sound input here!
 	//	sound_input(0); //it is a low overhead call, might as well be sure
-	printf("TX off\n");
 }
 
 
