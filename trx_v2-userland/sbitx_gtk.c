@@ -3398,6 +3398,11 @@ void web_get_spectrum(char *buff){
 
 void processCATCommand(char* cmd, char *response)
 {
+    uint32_t frequency;
+    char command[64];
+    char rsp[64];
+
+    memset(response, 0, 5);
 
     switch(cmd[4]){
 
@@ -3440,6 +3445,43 @@ void processCATCommand(char* cmd, char *response)
             response[0] = CMD_RESP_PTT_OFF_NACK;
         }
         break;
+    case CMD_GET_FREQ: // GET FREQUENCY
+        response[0] = CMD_RESP_GET_FREQ_ACK;
+        frequency = (uint32_t) get_freq();
+        memcpy(response+1, &frequency, 4);
+        break;
+
+    case CMD_SET_FREQ: // SET FREQUENCY
+        memcpy(&frequency, cmd, 4);
+        sprintf(command, "r1:freq=%u", frequency);
+        sdr_request(command, rsp);
+        response[0] = CMD_RESP_SET_FREQ_ACK;
+        break;
+
+    case CMD_GET_TXRX_STATUS: // GET TX/RX STATUS
+        if (in_tx)
+            response[0] = CMD_RESP_GET_TXRX_INTX;
+        else
+            response[0] = CMD_RESP_GET_TXRX_INRX;
+        break;
+
+    case CMD_SET_MODE: // set mode
+        if (cmd[0] == 0x00 || cmd[0] == 0x03)
+            sprintf(command, "r1:freq=USB");
+        else
+            sprintf(command, "r1:freq=LSB");
+
+        sdr_request(command, rsp);
+        response[0] = CMD_RESP_SET_MODE_ACK;
+        break;
+
+    case CMD_GET_MODE: // GET SSB MODE
+        if (rx_list->mode == MODE_USB)
+            response[0] = CMD_RESP_GET_MODE_USB;
+        else
+            response[0] = CMD_RESP_GET_MODE_LSB;
+        break;
+
 #if 0
     case CMD_RESET_PROTECTION: // RESET PROTECTION
         response[0] = CMD_RESP_RESET_PROTECTION_ACK;
@@ -3447,48 +3489,7 @@ void processCATCommand(char* cmd, char *response)
         Serial.write(response,1);
         break;
 
-    case CMD_GET_FREQ: // GET FREQUENCY
-        response[0] = CMD_RESP_GET_FREQ_ACK;
-        memcpy(response+1, &frequency, 4);
-        Serial.write(response,5);
-        break;
 
-    case CMD_SET_FREQ: // SET FREQUENCY
-        memcpy(&frequency, cmd, 4);
-        setFrequency(frequency);
-        saveVFOs();
-        response[0] = CMD_RESP_SET_FREQ_ACK;
-        Serial.write(response,1);
-        break;
-
-    case CMD_SET_MODE: // set mode
-        if (cmd[0] == 0x00 || cmd[0] == 0x03)
-            isUSB = 0;
-        else
-            isUSB = 1;
-
-        saveVFOs();
-        setFrequency(frequency);
-
-        response[0] = CMD_RESP_SET_MODE_ACK;
-        Serial.write(response, 1);
-        break;
-
-    case CMD_GET_MODE: // GET SSB MODE
-        if (isUSB)
-            response[0] = CMD_RESP_GET_MODE_USB;
-        else
-            response[0] = CMD_RESP_GET_MODE_LSB;
-        Serial.write(response,1);
-        break;
-
-    case CMD_GET_TXRX_STATUS: // GET TX/RX STATUS
-        if (inTx)
-            response[0] = CMD_RESP_GET_TXRX_INTX;
-        else
-            response[0] = CMD_RESP_GET_TXRX_INRX;
-        Serial.write(response,1);
-        break;
 
     case CMD_GET_PROTECTION_STATUS: // GET PROTECTION STATUS
         if (is_swr_protect_enabled)
