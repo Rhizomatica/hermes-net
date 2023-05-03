@@ -3454,7 +3454,9 @@ void processCATCommand(char* cmd, char *response)
     case CMD_SET_FREQ: // SET FREQUENCY
         memcpy(&frequency, cmd, 4);
         printf(command, "%u", frequency);
-        set_field("r1:freq", command);
+//        set_field("r1:freq", command);
+
+        set_operating_freq(frequency, rsp);
 
         response[0] = CMD_RESP_SET_FREQ_ACK;
         break;
