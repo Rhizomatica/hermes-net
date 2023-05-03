@@ -3453,8 +3453,9 @@ void processCATCommand(char* cmd, char *response)
 
     case CMD_SET_FREQ: // SET FREQUENCY
         memcpy(&frequency, cmd, 4);
-        sprintf(command, "r1:freq=%u", frequency);
-        sdr_request(command, rsp);
+        printf(command, "%u", frequency);
+        set_field("r1:freq", command);
+
         response[0] = CMD_RESP_SET_FREQ_ACK;
         break;
 
@@ -3467,11 +3468,10 @@ void processCATCommand(char* cmd, char *response)
 
     case CMD_SET_MODE: // set mode
         if (cmd[0] == 0x00 || cmd[0] == 0x03)
-            sprintf(command, "r1:freq=USB");
+            set_mode("USB");
         else
-            sprintf(command, "r1:freq=LSB");
+            set_mode("LSB");
 
-        sdr_request(command, rsp);
         response[0] = CMD_RESP_SET_MODE_ACK;
         break;
 
