@@ -3475,16 +3475,13 @@ void processCATCommand(char* cmd, char *response)
         {
             do_cmd("r1:mode=LSB");
             set_field("r1:mode", "LSB");
-            set_mode("LSB");
         }
         else
         {
             do_cmd("r1:mode=USB");
             set_field("r1:mode", "USB");
-            set_mode("USB");
         }
 
-        settings_updated = 1;
         response[0] = CMD_RESP_SET_MODE_ACK;
         break;
 
