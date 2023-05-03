@@ -3263,7 +3263,7 @@ void set_bandwidth(int hz){
 			break;
 		case MODE_LSB:
 		case MODE_USB:
-			low = 300;
+			low = 50;
 			high = low + hz;
 			sprintf(bw_str, "%d", high - low);
 			set_field("#bw_voice", bw_str);
@@ -3473,15 +3473,18 @@ void processCATCommand(char* cmd, char *response)
     case CMD_SET_MODE: // set mode
         if (cmd[0] == 0x00 || cmd[0] == 0x03)
         {
-            do_cmd("r1:mode=USB");
-            set_field("r1:mode", "USB");
+            do_cmd("r1:mode=LSB");
+            set_field("r1:mode", "LSB");
+            set_mode("LSB");
         }
         else
         {
-            do_cmd("r1:mode=LSB");
-            set_field("r1:mode", "LSB");
+            do_cmd("r1:mode=USB");
+            set_field("r1:mode", "USB");
+            set_mode("USB");
         }
 
+        settings_updated = 1;
         response[0] = CMD_RESP_SET_MODE_ACK;
         break;
 
