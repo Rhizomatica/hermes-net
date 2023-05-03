@@ -3453,10 +3453,8 @@ void processCATCommand(char* cmd, char *response)
 
     case CMD_SET_FREQ: // SET FREQUENCY
         memcpy(&frequency, cmd, 4);
-        printf(command, "%u", frequency);
-//        set_field("r1:freq", command);
-
-        set_operating_freq(frequency, rsp);
+        sprintf(command, "r1:freq=%u", frequency);
+        do_cmd(command);
 
         response[0] = CMD_RESP_SET_FREQ_ACK;
         break;
@@ -3470,9 +3468,9 @@ void processCATCommand(char* cmd, char *response)
 
     case CMD_SET_MODE: // set mode
         if (cmd[0] == 0x00 || cmd[0] == 0x03)
-            set_mode("USB");
+            do_cmd("r1:mode=USB");
         else
-            set_mode("LSB");
+            do_cmd("r1:mode=LSB");
 
         response[0] = CMD_RESP_SET_MODE_ACK;
         break;
