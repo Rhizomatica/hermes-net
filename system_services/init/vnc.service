@@ -1,6 +1,6 @@
 [Unit]
 Description=vnc server
-After=syslog.target network.target
+After=syslog.target
 
 [Service]
 Type=forking
