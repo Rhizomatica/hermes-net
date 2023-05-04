@@ -17,7 +17,8 @@
 //
 // SPDX-License-Identifier: GPL-2.0-only or commercial
 
-#include "mongoose.h"
+#ifndef HAVE_MONGOOSE_H__
+#define HAVE_MONGOOSE_H__
 
 #ifdef MG_ENABLE_LINES
 #line 1 "src/base64.c"
@@ -8410,3 +8411,5 @@ bool mg_send(struct mg_connection *c, const void *buf, size_t len) {
   return res;
 }
 #endif  // MG_ENABLE_TCPIP
+
+#endif
