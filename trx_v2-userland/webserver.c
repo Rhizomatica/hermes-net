@@ -11,7 +11,7 @@
 #include "sdr_ui.h"
 #include "logbook.h"
 
-static const char *s_listen_on = "ws://0.0.0.0:8080";
+static const char *s_listen_on = "wss://0.0.0.0:8080";
 static char s_web_root[1000];
 static char session_cookie[100];
 static struct mg_mgr mgr;  // Event manager
@@ -189,7 +189,14 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 //   /rest - respond with JSON string {"result": 123}
 //   any other URI serves static files from s_web_root
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
-  if (ev == MG_EV_OPEN) {
+    if (ev == MG_EV_ACCEPT) {
+        struct mg_tls_opts opts = {
+            .cert = "cert.pem",    // Certificate file
+            .certkey = "key.pem",  // Private key file
+        };
+        mg_tls_init(c, &opts);
+    }
+    else if (ev == MG_EV_OPEN) {
     // c->is_hexdumping = 1;
 	} else if (ev == MG_EV_ERROR || ev == MG_EV_CLOSE){
 //		if (ev == MG_EV_ERROR)

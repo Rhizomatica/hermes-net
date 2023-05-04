@@ -21,8 +21,8 @@
 CC=gcc
 prefix=/usr
 # CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector
-CFLAGS=`pkg-config --cflags gtk+-3.0` -Wall -pedantic -std=gnu11 -pthread -fstack-protector
-LDFLAGS=`pkg-config --libs gtk+-3.0` -lwiringPi -lasound -lm -lfftw3 -lfftw3f -pthread -lncurses -lsqlite3
+CFLAGS=`pkg-config --cflags gtk+-3.0` -Wall -pedantic -std=gnu11 -pthread -fstack-protector -DMG_ENABLE_OPENSSL
+LDFLAGS=`pkg-config --libs gtk+-3.0` -lwiringPi -lasound -lm -lfftw3 -lfftw3f -pthread -lncurses -lsqlite3 -lssl -lcrypto
 
 all: sbitx_controller sbitx_client
 
