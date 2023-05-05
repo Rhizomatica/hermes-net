@@ -587,7 +587,7 @@ function do_login() {
 		return false;
 	}
 	log("creating a new socket, if any");
-	socket = new WebSocket("ws://" + location.host + "/websocket");
+	socket = new WebSocket("wss://" + location.host + "/websocket");
 	log("created the new socket");
 	socket.onopen = on_open;
 	socket.onmessage = on_message;
