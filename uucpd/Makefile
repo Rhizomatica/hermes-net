@@ -51,4 +51,4 @@ doc:
 	doxygen doxyfile
 
 clean:
-	rm -rf uuardopd uuport *.o ../trx_v1-userland/ubitx_io.o *~ doc
+	rm -rf uuardopd uuport *.o $(EXTRA_OBJ) *~ doc
