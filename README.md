@@ -48,7 +48,9 @@ Rhizomatica's v1 µbitx-based radio transceiver control utils.
 
 ## trx_v2-userland
 
-Rhizomatica's v2 sbitx-based radio transceiver control utils. 
+Rhizomatica's v2 sbitx-based radio transceiver control utils. Compile with:
+
+* IS_SBITX=1 make trx_v2-userland
 
 ## uucpd
 

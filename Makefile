@@ -18,12 +18,11 @@
 # Boston, MA 02110-1301, USA.
 #
 
-.PHONY: clean install trx_v1-firmware trx_v1-userland uuxcomp uucpd
+.PHONY: clean install trx_v1-firmware trx_v1-userland trx_v2-userland uuxcomp uucpd
 
 prefix=/usr
 
 all: trx_v1-userland uuxcomp uucpd
-
 
 trx_v1-firmware:
 	$(MAKE) -C trx_v1-firmware
@@ -31,6 +30,8 @@ trx_v1-firmware:
 ispload: trx_v1-firmware
 	$(MAKE) -C trx_v1-firmware ispload
 
+trx_v2-userland:
+	$(MAKE) -C trx_v2-userland
 
 trx_v1-userland:
 	$(MAKE) -C trx_v1-userland
@@ -64,6 +65,7 @@ install_gateway: install
 	install system_scripts/uucpd/caller.sh $(DESTDIR)$(prefix)/bin
 
 clean:
+	$(MAKE) -C trx_v2-userland clean
 	$(MAKE) -C trx_v1-userland clean
 	$(MAKE) -C trx_v1-firmware clean
 	$(MAKE) -C uuxcomp clean

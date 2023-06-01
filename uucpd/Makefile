@@ -23,14 +23,20 @@ prefix=/usr
 CC=gcc
 CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector
 
+ifeq ($(IS_SBITX), 1)
+EXTRA_OBJ=../trx_v2-userland/sbitx_io.o
+else
+EXTRA_OBJ=../trx_v1-userland/ubitx_io.o
+endif
 
 all: uuardopd uuport
 
 %.o : %.c %.h
 	gcc -c $(CFLAGS) $< -o $@
 
-uuardopd: ardop.o shm.o common.o net.o circular_buffer.o uuardopd.o call_uucico.o serial.o vara.o ../trx_v1-userland/ubitx_io.o
+uuardopd: ardop.o shm.o common.o net.o circular_buffer.o uuardopd.o call_uucico.o serial.o vara.o $(EXTRA_OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
+
 
 uuport: uuport.o shm.o circular_buffer.o
 	$(CC) $(CFLAGS) -o $@ $^
