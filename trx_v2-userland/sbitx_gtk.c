@@ -1402,7 +1402,7 @@ void init_waterfall(){
 
 
 void draw_waterfall(struct field *f, cairo_t *gfx){
-
+    return;
 	memmove(waterfall_map + f->width * 3, waterfall_map, 
 		f->width * (f->height - 1) * 3);
 
