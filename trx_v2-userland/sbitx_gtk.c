@@ -1318,6 +1318,7 @@ void sdr_modulation_update(int32_t *samples, int count, double scale_up){
 
 void draw_modulation(struct field *f, cairo_t *gfx){
 
+    return;
 	int y, sub_division, i, grid_height;
 	long	freq, freq_div;
 	char	freq_text[20];
@@ -1481,6 +1482,8 @@ void draw_spectrum(struct field *f_spectrum, cairo_t *gfx){
 	long	freq, freq_div;
 	char	freq_text[20];
 
+    return;
+
 	if (in_tx){
 		draw_modulation(f_spectrum, gfx);
 		return;
@@ -1615,12 +1618,13 @@ void draw_spectrum(struct field *f_spectrum, cairo_t *gfx){
 }
 
 int waterfall_fn(struct field *f, cairo_t *gfx, int event, int a, int b){
-		if(f->fn(f, gfx, FIELD_DRAW, -1, -1, 0))
-	switch(FIELD_DRAW){
+    return;
+    if(f->fn(f, gfx, FIELD_DRAW, -1, -1, 0))
+        switch(FIELD_DRAW){
 		case FIELD_DRAW:
 			draw_waterfall(f, gfx);
 			break;
-	}
+        }
 }
 
 char* freq_with_separators(char* freq_str){

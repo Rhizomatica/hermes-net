@@ -595,12 +595,12 @@ void rx_process(int32_t *input_rx,  int32_t *input_mic,
 	// NOTE: the spectrum update has nothing to do with the actual
 	// signal processing. If you are not showing the spectrum or the
 	// waterfall, you can skip these steps
-	for (i = 0; i < MAX_BINS; i++)
-			__real__ fft_in[i] *= spectrum_window[i];
-	my_fftw_execute(plan_spectrum);
+	//for (i = 0; i < MAX_BINS; i++)
+	//		__real__ fft_in[i] *= spectrum_window[i];
+	//my_fftw_execute(plan_spectrum);
 
 	// the spectrum display is updated
-	spectrum_update();
+	// spectrum_update();
 
 
 	// ... back to the actual processing, after spectrum update  
