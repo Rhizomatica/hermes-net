@@ -423,8 +423,8 @@ void do_cmd(char *cmd);
 void cmd_exec(char *cmd);
 
 
-int do_spectrum(struct field *f, cairo_t *gfx, int event, int a, int b, int c);
-int do_waterfall(struct field *f, cairo_t *gfx, int event, int a, int b, int c);
+// int do_spectrum(struct field *f, cairo_t *gfx, int event, int a, int b, int c);
+// int do_waterfall(struct field *f, cairo_t *gfx, int event, int a, int b, int c);
 int do_tuning(struct field *f, cairo_t *gfx, int event, int a, int b, int c);
 int do_text(struct field *f, cairo_t *gfx, int event, int a, int b, int c);
 int do_status(struct field *f, cairo_t *gfx, int event, int a, int b, int c);
@@ -498,12 +498,12 @@ struct field main_controls[] = {
 	{"#span", NULL, 500, 0 ,50, 50, "SPAN", 1, "25K", FIELD_SELECTION, FONT_FIELD_VALUE, 
 		"25K/10K/6K/2.5K", 0,0,0},
 
-	{"spectrum", do_spectrum, 400, 80, 400, 100, "Spectrum ", 70, "7000 KHz", FIELD_STATIC, FONT_SMALL, 
-		"", 0,0,0},  
+//	{"spectrum", do_spectrum, 400, 80, 400, 100, "Spectrum ", 70, "7000 KHz", FIELD_STATIC, FONT_SMALL,
+//		"", 0,0,0},
 	{"#status", do_status, 400, 51, 400, 29, "STATUS", 70, "7000 KHz", FIELD_STATIC, FONT_SMALL, 
 		"status", 0,0,0},  
-	{"waterfall", do_waterfall, 400, 180 , 400, 149, "Waterfall ", 70, "7000 KHz", FIELD_STATIC, FONT_SMALL, 
-		"", 0,0,0},
+//	{"waterfall", do_waterfall, 400, 180 , 400, 149, "Waterfall ", 70, "7000 KHz", FIELD_STATIC, FONT_SMALL,
+//		"", 0,0,0},
 	{"#console", do_console, 0, 0 , 400, 320, "CONSOLE", 70, "console box", FIELD_CONSOLE, FONT_LOG, 
 		"nothing valuable", 0,0,0},
 	{"#log_ed", NULL, 0, 320, 400, 20, "", 70, "", FIELD_STATIC, FONT_LOG, 
@@ -1289,80 +1289,7 @@ static int user_settings_handler(void* user, const char* section,
 }
 /* rendering of the fields */
 
-// mod disiplay holds the tx modulation time domain envelope
-// even values are the maximum and the even values are minimum
 
-#define MOD_MAX 800
-int mod_display[MOD_MAX];
-int mod_display_index = 0;
-
-void sdr_modulation_update(int32_t *samples, int count, double scale_up){
-	double min=0, max=0;
-
-	for (int i = 0; i < count; i++){
-		if (i % 48 == 0 && i > 0){
-			if (mod_display_index >= MOD_MAX)
-				mod_display_index = 0;
-			mod_display[mod_display_index++] = (min / 40000000.0) / scale_up;
-			mod_display[mod_display_index++] = (max / 40000000.0) / scale_up;
-			min = 0x7fffffff;
-			max = -0x7fffffff;
-		}
-		if (*samples < min)
-			min = *samples;
-		if (*samples > max)
-			max = *samples;
-		samples++;
-	}
-}
-
-void draw_modulation(struct field *f, cairo_t *gfx){
-
-    return;
-	int y, sub_division, i, grid_height;
-	long	freq, freq_div;
-	char	freq_text[20];
-
-//	f = get_field("spectrum");
-	sub_division = f->width / 10;
-	grid_height = f->height - 10;
-
-	// clear the spectrum	
-	fill_rect(gfx, f->x,f->y, f->width, f->height, SPECTRUM_BACKGROUND);
-	cairo_stroke(gfx);
-	cairo_set_line_width(gfx, 1);
-	cairo_set_source_rgb(gfx, palette[SPECTRUM_GRID][0], palette[SPECTRUM_GRID][1], palette[SPECTRUM_GRID][2]);
-
-	//draw the horizontal grid
-	for (i =  0; i <= grid_height; i += grid_height/10){
-		cairo_move_to(gfx, f->x, f->y + i);
-		cairo_line_to(gfx, f->x + f->width, f->y + i); 
-	}
-
-	//draw the vertical grid
-	for (i = 0; i <= f->width; i += f->width/10){
-		cairo_move_to(gfx, f->x + i, f->y);
-		cairo_line_to(gfx, f->x + i, f->y + grid_height); 
-	}
-	cairo_stroke(gfx);
-
-	//start the plot
-	cairo_set_source_rgb(gfx, palette[SPECTRUM_PLOT][0], 
-		palette[SPECTRUM_PLOT][1], palette[SPECTRUM_PLOT][2]);
-	cairo_move_to(gfx, f->x + f->width, f->y + grid_height);
-
-
-	int n_env_samples = sizeof(mod_display)/sizeof(int32_t);		
-	int h_center = f->y + grid_height / 2;
-	for (i = 0; i < f->width; i++){
-		int index = (i * n_env_samples)/f->width;
-		int min = mod_display[index++];
-		int max = mod_display[index++]; 
-		cairo_move_to(gfx, f->x + i ,  min + h_center);
-		cairo_line_to(gfx, f->x + i,   max + h_center + 1);
-	}
-	cairo_stroke(gfx);
-}
 
 static int waterfall_offset = 30;
 static int  *wf;
@@ -1990,75 +1917,6 @@ void abort_tx(){
 	tx_off();
 }
 
-int do_spectrum(struct field *f, cairo_t *gfx, int event, int a, int b, int c){
-	struct field *f_freq, *f_span, *f_pitch;
-	int span, pitch;
-  long freq;
-	char buff[100];
-  int mode = mode_id(get_field("r1:mode")->value);
-
-	switch(event){
-		case FIELD_DRAW:
-			draw_spectrum(f, gfx);
-			return 1;
-		break;
-		case GDK_MOTION_NOTIFY:
-	    f_freq = get_field("r1:freq");
-		  freq = atoi(f_freq->value);
-		  f_span = get_field("#span");
-		  span = atof(f_span->value) * 1000;
-		  //a has the x position of the mouse
-		  freq -= ((a - last_mouse_x) * (span/f->width));
-		  sprintf(buff, "%ld", freq);
-		  set_field("r1:freq", buff);
-		  return 1;
-		break;
-    case GDK_BUTTON_PRESS: 
-      if (c == GDK_BUTTON_SECONDARY){ // right click QSY
-        f_freq = get_field("r1:freq");
-        freq = atoi(f_freq->value);
-        f_span = get_field("#span");
-        span = atof(f_span->value) * 1000;
-        f_pitch = get_field("rx_pitch");
-        pitch = atoi(f_pitch->value);
-        if (mode == MODE_CW){
-          freq += ((((float)(a - f->x) / (float)f->width) - 0.5) * (float)span) - pitch;
-        } else if (mode == MODE_CWR){
-          freq += ((((float)(a - f->x) / (float)f->width) - 0.5) * (float)span) + pitch;
-        } else { // other modes may need to be optimized - k3ng 2022-09-02
-          freq += (((float)(a - f->x) / (float)f->width) - 0.5) * (float)span;
-        }
-        sprintf(buff, "%ld", freq);
-        set_field("r1:freq", buff);
-        return 1;
-      }
-    break;
-	}
-	return 0;	
-}
-
-int do_waterfall(struct field *f, cairo_t *gfx, int event, int a, int b, int c){
-	switch(event){
-		case FIELD_DRAW:
-			draw_waterfall(f, gfx);
-			return 1;
-/*
-		case GDK_MOUSE_MOVE:{
-			struct field *f_freq = get_field("r1:freq");
-			long freq = atoi(f_freq->value);
-			struct field *f_span = get_field("#span");
-			int span = atoi(f_focus->value);
-			freq -= ((x - last_mouse_x) *tuning_step)/4;	//slow this down a bit
-			sprintf(buff, "%ld", freq);
-			set_field("r1:freq", buff);
-			}
-			return 1;
-		break;
-*/
-	}
-	return 0;	
-}
-
 void remote_execute(char *cmd){
 
 	if (q_remote_commands.overflow)
@@ -2522,22 +2380,6 @@ void macro_get_var(char *var, char *s){
 		*s = 0;
 }
 
-void open_url(char *url){
-	char temp_line[200];
-
-	sprintf(temp_line, "chromium-browser --log-leve=3 "
-	"--enable-features=OverlayScrollbar %s"
-	"  >/dev/null 2> /dev/null &", url);
-	execute_app(temp_line);
-}
-
-void qrz(char *callsign){
-	char 	url[1000];
-
-	sprintf(url, "https://qrz.com/DB/%s &", callsign);
-	open_url(url);
-}
-
 int do_macro(struct field *f, cairo_t *gfx, int event, int a, int b, int c){
 	char buff[256], *mode;
 
@@ -2546,10 +2388,6 @@ int do_macro(struct field *f, cairo_t *gfx, int event, int a, int b, int c){
 
 		if (!strcmp(f->cmd, "#mfkbd")){
 			set_ui(LAYOUT_KBD);
-			return 1;
-		}
-		else if (!strcmp(f->cmd, "#mfqrz") && strlen(contact_callsign) > 0){
-			qrz(contact_callsign);
 			return 1;
 		}
 		else if (!strcmp(f->cmd, "#mfwipe")){
@@ -3373,49 +3211,10 @@ int  web_get_console(char *buff, int max){
 	return i;
 }
 
-void web_get_spectrum(char *buff){
-
-  int n_bins = (int)((1.0 * spectrum_span) / 46.875);
-  //the center frequency is at the center of the lower sideband,
-  //i.e, three-fourth way up the bins.
-  int starting_bin = (3 *MAX_BINS)/4 - n_bins/2;
-  int ending_bin = starting_bin + n_bins;
-
-  int j = 3;
-  if (in_tx){
-    strcpy(buff, "TX ");
-    for (int i = 0; i < MOD_MAX; i++){
-      int y = (2 * mod_display[i]) + 32;
-      if (y > 127)
-        buff[j++] = 127;
-      else if(y > 0 && y <= 95)
-        buff[j++] = y + 32;
-      else
-        buff[j++] = ' ';
-    }
-  }
-  else{
-    strcpy(buff, "RX ");
-    for (int i = starting_bin; i <= ending_bin; i++){
-      int y = spectrum_plot[i] + waterfall_offset;
-      if (y > 95)
-        buff[j++] = 127;
-      else if(y >= 0 )
-        buff[j++] = y + 32;
-      else
-        buff[j++] = ' ';
-    }
-  }
-
-  buff[j++] = 0;
-  return;
-}
-
-void processCATCommand(char* cmd, char *response)
+void processCATCommand(char* cmd, uint8_t *response)
 {
     uint32_t frequency;
-    char command[64];
-    char rsp[64];
+    uint8_t command[64];
 
     memset(response, 0, 5);
 
@@ -4062,8 +3861,6 @@ void do_cmd(char *cmd){
 	else if (!strcmp(request, "#tx")){	
 		tx_on(TX_SOFT);
 	}
-	else if (!strcmp(request, "#web"))
-		open_url("http://127.0.0.1:8080");
 	else if (!strcmp(request, "#rx")){
 		tx_off();
 	}
@@ -4157,8 +3954,6 @@ void do_cmd(char *cmd){
 		write_console(FONT_LOG, "Recording stopped\n");
 		record_start = 0;
 	}
-	else if (!strcmp(request, "#mfqrz") && strlen(contact_callsign) > 0)
-		qrz(contact_callsign);
 
 	//this needs to directly pass on to the sdr core
 	else if(request[0] != '#'){
@@ -4411,14 +4206,6 @@ void cmd_exec(char *cmd){
     write_console(FONT_LOG, "\r\n");
 
   }
-	else if (!strcmp(exec, "qrz")){
-		if(strlen(args))
-			qrz(args);
-		else if (strlen(contact_callsign))
-			qrz(contact_callsign);
-		else
-			write_console(FONT_LOG, "/qrz [callsign]\n");
-	}
 	else if (!strcmp(exec, "mode") || !strcmp(exec, "m") || !strcmp(exec, "MODE"))
 		set_mode(args);
 	else if (!strcmp(exec, "t"))
@@ -4635,10 +4422,6 @@ int main( int argc, char* argv[] ) {
 
     sbitx_controller();
 
-//	open_url("http://127.0.0.1:8080");
-//	execute_app("chromium-browser --log-leve=3 "
-//	"--enable-features=OverlayScrollbar http://127.0.0.1:8080"
-//	"  &>/dev/null &");
     gtk_main();
   
   return 0;

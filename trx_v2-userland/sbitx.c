@@ -835,7 +835,6 @@ void tx_process(
 //	printf("min %g, max %g\n", min, max);
 
 	read_power();
-	sdr_modulation_update(output_tx, MAX_BINS/2, tx_amp);	
 }
 
 /*
@@ -1154,7 +1153,7 @@ void setup(){
 	add_rx(7000000, MODE_LSB, -3000, -300);
 	add_tx(7000000, MODE_LSB, -3000, -300);
 	rx_list->tuned_bin = 512;
-  tx_list->tuned_bin = 512;
+    tx_list->tuned_bin = 512;
 	tx_init(7000000, MODE_LSB, -3000, -150);
 
 

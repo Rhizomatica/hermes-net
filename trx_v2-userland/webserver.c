@@ -72,17 +72,8 @@ static void do_login(struct mg_connection *c, char *key){
 
 static int16_t remote_samples[10000]; //the max samples are set by the queue lenght in modems.c
 
-static void get_spectrum(struct mg_connection *c){
-	char buff[3000];
-	web_get_spectrum(buff);
-	mg_ws_send(c, buff, strlen(buff), WEBSOCKET_OP_TEXT);
-	get_updates(c, 0);
-}
-
 static void get_audio(struct mg_connection *c){
 	char buff[3000];
-	web_get_spectrum(buff);
-	mg_ws_send(c, buff, strlen(buff), WEBSOCKET_OP_TEXT);
 	get_updates(c, 0);
 
 	int count = remote_audio_output(remote_samples);		
@@ -162,9 +153,9 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 		printf("Cookie not found, closing socket\n");
 		c->is_draining = 1;
 	}
-#endif
 	else if (!strcmp(field, "spectrum"))
 		get_spectrum(c);
+#endif
 	else if (!strcmp(field, "audio"))
 		get_audio(c);
 	else if (!strcmp(field, "logbook"))
