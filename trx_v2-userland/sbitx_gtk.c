@@ -560,12 +560,12 @@ struct field main_controls[] = {
     "", 10,100, 1},
 
 	//FT8 should be 4000 Hz
-  {"#bw_voice", NULL, 1000, -1000, 50, 50, "BW_VOICE", 40, "2200", FIELD_NUMBER, FONT_FIELD_VALUE,
-    "", 300, 3000, 50},
+  {"#bw_voice", NULL, 1000, -1000, 50, 50, "BW_VOICE", 40, "3000", FIELD_NUMBER, FONT_FIELD_VALUE,
+    "", 0, 3000, 50},
   {"#bw_cw", NULL, 1000, -1000, 50, 50, "BW_CW", 40, "400", FIELD_NUMBER, FONT_FIELD_VALUE,
-    "", 300, 3000, 50},
+    "", 0, 3000, 50},
   {"#bw_digital", NULL, 1000, -1000, 50, 50, "BW_DIGITAL", 40, "3000", FIELD_NUMBER, FONT_FIELD_VALUE,
-    "", 300, 3000, 50},
+    "", 0, 3000, 50},
 
 	//FT8 controls
 	{"#ft8_auto", NULL, 1000, -1000, 50, 50, "FT8_AUTO", 40, "ON", FIELD_TOGGLE, FONT_FIELD_VALUE, 
@@ -2847,7 +2847,7 @@ void set_bandwidth(int hz){
 			break;
 		case MODE_LSB:
 		case MODE_USB:
-			low = 50;
+			low = 0;
 			high = low + hz;
 			sprintf(bw_str, "%d", high - low);
 			set_field("#bw_voice", bw_str);
@@ -2859,11 +2859,11 @@ void set_bandwidth(int hz){
 			set_field("#bw_digital", bw_str);
 			break;
 		case MODE_FT8:
-			low = 50;
+			low = 0;
 			high = 4000;
 			break;
 		default:
-			low = 50;
+			low = 0;
 			high = 3000;
 	}
 
