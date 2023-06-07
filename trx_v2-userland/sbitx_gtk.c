@@ -918,22 +918,9 @@ time_t time_sbitx(){
 // rit/split and power levels associated with each frequency
 void set_operating_freq(int dial_freq, char *response){
 
-	struct field *split = get_field("#split");
-//	struct field *vfo_a = get_field("#vfo_a_freq");
-	struct field *vfo_b = get_field("#vfo_b_freq");
-
 	char freq_request[30];
- 
-	if (!strcmp(split->value, "ON")){
-		if (!in_tx)
-//			sprintf(freq_request, "r1:freq=%d", vfo_b_freq);
-			sprintf(freq_request, "r1:freq=%s", vfo_b->value);
-		else
-//			sprintf(freq_request, "r1:freq=%d", dial_freq);
-			sprintf(freq_request, "r1:freq=%d", dial_freq);
-	}
-	else
-			sprintf(freq_request, "r1:freq=%d", dial_freq);
+
+    sprintf(freq_request, "r1:freq=%d", dial_freq);
 
 	//get back to setting the frequency
 	sdr_request(freq_request, response);
