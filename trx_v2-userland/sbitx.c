@@ -881,14 +881,6 @@ void set_rx_filter(){
       5);
 }
 
-/* 
-Write code that mus repeatedly so things, it is called during the idle time 
-of the event loop 
-*/
-void loop(){
-	delay(10);
-}
-
 void signal_handler(int signum){
 	digitalWrite(TX_LINE, LOW);
 }
@@ -1083,20 +1075,17 @@ void tr_switch(int tx_on){
         //mute it all and hang on for a millisecond
         sound_mixer(audio_card, "Master", 0);
         sound_mixer(audio_card, "Capture", 0);
-        delay(1);
 
         //now switch of the signal back
         //now ramp up after 5 msecs
-        delay(1);
-        mute_count = 10;
+        mute_count = 5;
         tx_process_restart = 1;
-        digitalWrite(TX_LINE, HIGH);
-        delay(10);
-        set_tx_power_levels();
         in_tx = 1;
+        digitalWrite(TX_LINE, HIGH);
+        delay(5);
+        set_tx_power_levels();
         prev_lpf = -1; //force this
         set_lpf_40mhz(freq_hdr);
-        delay(5);
         spectrum_reset();
     }
     else {
