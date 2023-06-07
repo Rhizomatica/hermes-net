@@ -924,8 +924,10 @@ void set_operating_freq(int dial_freq, char *response){
             sprintf(freq_request, "r1:freq=%s", vfo_b->value);
         else
             sprintf(freq_request, "r1:freq=%d", dial_freq);
-
     }
+    else
+        sprintf(freq_request, "r1:freq=%d", dial_freq);
+
     //get back to setting the frequency
     sdr_request(freq_request, response);
 }
