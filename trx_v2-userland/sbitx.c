@@ -693,6 +693,8 @@ void read_power(){
 	int fwdvoltage =  (vfwd * 40)/bridge_compensation;
 	fwdpower = (fwdvoltage * fwdvoltage)/400;
 
+    printf("fwd=%u, vswr=%u",fwdpower, vswr);
+
 	int rf_v_p2p = (fwdvoltage * 126)/400;
 //	printf("rf volts: %d, alc %g, %d watts ", rf_v_p2p, alc_level, fwdpower/10);	
 	if (rf_v_p2p > 135 && !in_calibration){
@@ -712,6 +714,7 @@ void tx_process(
 	int32_t *output_speaker, int32_t *output_tx, 
 	int n_samples)
 {
+    static uint32_t tick_int = 0;
 	int i;
 	double i_sample, q_sample;
 
@@ -833,8 +836,8 @@ void tx_process(
 			output_tx[i] = s * scale * tx_amp * alc_level;
 	}
 //	printf("min %g, max %g\n", min, max);
-
-	read_power();
+    if ( !(++tick_int % 100) )
+        read_power();
 }
 
 /*
