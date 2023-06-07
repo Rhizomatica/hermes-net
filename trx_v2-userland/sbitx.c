@@ -693,10 +693,8 @@ void read_power(){
 	int fwdvoltage =  (vfwd * 40)/bridge_compensation;
 	fwdpower = (fwdvoltage * fwdvoltage)/400;
 
-    //printf("fwd=%u, vswr=%u\n",fwdpower, vswr);
-
 	int rf_v_p2p = (fwdvoltage * 126)/400;
-	printf("rf: %d V, alc %g, %d W, %d vswr\n", rf_v_p2p, alc_level, fwdpower/10);
+	printf("rf: %d V, %d ALC, %d W, %d vswr\n", rf_v_p2p, alc_level, fwdpower/10, vswr);
 	if (rf_v_p2p > 135 && !in_calibration){
 		alc_level *= 135.0 / (1.0 * rf_v_p2p);
 		printf("ALC tripped, to %d percent\n", (int)(100 * alc_level));
