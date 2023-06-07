@@ -67,11 +67,6 @@ char pins[15] = {0, 2, 3, 6, 7,
 //between the system cloc and the actual time set by \utc command
 static long time_delta = 0;
 
-//mouse/touch screen state
-static int mouse_down = 0;
-static int last_mouse_x = -1;
-static int last_mouse_y = -1;
-
 //encoder state
 struct encoder {
 	int pin_a,  pin_b;
@@ -80,9 +75,6 @@ struct encoder {
 	int history;
 };
 void tuning_isr(void);
-
-guint key_modifier = 0;
-
 
 
 struct encoder enc_a, enc_b;
@@ -130,7 +122,7 @@ struct Queue q_web;
 void set_ui(int id);
 void set_bandwidth(int hz);
 
-
+struct field *active_layout = NULL;
 
 
 struct field {
@@ -246,7 +238,6 @@ char settings_updated = 0;
 
 void do_cmd(char *cmd);
 void cmd_exec(char *cmd);
-
 
 gboolean ui_tick(gpointer gook);
 
@@ -416,7 +407,6 @@ struct field main_controls[] = {
 	{"", NULL, 0, 0 ,0, 0, "#", 1, "Q", FIELD_BUTTON, FONT_FIELD_VALUE, "", 0,0,0},
 };
 
-
 struct field *get_field(const char *cmd);
 void update_field(struct field *f);
 void tx_on();
@@ -425,8 +415,6 @@ void tx_off();
 //#define MAX_CONSOLE_LINES 1000
 //char *console_lines[MAX_CONSOLE_LINES];
 int last_log = 0;
-
-struct field *active_layout = NULL;
 
 
 struct field *get_field(const char *cmd){
@@ -917,13 +905,29 @@ time_t time_sbitx(){
 // setting the frequency is complicated by having to take care of the
 // rit/split and power levels associated with each frequency
 void set_operating_freq(int dial_freq, char *response){
+    struct field *rit = get_field("#rit");
+    struct field *split = get_field("#split");
+//     struct field *vfo_a = get_field("#vfo_a_freq");
+    struct field *vfo_b = get_field("#vfo_b_freq");
+    struct field *rit_delta = get_field("#rit_delta");
 
-	char freq_request[30];
+    char freq_request[30];
 
-    sprintf(freq_request, "r1:freq=%d", dial_freq);
+    if (!strcmp(rit->value, "ON")){
+        if (!in_tx)
+            sprintf(freq_request, "r1:freq=%d", dial_freq + atoi(rit_delta->value));
+        else
+            sprintf(freq_request, "r1:freq=%d", dial_freq);
+    }
+    else if (!strcmp(split->value, "ON")){
+        if (!in_tx)
+            sprintf(freq_request, "r1:freq=%s", vfo_b->value);
+        else
+            sprintf(freq_request, "r1:freq=%d", dial_freq);
 
-	//get back to setting the frequency
-	sdr_request(freq_request, response);
+    }
+    //get back to setting the frequency
+    sdr_request(freq_request, response);
 }
 
 void abort_tx(){
@@ -2134,6 +2138,7 @@ GMainLoop *loop_g;
 int main( int argc, char* argv[] ) {
 
 	puts(VER_STR);
+    active_layout = main_controls;
 
     loop_g = g_main_loop_new(NULL, 0);
 
