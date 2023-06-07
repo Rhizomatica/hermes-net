@@ -161,10 +161,13 @@ void fft_reset_m_bins(){
 	memset(fft_out, 0, sizeof(fftw_complex) * MAX_BINS);
 	memset(fft_m, 0, sizeof(fftw_complex) * MAX_BINS/2);
 	memset(fft_spectrum, 0, sizeof(fftw_complex) * MAX_BINS);
-//	for (int i= 0; i < MAX_BINS/2; i++){
-//		__real__ fft_m[i]  = 0.0;
-//		__imag__ fft_m[i]  = 0.0;
-//	}
+	memset(tx_list->fft_time, 0, sizeof(fftw_complex) * MAX_BINS);
+	memset(tx_list->fft_freq, 0, sizeof(fftw_complex) * MAX_BINS);
+/*	for (int i= 0; i < MAX_BINS/2; i++){
+		__real__ fft_m[i]  = 0.0;
+		__imag__ fft_m[i]  = 0.0;
+	}
+*/
 }
 
 int mag2db(double mag){
@@ -218,9 +221,9 @@ int remote_audio_output(int16_t *samples){
 	return length;
 }
 
+static int prev_lpf = -1;
 void set_lpf_40mhz(int frequency){
-	static int prev_lpf = -1;
-	int lpf = 0;
+    int lpf = 0;
 
 	if (frequency < 5500000)
 		lpf = LPF_D;
@@ -245,8 +248,7 @@ void set_lpf_40mhz(int frequency){
 
   //printf("################ setting %d high\n", lpf);
   digitalWrite(lpf, HIGH); 
-  //digitalWrite(LPF_A, HIGH); 
-	prev_lpf = lpf;
+  prev_lpf = lpf;
 }
 
 
@@ -707,6 +709,8 @@ void read_power(){
 //	printf("alc: %g\n", alc_level);
 }
 
+static int tx_process_restart = 0;
+
 void tx_process(
 	int32_t *input_rx, int32_t *input_mic, 
 	int32_t *output_speaker, int32_t *output_tx, 
@@ -718,7 +722,13 @@ void tx_process(
 
 	struct rx *r = tx_list;
 
-	if (mute_count && (r->mode == MODE_USB || r->mode == MODE_LSB)){
+	//fix the burst at the start of transmission
+	if (tx_process_restart){
+        fft_reset_m_bins();
+		tx_process_restart = 0;
+	}
+
+    if (mute_count && (r->mode == MODE_USB || r->mode == MODE_LSB)){
 		memset(input_mic, 0, n_samples * sizeof(int32_t));
 		mute_count--;
 	}
@@ -1060,7 +1070,62 @@ void tx_cal(){
 		(void*)NULL);
 }
 
+//v2 t/r switch uses the lpfs to cut the feedback during t/r transitions
+void tr_switch(int tx_on){
+    if (tx_on){
 
+        //first turn off the LPFs, so PA doesnt connect
+  		digitalWrite(LPF_A, LOW);
+  		digitalWrite(LPF_B, LOW);
+        digitalWrite(LPF_C, LOW);
+  		digitalWrite(LPF_D, LOW);
+
+        //mute it all and hang on for a millisecond
+        sound_mixer(audio_card, "Master", 0);
+        sound_mixer(audio_card, "Capture", 0);
+        delay(1);
+
+        //now switch of the signal back
+        //now ramp up after 5 msecs
+        delay(2);
+        mute_count = 20;
+        tx_process_restart = 1;
+        digitalWrite(TX_LINE, HIGH);
+        delay(20);
+        set_tx_power_levels();
+        in_tx = 1;
+        prev_lpf = -1; //force this
+        set_lpf_40mhz(freq_hdr);
+        delay(10);
+        spectrum_reset();
+    }
+    else {
+        in_tx = 0;
+        //mute it all and hang on
+        sound_mixer(audio_card, "Master", 0);
+        sound_mixer(audio_card, "Capture", 0);
+        delay(1);
+        fft_reset_m_bins();
+        mute_count = MUTE_MAX;
+
+ 		digitalWrite(LPF_A, LOW);
+  		digitalWrite(LPF_B, LOW);
+        digitalWrite(LPF_C, LOW);
+  		digitalWrite(LPF_D, LOW);
+        prev_lpf = -1; //force the lpf to be re-energized
+        delay(10);
+        //power down the PA chain to null any gain
+        digitalWrite(TX_LINE, LOW);
+        delay(5);
+        //audio codec is back on
+        sound_mixer(audio_card, "Master", rx_vol);
+        sound_mixer(audio_card, "Capture", rx_gain);
+        spectrum_reset();
+        //rx_tx_ramp = 10;
+    }
+}
+
+#if 0
 void tr_switch(int tx_on){
 		if (tx_on){
 			//mute it all and hang on for a millisecond
@@ -1073,9 +1138,9 @@ void tr_switch(int tx_on){
 			delay(2);
 			digitalWrite(TX_LINE, HIGH);
 			mute_count = 20;
-      fft_reset_m_bins();
+            tx_process_restart = 1;
 			//give time for the reed relay to switch
-      delay(2);
+            delay(2);
 			set_tx_power_levels();
 			in_tx = 1;
 			//finally ramp up the power 
@@ -1092,7 +1157,7 @@ void tr_switch(int tx_on){
 			sound_mixer(audio_card, "Master", 0);
 			sound_mixer(audio_card, "Capture", 0);
 			delay(1);
-      fft_reset_m_bins();
+            fft_reset_m_bins();
 			mute_count = MUTE_MAX;
 
 			//power down the PA chain to null any gain
@@ -1117,7 +1182,7 @@ void tr_switch(int tx_on){
 			//rx_tx_ramp = 10;
 		}
 }
-
+#endif
 
 /* 
 This is the one-time initialization code 
