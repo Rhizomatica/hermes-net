@@ -917,21 +917,14 @@ time_t time_sbitx(){
 // setting the frequency is complicated by having to take care of the
 // rit/split and power levels associated with each frequency
 void set_operating_freq(int dial_freq, char *response){
-	struct field *rit = get_field("#rit");
+
 	struct field *split = get_field("#split");
 //	struct field *vfo_a = get_field("#vfo_a_freq");
 	struct field *vfo_b = get_field("#vfo_b_freq");
-	struct field *rit_delta = get_field("#rit_delta");
 
 	char freq_request[30];
  
-	if (!strcmp(rit->value, "ON")){
-		if (!in_tx)
-			sprintf(freq_request, "r1:freq=%d", dial_freq + atoi(rit_delta->value)); 		
-		else
-			sprintf(freq_request, "r1:freq=%d", dial_freq); 		
-	}
-	else if (!strcmp(split->value, "ON")){
+	if (!strcmp(split->value, "ON")){
 		if (!in_tx)
 //			sprintf(freq_request, "r1:freq=%d", vfo_b_freq);
 			sprintf(freq_request, "r1:freq=%s", vfo_b->value);
