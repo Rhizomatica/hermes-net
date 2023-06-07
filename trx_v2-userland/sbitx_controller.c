@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <threads.h>
 #include <pthread.h>
+#include <glib.h>
 
 #include "sbitx_controller.h"
 #include "../include/radio_cmds.h"
@@ -45,13 +46,18 @@
 static bool running;
 
 controller_conn *tmp_connector = NULL;
-extern void gtk_main_quit ();
+extern void g_main_loop_quit ();
+extern GMainLoop *loop_g;
+
+extern void tx_off();
 
 void finish(int s){
     fprintf(stderr, "\nExiting...\n");
 
+    tx_off();
+
     running = false;
-    gtk_main_quit ();
+    g_main_loop_quit (loop_g);
     sleep(1);
 
     // do some house cleaning here.... or somewhere else?

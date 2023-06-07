@@ -935,15 +935,11 @@ static int hw_settings_handler(void* user, const char* section,
 static void read_hw_ini(){
 	hw_init_index = 0;
 	char directory[PATH_MAX];
-	char *path = getenv("HOME");
-	strcpy(directory, path);
-	strcat(directory, "/sbitx/data/hw_settings.ini");
-  if (ini_parse(directory, hw_settings_handler, NULL)<0){
-    printf("Unable to load ~/sbitx/data/hw_settings.ini\nLoading default_hw_settings.ini instead\n");
-		strcpy(directory, path);
-		strcat(directory, "/sbitx/data/default_hw_settings.ini");
-  	ini_parse(directory, hw_settings_handler, NULL);
-  }
+	strcpy(directory, "/etc/sbitx/hw_settings.ini");
+    if (ini_parse(directory, hw_settings_handler, NULL)<0){
+        printf("Unable to load %s\n", directory);
+        exit(-1);
+    }
 }
 
 /*

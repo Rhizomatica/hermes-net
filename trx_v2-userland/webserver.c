@@ -9,7 +9,6 @@
 #include <wiringPi.h>
 #include "sdr.h"
 #include "sdr_ui.h"
-#include "logbook.h"
 
 static const char *s_listen_on = "wss://0.0.0.0:8080";
 static char s_web_root[1000];
@@ -73,45 +72,11 @@ static void do_login(struct mg_connection *c, char *key){
 static int16_t remote_samples[10000]; //the max samples are set by the queue lenght in modems.c
 
 static void get_audio(struct mg_connection *c){
-	char buff[3000];
 	get_updates(c, 0);
 
 	int count = remote_audio_output(remote_samples);		
 	if (count > 0)
 		mg_ws_send(c, remote_samples, count * sizeof(int16_t), WEBSOCKET_OP_BINARY);
-}
-
-static void get_logs(struct mg_connection *c, char *args){
-	char logbook_path[200];
-	char row_response[1000], row[1000];
-	char query[100];
-	int	row_id;
-
-	query[0] = 0;
-	row_id = atoi(strtok(args, " "));
-	logbook_query(strtok(NULL, " \t\n"), row_id, logbook_path);
-	FILE *pf = fopen(logbook_path, "r");
-	if (!pf)
-		return;
-	while(fgets(row, sizeof(row), pf)){
-		sprintf(row_response, "QSO %s", row);
-		web_respond(c, row_response); 
-	}
-	fclose(pf);
-}
-
-void get_macros_list(struct mg_connection *c){
-	char macros_list[2000], out[3000];
-	macro_list(macros_list);
-	sprintf(out, "macros_list %s", macros_list);
-	web_respond(c, out);
-}
-
-void get_macro_labels(struct mg_connection *c){
-	char key_list[2000], out[3000];
-	macro_get_keys(key_list);
-	sprintf(out, "macro_labels %s", key_list);
-	web_respond(c, out);
 }
 
 char request[200];
@@ -158,10 +123,6 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 #endif
 	else if (!strcmp(field, "audio"))
 		get_audio(c);
-	else if (!strcmp(field, "logbook"))
-		get_logs(c, value);
-	else if (!strcmp(field, "macros_list"))
-		get_macros_list(c);
 	else if (!strcmp(field, "refresh"))
 		get_updates(c, 1);
 	else{
@@ -170,7 +131,7 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 			sprintf(buff, "%s %s", field, value);
 		else
 			strcpy(buff, field);
-		remote_execute(buff);
+        printf("TODO: execute %s\n", buff);
 		get_updates(c, 0);
 	}
 }
@@ -231,12 +192,8 @@ void webserver_stop(){
 static pthread_t webserver_thread;
 
 void webserver_start(){
-	char directory[200];	//dangerous, find the MAX_PATH and replace 200 with it
-	char *path = getenv("HOME");
-	strcpy(s_web_root, path);
-	strcat(s_web_root, "/sbitx/web");
+	strcpy(s_web_root, "/etc/sbitx/web");
 
-	logbook_open();
- 	pthread_create( &webserver_thread, NULL, webserver_thread_function, 
+ 	pthread_create( &webserver_thread, NULL, webserver_thread_function,
 		(void*)NULL);
 }

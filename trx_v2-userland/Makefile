@@ -21,12 +21,13 @@
 CC=gcc
 prefix=/usr
 # CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector
+# CFLAGS=`pkg-config --cflags glib-2.0` -O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -DMG_ENABLE_OPENSSL -DMG_ARCH=1
 CFLAGS=`pkg-config --cflags gtk+-3.0` -O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -DMG_ENABLE_OPENSSL -DMG_ARCH=1
-LDFLAGS=`pkg-config --libs gtk+-3.0` -lwiringPi -lasound -lm -lfftw3 -lfftw3f -pthread -lncurses -lsqlite3 -lssl -lcrypto
+LDFLAGS=`pkg-config --libs glib-2.0` -lwiringPi -lasound -lm -lfftw3 -lfftw3f -pthread -lncurses -lssl -lcrypto
 
 all: sbitx_controller sbitx_client
 
-SOURCES=vfo.c sbitx_sound.c fft_filter.c sbitx_gtk.c sbitx_utils.c i2cbb.c si5351v2.c ini.c queue.c logbook.c telnet.c macros.c remote.c mongoose.c webserver.c sbitx.c sbitx_controller.c shm.c
+SOURCES=vfo.c sbitx_sound.c fft_filter.c sbitx_gtk.c sbitx_utils.c i2cbb.c si5351v2.c ini.c queue.c mongoose.c webserver.c sbitx.c sbitx_controller.c shm.c
 
 OBJ=$(SOURCES:.c=.o)
 
@@ -46,11 +47,9 @@ clean:
 install: sbitx_controller sbitx_client
 	install -D sbitx_client $(DESTDIR)$(prefix)/bin/sbitx_client
 	install -D sbitx_controller $(DESTDIR)$(prefix)/bin/sbitx_controller
-	mkdir -p /home/pi/sbitx/audio
-	mkdir -p /home/pi/sbitx/data
-	mkdir -p /home/pi/sbitx/web
-	install -D data/default_hw_settings.ini /home/pi/sbitx/data/default_hw_settings.ini
-	install -D data/default_settings.ini /home/pi/sbitx/data/default_settings.ini
-	install -D data/hw_settings.ini /home/pi/sbitx/data/hw_settings.ini
-	sqlite3 /home/pi/sbitx/data/sbitx.db < /home/pi/sbitx/data/create_db.sql
+	mkdir -p /etc/sbitx/web
+	install -D web/* /etc/sbitx/web/
+	install -D data/user_settings.ini /etc/sbitx/user_settings.ini
+	install -D data/hw_settings.ini /etc/sbitx/hw_settings.ini
+
 #	install -m 644 -D ../system_services/init/sbitx.service $(DESTDIR)/etc/systemd/system/sbitx.service
