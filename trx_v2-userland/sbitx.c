@@ -1087,16 +1087,16 @@ void tr_switch(int tx_on){
 
         //now switch of the signal back
         //now ramp up after 5 msecs
-        delay(2);
-        mute_count = 20;
+        delay(1);
+        mute_count = 10;
         tx_process_restart = 1;
         digitalWrite(TX_LINE, HIGH);
-        delay(20);
+        delay(10);
         set_tx_power_levels();
         in_tx = 1;
         prev_lpf = -1; //force this
         set_lpf_40mhz(freq_hdr);
-        delay(10);
+        delay(5);
         spectrum_reset();
     }
     else {
