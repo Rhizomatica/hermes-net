@@ -38,7 +38,8 @@ FILE *pf_debug = NULL;
 #define LPF_C 10
 #define LPF_D 11
 
-int fwdpower, vswr;
+uint16_t fwdpower, vswr;
+int frequency_offset = 0;
 float fft_bins[MAX_BINS]; // spectrum ampltiudes  
 int spectrum_plot[MAX_BINS];
 fftw_complex *fft_spectrum;
@@ -255,9 +256,10 @@ void set_lpf_40mhz(int frequency){
 void set_rx1(int frequency){
 	if (frequency == freq_hdr)
 		return;
-	radio_tune_to(frequency);
+
+	radio_tune_to(frequency + frequency_offset);
 	freq_hdr = frequency;
-	set_lpf_40mhz(frequency);
+	set_lpf_40mhz(frequency + frequency_offset);
 }
 
 void set_volume(double v){
@@ -673,7 +675,7 @@ void rx_process(int32_t *input_rx,  int32_t *input_mic,
 
 void read_power(){
 	uint8_t response[4];
-	int16_t vfwd, vref;
+	uint16_t vfwd, vref;
 	char buff[20];
 
 	if (!in_tx)
@@ -692,11 +694,11 @@ void read_power(){
 
 	//here '400' is the scaling factor as our ref power output is 40 watts
 	//this calculates the power as 1/10th of a watt, 400 = 40 watts
-	int fwdvoltage =  (vfwd * 40)/bridge_compensation;
+	uint16_t fwdvoltage =  (vfwd * 40)/bridge_compensation;
 	fwdpower = (fwdvoltage * fwdvoltage)/400;
 
 	int rf_v_p2p = (fwdvoltage * 126)/400;
-	printf("rf: %d V, %d ALC, %d W, %d vswr\n", rf_v_p2p, alc_level, fwdpower/10, vswr);
+	printf("rf: %d V, %d ALC, %d W, %d vswr\n", rf_v_p2p, alc_level, fwdpower/10, vswr/10);
 	if (rf_v_p2p > 135 && !in_calibration){
 		alc_level *= 135.0 / (1.0 * rf_v_p2p);
 		printf("ALC tripped, to %d percent\n", (int)(100 * alc_level));
@@ -749,11 +751,9 @@ void tx_process(
 		else if (r->mode == MODE_CALIBRATE)
 			i_sample = (1.0 * (vfo_read(&tone_a))) / 25000000000.0;
 		else
-#if 0
 		  if (r->mode == MODE_CW || r->mode == MODE_CWR || r->mode == MODE_FT8)
-		    i_sample = modem_next_sample(r->mode) / 3;
+		    i_sample = (1.0 * (vfo_read(&tone_a))) / 25000000000.0;
 		  else
-#endif
             i_sample = (1.0 * input_mic[j]) / 2000000000.0;
         //clip the overdrive to prevent damage up the processing chain, PA
 		if (r->mode == MODE_USB || r->mode == MODE_LSB){
@@ -935,7 +935,7 @@ static int hw_settings_handler(void* user, const char* section,
 		bfo_freq = atoi(value);
 }
 
-static void read_hw_ini(){
+void read_hw_ini(){
 	hw_init_index = 0;
 	char directory[PATH_MAX];
 	strcpy(directory, "/etc/sbitx/hw_settings.ini");
@@ -1011,7 +1011,7 @@ void calibrate_band_power(struct power_settings *b){
 	delay(100);	
 }
 
-static void save_hw_settings(){
+void save_hw_settings(){
 	static int last_save_at = 0;
 	char file_path[200];	//dangerous, find the MAX_PATH and replace 200 with it
 

@@ -17,6 +17,7 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include <ctype.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
+#include <stdbool.h>
 #include <ncurses.h>
 #include <glib.h>
 #include <sys/types.h>
@@ -170,6 +171,13 @@ static int *tx_mod_buff = NULL;
 static int tx_mod_index = 0;
 static int tx_mod_max = 0;
 
+// high swr protection
+bool is_swr_protect_enabled = false;
+bool connected_status = false;
+uint32_t serial_number = 0;
+uint16_t reflected_threshold = 25; // vswr * 10
+uint32_t radio_operation_result = 0;
+
 char*mode_name[MAX_MODES] = {
 	"USB", "LSB", "CW", "CWR", "NBFM", "AM", "FT8", "PSK31", "RTTY", 
 	"DIGITAL", "2TONE" 
@@ -232,7 +240,13 @@ int	data_delay = 700;
 
 #define MAX_RIT 25000
 
-extern int fwdpower, vswr;
+extern uint16_t fwdpower, vswr;
+extern int bfo_freq;
+extern int frequency_offset;
+
+extern void read_hw_ini();
+extern void save_hw_settings();
+
 
 char settings_updated = 0;
 
@@ -764,6 +778,17 @@ static int user_settings_handler(void* user, const char* section,
 }
 /* rendering of the fields */
 
+void load_user_settings()
+{
+    char directory[200];	//dangerous, find the MAX_PATH and replace 200 with it
+    strcpy(directory, "/etc/sbitx/user_settings.ini");
+
+    if (ini_parse(directory, user_settings_handler, NULL)<0)
+    {
+        printf("Unable to load %s\n", directory);
+        exit(EXIT_SUCCESS);
+    }
+}
 
 
 char* freq_with_separators(char* freq_str){
@@ -1326,10 +1351,10 @@ void set_bandwidth(int hz){
 			high = 3000;
 	}
 
-	if (low < 50)
-		low = 50;
-	if (high > 5000)
-		high = 5000;
+	if (low < 0)
+		low = 0;
+	if (high > 24000)
+		high = 24000;
 
 	//now set the bandwidth
 	sprintf(buff, "%d", low);
@@ -1399,6 +1424,18 @@ int  web_get_console(char *buff, int max){
 	return i;
 }
 
+void meter_calibrate(){
+	printf("starting meter calibration\n"
+	"1. Attach a power meter and a dummy load to the antenna\n"
+	"2. Adjust the drive until you see 40 watts on the power meter\n"
+	"3. Press the tuning knob to confirm.\n");
+
+	set_mode("CW");
+	struct field *f_bridge = get_field("bridge");
+	set_field("bridge", "100");
+    printf("Setting to mode CW and bridge to 100.\n");
+}
+
 void processCATCommand(uint8_t *cmd, uint8_t *response)
 {
     uint32_t frequency;
@@ -1409,14 +1446,11 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
     switch(cmd[4]){
 
     case CMD_PTT_ON: // PTT On
-#if 0 // TODO
         if (is_swr_protect_enabled)
         {
             response[0] = CMD_ALERT_PROTECTION_ON;
         }
-        else
-#endif
-        if (in_tx == 0)
+        else if (in_tx == 0)
         {
             sound_input(1);
             tx_on(TX_SOFT);
@@ -1429,13 +1463,11 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         break;
 
     case CMD_PTT_OFF: // PTT OFF
-#if 0 // TODO
         if (is_swr_protect_enabled)
         {
             response[0] = CMD_ALERT_PROTECTION_ON;
         }
         else
-#endif
         if (in_tx != 0)
         {
             sound_input(0);
@@ -1494,13 +1526,10 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
             response[0] = CMD_RESP_GET_MODE_LSB;
         break;
 
-#if 0
     case CMD_RESET_PROTECTION: // RESET PROTECTION
         response[0] = CMD_RESP_RESET_PROTECTION_ACK;
-        triggerProtectionReset();
-        Serial.write(response,1);
+        is_swr_protect_enabled = false;
         break;
-
 
 
     case CMD_GET_PROTECTION_STATUS: // GET PROTECTION STATUS
@@ -1508,59 +1537,36 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
             response[0] = CMD_RESP_GET_PROTECTION_ON;
         else
             response[0] = CMD_RESP_GET_PROTECTION_OFF;
-        Serial.write(response,1);
         break;
 
     case CMD_GET_MASTERCAL: // GET MASTER CAL
         response[0] = CMD_RESP_GET_MASTERCAL_ACK;
-        memcpy(response+1, &calibration, 4);
-        Serial.write(response,5);
+        memcpy(response+1, &frequency_offset, 4);
         break;
 
     case CMD_SET_MASTERCAL: // SET MASTER CAL
-        memcpy(&calibration, cmd, 4);
-        setMasterCal(calibration);
+        memcpy(&frequency_offset, cmd, 4);
         response[0] = CMD_RESP_SET_MASTERCAL_ACK;
-        Serial.write(response,1);
         break;
 
     case CMD_GET_BFO: // GET BFO
         response[0] = CMD_RESP_GET_BFO_ACK;
-        memcpy(response+1, &usbCarrier, 4);
-        Serial.write(response,5);
+        memcpy(response+1, &bfo_freq, 4);
         break;
 
     case CMD_SET_BFO: // SET BFO
-        memcpy(&usbCarrier, cmd, 4);
-        setBFO(usbCarrier);
+        memcpy(&bfo_freq, cmd, 4);
         response[0] = CMD_RESP_SET_BFO_ACK;
-        Serial.write(response,1);
         break;
 
     case CMD_GET_FWD: // GET FWD
         response[0] = CMD_RESP_GET_FWD_ACK;
-        memcpy(response+1, &forward, 2);
-        Serial.write(response,5);
+        memcpy(response+1, &fwdpower, 2);
         break;
 
     case CMD_GET_REF: // GET REF
         response[0] = CMD_RESP_GET_REF_ACK;
-        memcpy(response+1, &reflected, 2);
-        Serial.write(response,5);
-        break;
-
-    case CMD_GET_LED_STATUS: // GET LED STATUS
-        if (led_status)
-            response[0] = CMD_RESP_GET_LED_STATUS_ON;
-        else
-            response[0] = CMD_RESP_GET_LED_STATUS_OFF;
-        Serial.write(response,1);
-        break;
-
-    case CMD_SET_LED_STATUS: // SET LED STATUS
-        setLed(cmd[0]);
-        response[0] = CMD_RESP_SET_LED_STATUS_ACK;
-        Serial.write(response,1);
+        memcpy(response+1, &vswr, 2);
         break;
 
     case CMD_GET_CONNECTED_STATUS: // GET CONNECTED STATUS
@@ -1568,67 +1574,57 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
             response[0] = CMD_RESP_GET_CONNECTED_STATUS_ON;
         else
             response[0] = CMD_RESP_GET_CONNECTED_STATUS_OFF;
-        Serial.write(response,1);
       break;
 
     case CMD_SET_CONNECTED_STATUS: // SET CONNECTED STATUS
-        setConnected(cmd[0]);
+        connected_status = cmd[0];
         response[0] = CMD_RESP_SET_CONNECTED_STATUS_ACK;
-        Serial.write(response,1);
         break;
 
     case CMD_GET_SERIAL: // GET SERIAL NUMBER
         response[0] = CMD_RESP_GET_SERIAL_ACK;
-        memcpy(response+1, &serial, 4);
-        Serial.write(response,5);
+        memcpy(response+1, &serial_number, 4);
       break;
 
     case CMD_SET_SERIAL: // SET SERIAL NUMBER
-        memcpy(&serial, cmd, 4);
-        setSerial(serial);
+        memcpy(&serial_number, cmd, 4);
         response[0] = CMD_RESP_SET_SERIAL_ACK;
-        Serial.write(response,1);
         break;
 
     case CMD_SET_REF_THRESHOLD: // SET REF THRESHOLD
         memcpy(&reflected_threshold, cmd, 2);
-        save_reflected_threshold();
         response[0] = CMD_RESP_SET_REF_THRESHOLD_ACK;
-        Serial.write(response,1);
         break;
 
     case CMD_GET_REF_THRESHOLD: // GET REF THRESHOLD
         response[0] = CMD_RESP_GET_REF_THRESHOLD_ACK;
         memcpy(response+1, &reflected_threshold, 2);
-        Serial.write(response,5);
         break;
 
     case CMD_GPS_CALIBRATE: // CMD_GPS_CALIBRATE
+        meter_calibrate();
         response[0] = CMD_RESP_GPS_NOT_PRESENT;
         break;
 
     case CMD_GET_STATUS: // CMD_GET_STATUS
         response[0] = CMD_RESP_GET_STATUS_ACK;
-        memcpy(response+1, &gps_operation_result, 4);
-        Serial.write(response,5);
+        memcpy(response+1, &radio_operation_result, 4);
         break;
 
     case CMD_SET_RADIO_DEFAULTS: // SET RADIO DEFAULTS
-        set_radio_defaults();
+        save_user_settings(1);
+        save_hw_settings();
         response[0] = CMD_RESP_SET_RADIO_DEFAULTS_ACK;
-        Serial.write(response,1);
         break;
 
     case CMD_RESTORE_RADIO_DEFAULTS: // RESTORE RADIO DEFAULTS
-        restore_radio_defaults();
+        load_user_settings();
+        read_hw_ini();
         response[0] = CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK;
-        Serial.write(response,1);
         break;
-
     case CMD_RADIO_RESET: // RADIO RESET
-        resetFunc();
+        exit(-1);
         break;
-#endif
     default:
         response[0] = CMD_RESP_WRONG_COMMAND;
     }
@@ -1683,9 +1679,9 @@ gboolean ui_tick(gpointer gook){
 			set_field("#vswr", buff);
 		}
 
-// // what do we do here?
-//		if (digitalRead(ENC1_SW) == 0)
-//				focus_field(get_field("r1:volume"));
+		if (digitalRead(ENC1_SW) == 0)
+            printf("Button pressed?\n");
+            //focus_field(get_field("r1:volume"));
         ticks = 0;
     }
 #endif
@@ -1869,20 +1865,6 @@ void utc_set(char *args, int update_rtc){
 }
 
 
-
-void meter_calibrate(){
-	//we change to 40 meters, cw
-	printf("starting meter calibration\n"
-	"1. Attach a power meter and a dummy load to the antenna\n"
-	"2. Adjust the drive until you see 40 watts on the power meter\n"
-	"3. Press the tuning knob to confirm.\n");
-
-	set_field("r1:freq", "7035000");
-	set_mode("CW");	
-	struct field *f_bridge = get_field("bridge");
-	set_field("bridge", "100");	
-}
-
 void do_cmd(char *cmd){	
 	char request[1000], response[1000], buff[100];
 	
@@ -1962,10 +1944,9 @@ void do_cmd(char *cmd){
 	else if (!strcmp(request, "#record=ON")){
 		char fullpath[200];	//dangerous, find the MAX_PATH and replace 200 with it
 
-		char *path = getenv("HOME");
 		time(&record_start);
 		struct tm *tmp = localtime(&record_start);
-		sprintf(fullpath, "%s/sbitx/audio/%04d%02d%02d-%02d%02d-%02d.wav", path, 
+		sprintf(fullpath, "/etc/sbitx/audio/%04d%02d%02d-%02d%02d-%02d.wav",
 			tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday, tmp->tm_hour, tmp->tm_min, tmp->tm_sec); 
 
 		char request[300], response[100];
@@ -2164,13 +2145,7 @@ int main( int argc, char* argv[] ) {
     // this is a constant multiplier to the tx level
 	set_volume(20000000);
 
-	char directory[200];	//dangerous, find the MAX_PATH and replace 200 with it
-    strcpy(directory, "/etc/sbitx/user_settings.ini");
-
-    if (ini_parse(directory, user_settings_handler, NULL)<0){
-        printf("Unable to load %s\n", directory);
-        return EXIT_SUCCESS;
-    }
+    load_user_settings();
 
 	char buff[1000];
 
