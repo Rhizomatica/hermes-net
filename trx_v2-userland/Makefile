@@ -46,6 +46,8 @@ clean:
 
 install: sbitx_controller sbitx_client
 	install -D sbitx_client $(DESTDIR)$(prefix)/bin/sbitx_client
+# ugly hack for backward compatibility
+	install -D sbitx_client $(DESTDIR)$(prefix)/bin/ubitx_client
 	install -D sbitx_controller $(DESTDIR)$(prefix)/bin/sbitx_controller
 	mkdir -p /etc/sbitx/web
 	install -D web/* /etc/sbitx/web/
