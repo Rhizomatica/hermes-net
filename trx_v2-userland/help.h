@@ -37,10 +37,10 @@ const char format_str[] = "* ptt_on\n"
 
 "* get_mode\n"
 "  * No Argument\n"
-"  * Resp: USB | LSB | ERROR\n\n"
+"  * Resp: USB | LSB | CW | ERROR\n\n"
 
 "* set_mode\n"
-"  * LSB | USB\n"
+"  * LSB | USB | CW\n"
 "  * Resp: OK | ERROR\n\n"
 
 "* get_txrx_status\n"
