@@ -1,7 +1,7 @@
 # Userland For HERMES Radio Transceiver Version 2
 
 This repository contains the userland utils for the sBitx v2
-based Rhizomatica's HF radio transceiver version 2.
+radio for the HERMES system.
 
 ## Compile And Install
 
@@ -9,6 +9,8 @@ To compile the project, run "make", and to install, run "make install".
 
 
 ## Userland Details
+
+CW mode just generates a tone. GPS-based calibration is not supported by the radio yet.
 
 ## sbitx_client commands
 
@@ -41,10 +43,10 @@ by the argument type and possible responses.
 
 * get_mode
   * No Argument
-  * Resp: USB | LSB | ERROR
+  * Resp: USB | LSB | CW | ERROR
 
 * set_mode
-  * LSB | USB
+  * LSB | USB | CW
   * Resp: OK | ERROR
 
 * get_txrx_status

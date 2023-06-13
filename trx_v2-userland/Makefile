@@ -52,4 +52,4 @@ install: sbitx_controller sbitx_client
 	install -D data/user_settings.ini /etc/sbitx/user_settings.ini
 	install -D data/hw_settings.ini /etc/sbitx/hw_settings.ini
 	mkdir -p /etc/sbitx/audio
-#	install -m 644 -D ../system_services/init/sbitx.service $(DESTDIR)/etc/systemd/system/sbitx.service
+	install -m 644 -D ../system_services/init/sbitx.service $(DESTDIR)/etc/systemd/system/sbitx.service
