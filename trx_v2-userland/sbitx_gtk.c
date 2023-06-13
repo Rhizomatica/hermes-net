@@ -1510,10 +1510,15 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
             do_cmd("r1:mode=LSB");
             set_field("r1:mode", "LSB");
         }
-        else
+        if (cmd[0] == 0x01)
         {
             do_cmd("r1:mode=USB");
             set_field("r1:mode", "USB");
+        }
+        if (cmd[0] == 0x04)
+        {
+            do_cmd("r1:mode=CW");
+            set_field("r1:mode", "CW");
         }
 
         response[0] = CMD_RESP_SET_MODE_ACK;
@@ -1522,8 +1527,10 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
     case CMD_GET_MODE: // GET SSB MODE
         if (rx_list->mode == MODE_USB)
             response[0] = CMD_RESP_GET_MODE_USB;
-        else
+        if (rx_list->mode == MODE_LSB)
             response[0] = CMD_RESP_GET_MODE_LSB;
+        if (rx_list->mode == MODE_CW)
+            response[0] = CMD_RESP_GET_MODE_CW;
         break;
 
     case CMD_RESET_PROTECTION: // RESET PROTECTION
@@ -1602,7 +1609,6 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         break;
 
     case CMD_GPS_CALIBRATE: // CMD_GPS_CALIBRATE
-        meter_calibrate();
         response[0] = CMD_RESP_GPS_NOT_PRESENT;
         break;
 

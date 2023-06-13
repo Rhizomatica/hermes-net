@@ -1,0 +1,12 @@
+[Unit]
+Description=sBitx controller daemon
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/sbitx_controller
+KillSignal=SIGTERM
+IgnoreSIGPIPE=no
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

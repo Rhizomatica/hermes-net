@@ -141,6 +141,9 @@ int main(int argc, char *argv[])
         if (!strcmp(command_argument, "usb") || !strcmp(command_argument, "USB"))
             srv_cmd[0] = 0x01;
 
+        if (!strcmp(command_argument, "cw") || !strcmp(command_argument, "CW"))
+            srv_cmd[0] = 0x04;
+
         srv_cmd[4] = CMD_SET_MODE;
     }
     else if (!strcmp(command, "get_txrx_status"))
@@ -336,6 +339,9 @@ int main(int argc, char *argv[])
             break;
         case CMD_RESP_GET_MODE_LSB:
             printf("LSB\n");
+            break;
+        case CMD_RESP_GET_MODE_CW:
+            printf("CW\n");
             break;
         case CMD_RESP_GET_TXRX_INTX:
             printf("INTX\n");
