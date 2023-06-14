@@ -5,23 +5,31 @@ Network subsystems of the HERMES telecommunication system: https://rhizomatica.o
 
 # Compile And Install
 
-To compile the userland code, run:
+To compile the userland code for v1, run:
 
 * make
 
-To install, run:
+For v2, run:
+
+* make v2
+
+To install for v1, run:
 
 * make install
+
+To install for v2, run:
+
+* make install_v2
 
 Additionally, if installing in a gateway station, run:
 
 * make install_gateway
 
-To compile the firmware, run:
+To compile the firmware for v1 radio, run:
 
 * make trx_v1-firmware
 
-To upload the firmware to the Arduino Nano based transceiver, run:
+To upload the firmware to the Arduino Nano based transceiver (v1), run:
 
 * make ispload
 
