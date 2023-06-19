@@ -191,7 +191,7 @@
 #define REF_PEAK_REMOVAL 15 // around 1s
 
 #define UPPER_MASTERCAL_OFFSET 300000
-#define LOWER_MASTERCAL_OFFSET  40000
+#define LOWER_MASTERCAL_OFFSET  0
 
 // 19 bits for our status offset return value
 #define GPS_STATUS_OFFSET_SHIFT_MASK 0x7ffffL
