@@ -44,7 +44,7 @@ uint32_t calibration_monitor = 0;
 
 void enable_calibration()
 {
-    gps_operation_result = GPS_STATUS_PPS_FAIL | GPS_STATUS_OFFSET_BAD;
+//    gps_operation_result = GPS_STATUS_PPS_FAIL | GPS_STATUS_OFFSET_BAD;
 
     calibration_monitor = millis();
 

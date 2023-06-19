@@ -536,6 +536,7 @@ void checkTimers()
         TCCR1B = 0; TCNT1 = 0; mult = 0; tcount = 0;
         setMasterCal(calibration);
         gps_pps_tick = false;
+        gps_operation_result = GPS_STATUS_PPS_FAIL | GPS_STATUS_OFFSET_BAD;
     }
 #endif
 
@@ -606,6 +607,7 @@ void loop(){
         {
             disable_calibration();
 
+            gps_operation_result = GPS_STATUS_PPS_FAIL | GPS_STATUS_OFFSET_BAD;
             gps_operation_result |= GPS_STATUS_PPS_SUCCESS;
 
             int32_t new_cal = PLL_FREQ_DIV_CAL_FREQ_DIV7 * ((int32_t) XtalFreq - CAL_FREQ_TIMES7);
