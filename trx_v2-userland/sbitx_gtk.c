@@ -1479,7 +1479,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         {
             // sleep?
             // this will cause collateral damages - please FIX it
-            usleep(60);
+            usleep(50000);
             sound_input(0);
             tx_off();
             response[0] = CMD_RESP_PTT_OFF_ACK;
@@ -1701,21 +1701,23 @@ gboolean ui_tick(gpointer gook){
 	}
 
 #if 1
-	if (ticks == 100){
-
-		if(in_tx){
-			char buff[10];
+	if (!(ticks % 30))
+    {
+        if(in_tx)
+        {
+            char buff[10];
             read_power();
 			sprintf(buff,"%d", fwdpower);
 			set_field("#fwdpower", buff);		
 			sprintf(buff, "%d", vswr);
 			set_field("#vswr", buff);
 		}
-
+    }
+	if (!(ticks % 100))
+    {
 		if (digitalRead(ENC1_SW) == 0)
             printf("Button pressed?\n");
             //focus_field(get_field("r1:volume"));
-        ticks = 0;
     }
 #endif
 
