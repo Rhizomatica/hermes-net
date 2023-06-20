@@ -695,7 +695,7 @@ void read_power(){
 	fwdpower = (fwdvoltage * fwdvoltage)/400;
 
 	int rf_v_p2p = (fwdvoltage * 126)/400;
-	printf("rf: %d V, %d ALC, %d W, %d vswr\n", rf_v_p2p, alc_level, fwdpower/10, vswr/10);
+	printf("rf: %d V, %f ALC, %hu W, %hu vswr\n", rf_v_p2p, alc_level, fwdpower/10, vswr/10);
 	if (rf_v_p2p > 135 && !in_calibration){
 		alc_level *= 135.0 / (1.0 * rf_v_p2p);
 		printf("ALC tripped, to %d percent\n", (int)(100 * alc_level));
@@ -1273,31 +1273,31 @@ void sdr_request(char *request, char *response){
 
 		if (rx_list->mode == MODE_LSB || rx_list->mode == MODE_CWR){
 			filter_tune(rx_list->filter, 
-				(1.0 * -3000)/96000.0, 
-				(1.0 * -300)/96000.0 , 
+				(1.0 * -3200)/96000.0,
+				(1.0 * -50)/96000.0 ,
 				5);
 			//puts("\n\n\ntx filter ");
 			filter_tune(tx_list->filter, 
-				(1.0 * -3000)/96000.0, 
-				(1.0 * -300)/96000.0 , 
+				(1.0 * -3200)/96000.0,
+				(1.0 * -50)/96000.0 ,
 				5);
 			filter_tune(tx_filter, 
-				(1.0 * -3000)/96000.0, 
-				(1.0 * -300)/96000.0 , 
+				(1.0 * -3200)/96000.0,
+				(1.0 * -50)/96000.0 ,
 				5);
 		}
 		else { 
 			filter_tune(rx_list->filter, 
-				(1.0 * 300)/96000.0, 
-				(1.0 * 3000)/96000.0 , 
+				(1.0 * 50)/96000.0,
+				(1.0 * 3200)/96000.0 ,
 				5);
 			filter_tune(tx_list->filter, 
-				(1.0 * 300)/96000.0, 
-				(1.0 * 3000)/96000.0 , 
+				(1.0 * 50)/96000.0,
+				(1.0 * 3200)/96000.0 ,
 				5);
 			filter_tune(tx_filter, 
-				(1.0 * 300)/96000.0, 
-				(1.0 * 3000)/96000.0 , 
+				(1.0 * 50)/96000.0,
+				(1.0 * 3200)/96000.0 ,
 				5);
 		}
 		
@@ -1307,9 +1307,9 @@ void sdr_request(char *request, char *response){
 	else if (!strcmp(cmd, "txmode")){
 		puts("\n\n\n\n###### tx filter #######");
 		if (!strcmp(value, "LSB") || !strcmp(value, "CWR"))
-			filter_tune(tx_filter, (1.0*-3000)/96000.0, (1.0 * -300)/96000.0, 5);
+			filter_tune(tx_filter, (1.0*-3200)/96000.0, (1.0 * -50)/96000.0, 5);
 		else
-			filter_tune(tx_filter, (1.0*300)/96000.0, (1.0*3000)/96000.0, 5);
+			filter_tune(tx_filter, (1.0*50)/96000.0, (1.0*3200)/96000.0, 5);
 	}
 	else if(!strcmp(cmd, "record")){
 		if (!strcmp(value, "off")){
