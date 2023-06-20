@@ -1477,6 +1477,9 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         else
         if (in_tx != 0)
         {
+            // sleep?
+            // this will cause collateral damages - please FIX it
+            usleep(60);
             sound_input(0);
             tx_off();
             response[0] = CMD_RESP_PTT_OFF_ACK;
