@@ -6,6 +6,7 @@
 #include <complex.h>
 #include <fftw3.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <wiringPi.h>
 #include <wiringSerial.h>
 #include <linux/types.h>
@@ -82,6 +83,8 @@ FILE *pf_record;
 int16_t record_buffer[1024];
 int32_t modulation_buff[MAX_BINS];
 
+extern uint16_t reflected_threshold; // vswr * 10
+extern bool is_swr_protect_enabled;
 
 /* the power gain of the tx varies widely from 
 band to band. these data structures help in flattening 
@@ -705,7 +708,22 @@ void read_power(){
 		alc_level *= 1.02;
 	}
 */
-//	printf("alc: %g\n", alc_level);
+
+    static uint16_t peak_removal_counter = 0;
+
+    if (vswr > reflected_threshold)
+        peak_removal_counter++;
+    else
+        peak_removal_counter = 0;
+
+    if (peak_removal_counter > REF_PEAK_REMOVAL)
+    {
+        is_swr_protect_enabled = true;
+        sound_input(0);
+        tx_off();
+        peak_removal_counter = 0;
+    }
+
 }
 
 static int tx_process_restart = 0;
@@ -840,9 +858,6 @@ void tx_process(
 			double s = creal(r->fft_time[i+(MAX_BINS/2)]);
 			output_tx[i] = s * scale * tx_amp * alc_level;
 	}
-//	printf("min %g, max %g\n", min, max);
-    if ( !(++tick_int % 100) )
-        read_power();
 }
 
 /*

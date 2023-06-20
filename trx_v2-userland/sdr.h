@@ -101,6 +101,8 @@ extern float fft_bins[];
 extern int spectrum_plot[];
 extern struct filter *ssb;
 
+# define REF_PEAK_REMOVAL 5
+
 //vfo definitions
 
 #define MAX_PHASE_COUNT (16385)

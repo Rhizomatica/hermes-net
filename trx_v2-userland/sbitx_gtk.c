@@ -174,6 +174,7 @@ static int tx_mod_max = 0;
 // high swr protection
 bool is_swr_protect_enabled = false;
 bool connected_status = false;
+bool led_status = false;
 uint32_t serial_number = 0;
 uint16_t reflected_threshold = 25; // vswr * 10
 uint32_t radio_operation_result = 0;
@@ -1017,6 +1018,12 @@ void tx_on(int trigger){
 		return;
 	}
 
+    if (is_swr_protect_enabled)
+    {
+        puts("Error: tx_on trigger with SWR protection on, not turning tx on");
+        return;
+    }
+
 	struct field *f = get_field("r1:mode");
 	if (f){
 		if (!strcmp(f->value, "CW"))
@@ -1580,6 +1587,18 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         memcpy(response+1, &vswr, 2);
         break;
 
+    case CMD_GET_LED_STATUS: // GET LED STATUS
+        if (led_status)
+            response[0] = CMD_RESP_GET_LED_STATUS_ON;
+        else
+            response[0] = CMD_RESP_GET_LED_STATUS_OFF;
+        break;
+
+    case CMD_SET_LED_STATUS: // SET LED STATUS
+        led_status = cmd[0];
+        response[0] = CMD_RESP_SET_LED_STATUS_ACK;
+        break;
+
     case CMD_GET_CONNECTED_STATUS: // GET CONNECTED STATUS
         if (connected_status)
             response[0] = CMD_RESP_GET_CONNECTED_STATUS_ON;
@@ -1683,7 +1702,7 @@ gboolean ui_tick(gpointer gook){
 
 		if(in_tx){
 			char buff[10];
-
+            read_power();
 			sprintf(buff,"%d", fwdpower);
 			set_field("#fwdpower", buff);		
 			sprintf(buff, "%d", vswr);
@@ -1696,9 +1715,6 @@ gboolean ui_tick(gpointer gook){
         ticks = 0;
     }
 #endif
-//update_field(get_field("#text_in")); //modem might have extracted some text
-
-
 
  
 	f = get_field("r1:mode");
