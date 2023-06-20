@@ -1495,6 +1495,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         set_field("r1:freq", command);
 
         response[0] = CMD_RESP_SET_FREQ_ACK;
+        save_user_settings(1);
         break;
 
     case CMD_GET_TXRX_STATUS: // GET TX/RX STATUS
@@ -1522,6 +1523,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         }
 
         response[0] = CMD_RESP_SET_MODE_ACK;
+        save_user_settings(1);
         break;
 
     case CMD_GET_MODE: // GET SSB MODE
@@ -1554,6 +1556,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
     case CMD_SET_MASTERCAL: // SET MASTER CAL
         memcpy(&frequency_offset, cmd, 4);
         response[0] = CMD_RESP_SET_MASTERCAL_ACK;
+        save_user_settings(1);
         break;
 
     case CMD_GET_BFO: // GET BFO
@@ -1564,6 +1567,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
     case CMD_SET_BFO: // SET BFO
         memcpy(&bfo_freq, cmd, 4);
         response[0] = CMD_RESP_SET_BFO_ACK;
+        save_user_settings(1);
         break;
 
     case CMD_GET_FWD: // GET FWD
@@ -1596,11 +1600,13 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
     case CMD_SET_SERIAL: // SET SERIAL NUMBER
         memcpy(&serial_number, cmd, 4);
         response[0] = CMD_RESP_SET_SERIAL_ACK;
+        save_user_settings(1);
         break;
 
     case CMD_SET_REF_THRESHOLD: // SET REF THRESHOLD
         memcpy(&reflected_threshold, cmd, 2);
         response[0] = CMD_RESP_SET_REF_THRESHOLD_ACK;
+        save_user_settings(1);
         break;
 
     case CMD_GET_REF_THRESHOLD: // GET REF THRESHOLD
@@ -1649,7 +1655,6 @@ gboolean ui_tick(gpointer gook){
     {
 
         processCATCommand(tmp_connector->service_command, tmp_connector->response_service);
-        // exec the commands here..
 
         tmp_connector->command_available = 0;
     }
