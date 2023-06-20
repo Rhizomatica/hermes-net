@@ -101,7 +101,7 @@ extern float fft_bins[];
 extern int spectrum_plot[];
 extern struct filter *ssb;
 
-# define REF_PEAK_REMOVAL 5
+# define REF_PEAK_REMOVAL 20
 
 //vfo definitions
 
