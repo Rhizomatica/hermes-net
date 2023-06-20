@@ -27,9 +27,6 @@ static int tx_shift = 512;
 
 FILE *pf_debug = NULL;
 
-//this is for processing FT8 decodes 
-//unsigned int	wallclock = 0;
-
 #define TX_LINE 4
 #define TX_POWER 27
 #define BAND_SELECT 5
