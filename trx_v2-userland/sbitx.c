@@ -711,7 +711,7 @@ void read_power(){
 
     static uint16_t peak_removal_counter = 0;
 
-    if (vswr > reflected_threshold)
+    if (vswr > reflected_threshold && vref)
         peak_removal_counter++;
     else
         peak_removal_counter = 0;
