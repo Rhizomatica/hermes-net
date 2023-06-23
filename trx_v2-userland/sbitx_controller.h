@@ -40,11 +40,12 @@ typedef struct{
     pthread_mutex_t response_mutex;
 
     uint8_t response_service[5];
-    atomic_bool command_available;
+    atomic_bool response_available;
 
     int radio_fd;
 
 } controller_conn;
 
+void sbitx_controller();
 
 #endif // HAVE_UBITXCONTROLLER_H__

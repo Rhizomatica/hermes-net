@@ -41,29 +41,24 @@ bool radio_cmd(controller_conn *connector, uint8_t *srv_cmd, uint8_t *response)
     pthread_cond_signal(&connector->cmd_condition);
     pthread_mutex_unlock(&connector->cmd_mutex);
 
-    connector->command_available = 1;
-
     if (srv_cmd[4] == CMD_RADIO_RESET)
         goto get_out;
 
-    // we wait max of 20ms... worse case should be 1ms is software is running ok
-    int tries = 0;
-    while (connector->command_available == 1 && tries < 100)
+    // ~3 ms max wait
+    uint32_t tries = 0;
+    while (connector->response_available == false && tries < 30)
     {
-        usleep(200); // 0.2 ms
+        usleep(100); // 0.1 ms
         tries++;
     }
 
-    if (connector->command_available == 0)
+    if (connector->response_available == true)
     {
         memcpy(response, connector->response_service, 5);
+        connector->response_available = false;
         ret_value = true;
     }
-    else
-    {
-        connector->command_available = 0;
-        // fprintf(stderr, "Command NOT executed in 20ms! Dropping it!\n");
-    }
+
 
  get_out:
     pthread_mutex_unlock(&connector->response_mutex);

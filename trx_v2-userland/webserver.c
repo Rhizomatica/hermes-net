@@ -53,7 +53,7 @@ static void get_updates(struct mg_connection *c, int all){
 
 static void do_login(struct mg_connection *c, char *key){
 
-	char passkey[20];
+	char passkey[32];
 	get_field_value("#passkey", passkey);
 	if (!key || strcmp(passkey, key)){
 		web_respond(c, "login error");
@@ -63,7 +63,7 @@ static void do_login(struct mg_connection *c, char *key){
 	}
 	
 	sprintf(session_cookie, "%x", rand());
-	char response[100];
+	char response[128];
 	sprintf(response, "login %s", session_cookie);
 	web_respond(c, response);	
 	get_updates(c, 1);
@@ -97,6 +97,9 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 	field = strtok(NULL, "=");
 	value = strtok(NULL, "\n");
 
+    if (cookie == NULL || strcmp(cookie, session_cookie)){
+		printf("Cookie received is: %s\n", cookie);
+	}
 
 	if (field == NULL || cookie == NULL){
 		printf("Invalid request on websocket\n");
@@ -112,15 +115,6 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 		printf("trying login with passkey : [%s]\n", value);
 		do_login(c, value);
 	}
-#if 0 // this does not allow connection to work...
-	else if (cookie == NULL || strcmp(cookie, session_cookie)){
-		web_respond(c, "quit expired");
-		printf("Cookie not found, closing socket\n");
-		c->is_draining = 1;
-	}
-	else if (!strcmp(field, "spectrum"))
-		get_spectrum(c);
-#endif
 	else if (!strcmp(field, "audio"))
 		get_audio(c);
 	else if (!strcmp(field, "refresh"))

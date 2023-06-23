@@ -49,6 +49,7 @@ controller_conn *tmp_connector = NULL;
 extern void g_main_loop_quit ();
 extern GMainLoop *loop_g;
 
+extern void processCATCommand(uint8_t *cmd, uint8_t *response);
 extern void tx_off();
 
 void finish(int s){
@@ -75,10 +76,8 @@ int cat_tx(void *arg)
     {
         pthread_cond_wait(&conn->cmd_condition, &conn->cmd_mutex);
 
-        // call the function from sbitx here...
-        // write(conn->radio_fd, conn->service_command, 5);
-
-        fprintf(stderr,"Sent to the radio:  0x%hhx\n", conn->service_command[4]);
+        conn->response_available = false; // just in case something bad happened before...
+        processCATCommand(conn->service_command, conn->response_service);
 
         if (conn->service_command[4] == CMD_RADIO_RESET)
         {
@@ -87,13 +86,13 @@ int cat_tx(void *arg)
             fprintf(stderr,"\nReset command. Exiting\n");
             exit(EXIT_SUCCESS);
         }
-
-  // may be this should be set by sbitx after the apropriate call?
-  // conn->command_available = 1;
+        conn->response_available = true;
 
     }
 
     pthread_mutex_unlock(&conn->cmd_mutex);
+
+    fprintf(stderr,"Sent to the radio:  0x%hhx\n", conn->service_command[4]);
 
     return EXIT_SUCCESS;
 }
@@ -158,7 +157,7 @@ bool initialize_message(controller_conn *connector)
     }
 
     connector->radio_fd = -1;
-    connector->command_available = 0;
+    connector->response_available = false;
 
     return EXIT_SUCCESS;
 }

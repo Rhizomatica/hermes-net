@@ -72,6 +72,8 @@ int make_hann_window(float *window, int max_count){
 	//apply to the entire fft (MAX_BINS)
 	for (int i = 0; i < max_count; i++)
 		window[i] = hann(i, max_count);	 
+
+    return 0;
 }
 
 // Apply Kaiser window to filter frequency response

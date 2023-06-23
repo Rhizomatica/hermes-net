@@ -191,20 +191,6 @@ static void setup_multisynth(uint8_t clk, uint8_t pllSource, uint32_t divider,  
 }
 
 
-static void set_frequency_fixedpll(int clk, int pll, uint32_t pllfreq, uint32_t freq, int rdiv, uint8_t drive_strength){
-  int32_t denom = 0x80000l;
-  uint32_t divider = pllfreq / freq; // range: 8 ~ 1800
-  uint32_t integer_part = divider * freq;
-  uint32_t reminder = pllfreq -  integer_part;
-	uint32_t multi = pllfreq / xtal_freq_calibrated;
-
-  uint32_t num = ((uint64_t)reminder * (uint64_t)denom)/freq;
-
-  setup_pll(pll, multi, 0, denom);
-  setup_multisynth(clk, pll, divider, num, denom, rdiv, drive_strength);
-}
-
-
 static void set_freq_fixeddiv(int clk, int pll, uint32_t frequency, int divider,  uint8_t drive_strength){
   int32_t denom = 0x80000;
   int32_t pllfreq = frequency * divider;

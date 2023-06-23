@@ -164,12 +164,7 @@ struct cmd {
 //variables to power up and down the tx
 
 static int in_tx = TX_OFF;
-static int key_down = 0;
 static int tx_start_time = 0;
-
-static int *tx_mod_buff = NULL;
-static int tx_mod_index = 0;
-static int tx_mod_max = 0;
 
 // high swr protection
 bool is_swr_protect_enabled = false;
@@ -184,8 +179,6 @@ char*mode_name[MAX_MODES] = {
 	"DIGITAL", "2TONE" 
 };
 
-static int serial_fd = -1;
-static int xit = 512; 
 static long int tuning_step = 1000;
 static int tx_mode = MODE_USB;
 
@@ -247,6 +240,7 @@ extern int frequency_offset;
 
 extern void read_hw_ini();
 extern void save_hw_settings();
+extern void read_power();
 
 
 char settings_updated = 0;
@@ -833,93 +827,6 @@ void update_field(struct field *f){
 } 
 
 
-// respond to a UI request to change the field value
-static void edit_field(struct field *f, int action){
-
-	if (f->fn){
-		f->is_dirty = 1;
-	 	f->update_remote = 1;
-		if (f->fn(f, NULL, FIELD_EDIT, action, 0, 0))
-			return;
-	}
-	
-	if (f->value_type == FIELD_NUMBER){
-		int	v = atoi(f->value);
-		if (action == MIN_KEY_UP && v + f->step <= f->max)
-			v += f->step;
-		else if (action == MIN_KEY_DOWN && v - f->step >= f->min)
-			v -= f->step;
-		sprintf(f->value, "%d",  v);
-	}
-	else if (f->value_type == FIELD_SELECTION){
-		char *p, *prev, b[100], *first, *last;
-    // get the first and last selections
-    strcpy(b, f->selection);
-    p = strtok(b, "/");
-    first = p;
-    while(p){
-      last = p;
-      p = strtok(NULL, "/");
-    }
-		//search the current text in the selection
-		prev = NULL;
-		strcpy(b, f->selection);
-		p = strtok(b, "/");
-		while(p){
-			if (!strcmp(p, f->value))
-				break;
-			else
-				prev = p;
-			p = strtok(NULL, "/");
-		}	
-		//set to the first option
-		if (p == NULL){
-			if (prev)
-				strcpy(f->value, prev);
-		}
-		else if (action == MIN_KEY_DOWN){
-			prev = p;
-			p = strtok(NULL,"/");
-			if (p)
-				strcpy(f->value, p);
-			else
-        strcpy(f->value, first); // roll over
-				//return;
-				//strcpy(f->value, prev); 
-		}
-		else if (action == MIN_KEY_UP){
-			if (prev)
-				strcpy(f->value, prev);
-			else
-        strcpy(f->value, last); // roll over
-				//return;
-		}
-	}
-	else if (f->value_type == FIELD_TOGGLE){
-		char *p, b[100];
-		strcpy(b, f->selection);
-		p = strtok(b, "/");
-		while(p){
-			if (strcmp(p, f->value))
-				break;
-			p = strtok(NULL, "/");
-		}	
-		strcpy(f->value, p);
-	}
-	else if (f->value_type == FIELD_BUTTON){
-		NULL; // ah, do nothing!
-	}
-
-	//send a command to the receiver
-	char buff[200];
-	sprintf(buff, "%s=%s", f->cmd, f->value);
-	do_cmd(buff);
-	f->is_dirty = 1;
-	f->update_remote = 1;
-//	update_field(f);
-	settings_updated++;
-}
-
 time_t time_sbitx(){
 	if (time_delta)
 		return  (millis()/1000l) + time_delta;
@@ -937,7 +844,7 @@ void set_operating_freq(int dial_freq, char *response){
     struct field *vfo_b = get_field("#vfo_b_freq");
     struct field *rit_delta = get_field("#rit_delta");
 
-    char freq_request[30];
+    char freq_request[256];
 
     if (!strcmp(rit->value, "ON")){
         if (!in_tx)
@@ -1073,23 +980,6 @@ void tx_off(){
 	// we dont wanna change sound input here!
 	//	sound_input(0); //it is a low overhead call, might as well be sure
 }
-
-int static cw_keydown = 0;
-int	static cw_hold_until = 0;
-int static cw_hold_duration = 150;
-
-static void cw_key(int state){
-	char response[100];
-	if (state == 1 && cw_keydown == 0){
-		sdr_request("key=down", response);
-		cw_keydown = 1;
-	}
-	else if (state == 0 && cw_keydown == 1){
-		cw_keydown = 0;
-	}
-	//printf("cw key = %d\n", cw_keydown);
-}
-
 
 void init_gpio_pins(){
 	for (int i = 0; i < 15; i++){
@@ -1279,7 +1169,7 @@ void hw_init(){
 	enc_init(&enc_a, ENC_FAST, ENC1_B, ENC1_A);
 	enc_init(&enc_b, ENC_FAST, ENC2_A, ENC2_B);
 
-	g_timeout_add(1, ui_tick, NULL);
+	g_timeout_add(10, ui_tick, NULL);
 
 	wiringPiISR(ENC2_A, INT_EDGE_BOTH, tuning_isr);
 	wiringPiISR(ENC2_B, INT_EDGE_BOTH, tuning_isr);
@@ -1323,7 +1213,7 @@ long get_freq(){
 }
 
 void set_bandwidth(int hz){
-	char buff[10], bw_str[10];
+	char buff[16], bw_str[16];
 	int low, high;
 	struct field *f_mode = get_field("r1:mode");
 	struct field *f_pitch = get_field("rx_pitch");
@@ -1438,7 +1328,6 @@ void meter_calibrate(){
 	"3. Press the tuning knob to confirm.\n");
 
 	set_mode("CW");
-	struct field *f_bridge = get_field("bridge");
 	set_field("bridge", "100");
     printf("Setting to mode CW and bridge to 100.\n");
 }
@@ -1477,9 +1366,6 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         else
         if (in_tx != 0)
         {
-            // sleep?
-            // this will cause collateral damages - please FIX it
-            // usleep(100000);
             sound_input(0);
             tx_off();
             response[0] = CMD_RESP_PTT_OFF_ACK;
@@ -1666,42 +1552,46 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
 }
 
 
-gboolean ui_tick(gpointer gook){
-	int static ticks = 0;
-    uint8_t srv_cmd[5];
-    uint8_t response[5];
+gboolean ui_tick(gpointer gook)
+{
+    int static ticks = 0;
+    uint32_t freq;
+    char command[64];
+    bool freq_dirty = false;
 
-	ticks++;
-
-    if (tmp_connector->command_available == 1)
-    {
-
-        processCATCommand(tmp_connector->service_command, tmp_connector->response_service);
-
-        tmp_connector->command_available = 0;
-    }
+    ticks++;
 
 	// check the tuning knob
 	struct field *f = get_field("r1:freq");
+	freq = atol(f->value);
 
-	if (abs(tuning_ticks) > 5)
+	if (abs(tuning_ticks) > 50)
 		tuning_ticks *= 4;
 	while (tuning_ticks > 0){
         // TODO: freq down
 		tuning_ticks--;
-    //sprintf(message, "tune-\r\n");
-    //write_console(FONT_LOG, message);
-
+        freq -= tuning_step;
+        sprintf(command, "r1:freq=%u", freq);
+        do_cmd(command);
+        sprintf(command, "%u", freq);
+        set_field("r1:freq", command);
+        freq_dirty = true;
 	}
 	while (tuning_ticks < 0){
         // TODO: freq up
 		tuning_ticks++;
-    //sprintf(message, "tune+\r\n");
-    //write_console(FONT_LOG, message);
+        freq += tuning_step;
+        sprintf(command, "r1:freq=%u", freq);
+        do_cmd(command);
+        sprintf(command, "%u", freq);
+        set_field("r1:freq", command);
+        freq_dirty = true;
 	}
+    if (freq_dirty)
+        save_user_settings(0);
 
 #if 1
-	if (!(ticks % 30))
+	if (!(ticks % 3))
     {
         if(in_tx)
         {
@@ -1713,7 +1603,7 @@ gboolean ui_tick(gpointer gook){
 			set_field("#vswr", buff);
 		}
     }
-	if (!(ticks % 100))
+	if (!(ticks % 10))
     {
 		if (digitalRead(ENC1_SW) == 0)
             printf("Button pressed?\n");
@@ -1725,7 +1615,7 @@ gboolean ui_tick(gpointer gook){
 	f = get_field("r1:mode");
 	//straight key in CW
 	if (f && (!strcmp(f->value, "2TONE") || !strcmp(f->value, "LSB") || 
-	!strcmp(f->value, "USB"))){
+	!strcmp(f->value, "USB") || !strcmp(f->value, "CW"))){
 		if (digitalRead(PTT) == LOW && in_tx == 0)
 			tx_on(TX_PTT);
 		else if (digitalRead(PTT) == HIGH && in_tx  == TX_PTT)
@@ -1792,9 +1682,9 @@ int is_in_tx(){
 /* handle the ui request and update the controls */
 
 void change_band(char *request){
-	int i, old_band, new_band; 
+	int old_band, new_band;
 	int max_bands = sizeof(band_stack)/sizeof(struct band);
-	long new_freq, old_freq;
+	long old_freq;
 	char buff[100];
 
 	//find the band that has just been selected, the first char is #, we skip it
@@ -1855,7 +1745,7 @@ void change_band(char *request){
 
 void utc_set(char *args, int update_rtc){
 	int n[7], i;
-	char *p, *q;
+	char *p;
 	struct tm t;
 	time_t gm_now;
 
@@ -1898,7 +1788,7 @@ void utc_set(char *args, int update_rtc){
 
 
 void do_cmd(char *cmd){	
-	char request[1000], response[1000], buff[100];
+	char request[1000], response[1000];
 	
 	strcpy(request, cmd);			//don't mangle the original, thank you
 
@@ -2002,12 +1892,11 @@ void do_cmd(char *cmd){
 
 void cmd_exec(char *cmd){
 	int i, j;
-	int mode = mode_id(get_field("r1:mode")->value);
 
 	char args[MAX_FIELD_LENGTH];
 	char exec[20];
 
-  args[0] = 0;
+    args[0] = 0;
 
 	//copy the exec
 	for (i = 0; *cmd > ' ' && i < sizeof(exec) - 1; i++)
@@ -2026,10 +1915,9 @@ void cmd_exec(char *cmd){
 	}
 	args[++j] = 0;
 
-	char response[100];
 	if (!strcmp(exec, "callsign")){
 		strcpy(get_field("#mycallsign")->value,args); 
-		sprintf(response, "\n[Your callsign is set to %s]\n", get_field("#mycallsign")->value);
+		// sprintf(response, "\n[Your callsign is set to %s]\n", get_field("#mycallsign")->value);
 	}
 	else if (!strcmp(exec, "metercal")){
 		meter_calibrate();
@@ -2044,7 +1932,7 @@ void cmd_exec(char *cmd){
 	}
 	else if (!strcmp(exec, "grid")){	
 		set_field("#mygrid", args);
-		sprintf(response, "\n[Your grid is set to %s]\n", get_field("#mygrid")->value);
+		// sprintf(response, "\n[Your grid is set to %s]\n", get_field("#mygrid")->value);
 	}
 	else if (!strcmp(exec, "utc")){
 		utc_set(args, 1);
@@ -2163,7 +2051,7 @@ int main( int argc, char* argv[] ) {
 	setup();
 
     // TODO split RTC code
-	rtc_sync();
+	// rtc_sync();
 
 	//initialize the modulation display
 
@@ -2179,21 +2067,20 @@ int main( int argc, char* argv[] ) {
 
     load_user_settings();
 
-	char buff[1000];
-
 	//now set the frequency of operation and more to vfo_a
     //sprintf(buff, "%d", vfo_a_freq);
     set_field("r1:freq", get_field("#vfo_a_freq")->value);
 
 	settings_updated = 0;
 
-	printf("Reading rtc...");
-	rtc_read();
-	printf("done!\n");
+    // TODO split RTC code
+	//printf("Reading rtc...");
+	//rtc_read();
+	//printf("done!\n");
 
     sbitx_controller();
     g_main_loop_run (loop_g);
 
-  return 0;
+    return 0;
 }
 

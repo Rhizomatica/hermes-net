@@ -280,7 +280,7 @@ int32_t i2cbb_write_i2c_block_data(uint8_t i2c_address, uint8_t command, uint8_t
 
             if (!errors)
                 return 0;
-						printf("i2cbb: write byte failed at index %d\n", i);
+						printf("i2cbb: write byte failed at index %lu\n", i);
         }
         else{
             i2c_stop_cond();
@@ -322,12 +322,13 @@ int32_t i2cbb_read_i2c_block_data(uint8_t i2c_address, uint8_t command, uint8_t 
 	}
 
 	//static uint8_t i2c_read_byte(int nack, int send_stop) 
-	uint8_t i = 0;
-  for (i = 0; i < length - 1; i++) 
-  	values[i] = i2c_read_byte(0,0);
-	values[i] = i2c_read_byte(1,1);
+    uint8_t i = 0;
+    for (i = 0; i < length - 1; i++)
+        values[i] = i2c_read_byte(0,0);
+    values[length-1] = i2c_read_byte(1,1);
 
 	i2c_stop_cond();
-  return length;
+
+    return length;
 }
 

@@ -61,7 +61,6 @@ static int tx_gain = 100;
 static int tx_compress = 0;
 static double spectrum_speed = 0.1;
 static int in_tx = 0;
-static int rx_tx_ramp = 0;
 static int sidetone = 2000000000;
 struct vfo tone_a, tone_b; //these are audio tone generators
 static int tx_use_line = 0;
@@ -70,14 +69,10 @@ struct rx *tx_list = NULL;
 struct filter *tx_filter;	//convolution filter
 static double tx_amp = 0.0;
 static double alc_level = 1.0;
-static int tr_relay = 0;
 static int rx_pitch = 700; //used only to offset the lo for CW,CWR
 static int bridge_compensation = 100;
 static double voice_clip_level = 0.022;
 static int in_calibration = 1; // this turns off alc, clipping et al
-
-#define MUTE_MAX 6 
-static int mute_count = 50;
 
 FILE *pf_record;
 int16_t record_buffer[1024];
@@ -127,12 +122,9 @@ void radio_tune_to(u_int32_t f){
 }
 
 void fft_init(){
-	int mem_needed;
 
 	//printf("initializing the fft\n");
 	fflush(stdout);
-
-	mem_needed = sizeof(fftw_complex) * MAX_BINS;
 
 	fft_m = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS/2);
 	fft_in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
@@ -192,8 +184,7 @@ void set_spectrum_speed(int speed){
 }
 
 void spectrum_reset(){
-	for (int i = 0; i < MAX_BINS; i++)
-		fft_bins[i] = 0;
+    memset(fft_bins, 0, sizeof(float) * MAX_BINS); // 32 bit float
 }
 
 void spectrum_update(){
@@ -308,7 +299,6 @@ FILE *wav_start_writing(const char* path)
 
 void wav_record(int32_t *samples, int count){
 	int16_t *w;
-	int32_t *s;
 	int i = 0, j = 0;
 	int decimation_factor = 96000 / 12000; 
 
@@ -384,6 +374,8 @@ struct rx *add_tx(int frequency, short mode, int bpf_low, int bpf_high){
 
   r->next = tx_list;
   tx_list = r;
+
+  return r;
 }
 
 struct rx *add_rx(int frequency, short mode, int bpf_low, int bpf_high){
@@ -428,6 +420,7 @@ struct rx *add_rx(int frequency, short mode, int bpf_low, int bpf_high){
 	r->next = rx_list;
 	rx_list = r;
 
+    return r;
 }
 
 
@@ -565,8 +558,8 @@ void rx_process(int32_t *input_rx,  int32_t *input_mic,
 
 
 	//STEP 1: first add the previous M samples to
-	for (i = 0; i < MAX_BINS/2; i++)
-		fft_in[i]  = fft_m[i];
+	memcpy(fft_in, fft_m, MAX_BINS/2 * sizeof(fftw_complex));
+
 
 	//STEP 2: then add the new set of samples
 	// m is the index into incoming samples, starting at zero
@@ -626,15 +619,9 @@ void rx_process(int32_t *input_rx,  int32_t *input_mic,
 
 	// STEP 5:zero out the other sideband
 	if (r->mode == MODE_LSB || r->mode == MODE_CWR)
-		for (i = 0; i < MAX_BINS/2; i++){
-			__real__ r->fft_freq[i] = 0;
-			__imag__ r->fft_freq[i] = 0;	
-		}
-	else  
-		for (i = MAX_BINS/2; i < MAX_BINS; i++){
-			__real__ r->fft_freq[i] = 0;
-			__imag__ r->fft_freq[i] = 0;	
-		}
+        memset(r->fft_freq, 0, sizeof(fftw_complex) * (MAX_BINS/2));
+	else
+        memset((void *) r->fft_freq + (MAX_BINS/2 * sizeof(fftw_complex)), 0, sizeof(fftw_complex) * (MAX_BINS/2));
 
 	// STEP 6: apply the filter to the signal,
 	// in frequency domain we just multiply the filter
@@ -649,7 +636,6 @@ void rx_process(int32_t *input_rx,  int32_t *input_mic,
 	agc2(r);
 	
 	//STEP 9: send the output back to where it needs to go
-	int is_digital = 0;
 
 	if (rx_list->output == 0){
 		for (i= 0; i < MAX_BINS/2; i++){
@@ -666,17 +652,17 @@ void rx_process(int32_t *input_rx,  int32_t *input_mic,
 
 	}
 
+#if 0
 	if (mute_count){
 		memset(output_speaker, 0, MAX_BINS/2 * sizeof(int32_t));
 		mute_count--;
 	}
-
+#endif
 }
 
 void read_power(){
 	uint8_t response[4];
 	uint16_t vfwd, vref;
-	char buff[20];
 
 	if (!in_tx)
 		return;
@@ -698,7 +684,7 @@ void read_power(){
 	fwdpower = (fwdvoltage * fwdvoltage)/400;
 
 	int rf_v_p2p = (fwdvoltage * 126)/400;
-	printf("rf: %d V, %f ALC, %hu W, %hu vswr\n", rf_v_p2p, alc_level, fwdpower/10, vswr);
+//	printf("rf: %d V, %f ALC, %hu W, %hu vswr\n", rf_v_p2p, alc_level, fwdpower/10, vswr);
 	if (rf_v_p2p > 135 && !in_calibration){
 		alc_level *= 135.0 / (1.0 * rf_v_p2p);
 		printf("ALC tripped, to %d percent\n", (int)(100 * alc_level));
@@ -733,7 +719,6 @@ void tx_process(
 	int32_t *output_speaker, int32_t *output_tx, 
 	int n_samples)
 {
-    static uint32_t tick_int = 0;
 	int i;
 	double i_sample, q_sample;
 
@@ -745,19 +730,19 @@ void tx_process(
 		tx_process_restart = 0;
 	}
 
+#if 0
     if (mute_count && (r->mode == MODE_USB || r->mode == MODE_LSB)){
 		memset(input_mic, 0, n_samples * sizeof(int32_t));
 		mute_count--;
 	}
+#endif
 	//first add the previous M samples
-	for (i = 0; i < MAX_BINS/2; i++)
-		fft_in[i]  = fft_m[i];
+	memcpy(fft_in, fft_m, MAX_BINS/2 * sizeof(fftw_complex));
 
 	int m = 0;
 	int j = 0;
 
-	double max = -10.0, min = 10.0;
-	//gather the samples into a time domain array 
+	//gather the samples into a time domain array
 	for (i= MAX_BINS/2; i < MAX_BINS; i++){
 
 		if (r->mode == MODE_2TONE)
@@ -932,9 +917,7 @@ static int hw_init_index = 0;
 static int hw_settings_handler(void* user, const char* section, 
             const char* name, const char* value)
 {
-  char cmd[1000];
-  char new_value[200];
-		
+
 
 	if (!strcmp(name, "f_start"))
 		band_power[hw_init_index].f_start = atoi(value);
@@ -945,6 +928,8 @@ static int hw_settings_handler(void* user, const char* section,
 
 	if (!strcmp(name, "bfo_freq"))
 		bfo_freq = atoi(value);
+
+    return 0;
 }
 
 void read_hw_ini(){
@@ -1024,8 +1009,7 @@ void calibrate_band_power(struct power_settings *b){
 }
 
 void save_hw_settings(){
-	static int last_save_at = 0;
-	char file_path[200];	//dangerous, find the MAX_PATH and replace 200 with it
+	char file_path[256];	//dangerous, find the MAX_PATH and replace 200 with it
 
 	char *path = getenv("HOME");
 	strcpy(file_path, path);
@@ -1066,6 +1050,8 @@ void *calibration_thread_function(void *server){
 	tx_drive = old_tx_drive;
 	save_hw_settings();
 	printf("*Finished band power calibrations\n");
+
+    return NULL;
 }
 
 void tx_cal(){
@@ -1090,7 +1076,6 @@ void tr_switch(int tx_on){
 
         //now switch of the signal back
         //now ramp up after 5 msecs
-        mute_count = 5;
         tx_process_restart = 1;
         in_tx = 1;
         digitalWrite(TX_LINE, HIGH);
@@ -1107,7 +1092,6 @@ void tr_switch(int tx_on){
         sound_mixer(audio_card, "Capture", 0);
         delay(1);
         fft_reset_m_bins();
-        mute_count = MUTE_MAX;
 
  		digitalWrite(LPF_A, LOW);
   		digitalWrite(LPF_B, LOW);
@@ -1117,12 +1101,10 @@ void tr_switch(int tx_on){
         delay(10);
         //power down the PA chain to null any gain
         digitalWrite(TX_LINE, LOW);
-        delay(5);
         //audio codec is back on
         sound_mixer(audio_card, "Master", rx_vol);
         sound_mixer(audio_card, "Capture", rx_gain);
         spectrum_reset();
-        //rx_tx_ramp = 10;
     }
 }
 

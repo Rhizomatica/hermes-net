@@ -42,4 +42,4 @@ void update_log_ed();
 void write_call_log();
 time_t time_sbitx();
 
-#define VER_STR "sbitx v2.0"
+#define VER_STR "HERMES v2 / sbitx v2.0 based"
