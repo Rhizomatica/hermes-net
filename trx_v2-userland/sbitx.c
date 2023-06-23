@@ -1061,6 +1061,7 @@ void tr_switch(int tx_on){
     }
     else
     {
+        delay(120);
         in_tx = 0;
         //mute it all and hang on
         sound_mixer(audio_card, "Master", 0);
