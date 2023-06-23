@@ -59,7 +59,6 @@ static int rx_gain = 100;
 static int rx_vol = 100;
 static int tx_gain = 100;
 static int tx_compress = 0;
-static double spectrum_speed = 0.1;
 static int in_tx = 0;
 static int sidetone = 2000000000;
 struct vfo tone_a, tone_b; //these are audio tone generators
@@ -80,6 +79,9 @@ int32_t modulation_buff[MAX_BINS];
 
 extern uint16_t reflected_threshold; // vswr * 10
 extern bool is_swr_protect_enabled;
+
+extern struct Queue qloop;
+
 
 /* the power gain of the tx varies widely from 
 band to band. these data structures help in flattening 
@@ -175,34 +177,6 @@ int mag2db(double mag){
 		p = p >> 1;
 	}
 	return c;
-}
-
-void set_spectrum_speed(int speed){
-	spectrum_speed = speed;
-	for (int i = 0; i < MAX_BINS; i++)
-		fft_bins[i] = 0;
-}
-
-void spectrum_reset(){
-    memset(fft_bins, 0, sizeof(float) * MAX_BINS); // 32 bit float
-}
-
-void spectrum_update(){
-	//we are only using the lower half of the bins, so this copies twice as many bins, 
-	//it can be optimized. leaving it here just in case someone wants to try I Q channels 
-	//in hardware
-//	for (int i = 0; i < MAX_BINS; i++){
-
-	// this has been hand optimized to lower
-	//the inordinate cpu usage
-	for (int i = 1269; i < 1803; i++){
-
-		fft_bins[i] = ((1.0 - spectrum_speed) * fft_bins[i]) + 
-			(spectrum_speed * cabs(fft_spectrum[i]));
-
-		int y = power2dB(cnrmf(fft_bins[i])); 
-		spectrum_plot[i] = y;
-	}
 }
 
 int remote_audio_output(int16_t *samples){
@@ -731,6 +705,7 @@ void tx_process(
 	}
 
 #if 0
+    // we need to insert silence plus the actual samples... not erase them
     if (mute_count && (r->mode == MODE_USB || r->mode == MODE_LSB)){
 		memset(input_mic, 0, n_samples * sizeof(int32_t));
 		mute_count--;
@@ -1062,50 +1037,53 @@ void tx_cal(){
 
 //v2 t/r switch uses the lpfs to cut the feedback during t/r transitions
 void tr_switch(int tx_on){
-    if (tx_on){
-
+    if (tx_on)
+    {
         //first turn off the LPFs, so PA doesnt connect
-  		digitalWrite(LPF_A, LOW);
-  		digitalWrite(LPF_B, LOW);
+        digitalWrite(LPF_A, LOW);
+        digitalWrite(LPF_B, LOW);
         digitalWrite(LPF_C, LOW);
   		digitalWrite(LPF_D, LOW);
 
         //mute it all and hang on for a millisecond
         sound_mixer(audio_card, "Master", 0);
         sound_mixer(audio_card, "Capture", 0);
+        q_empty(&qloop);
 
-        //now switch of the signal back
-        //now ramp up after 5 msecs
         tx_process_restart = 1;
         in_tx = 1;
         digitalWrite(TX_LINE, HIGH);
-        delay(5);
+        delay(3);
         set_tx_power_levels();
         prev_lpf = -1; //force this
+        delay(3);
         set_lpf_40mhz(freq_hdr);
-        spectrum_reset();
     }
-    else {
+    else
+    {
         in_tx = 0;
         //mute it all and hang on
         sound_mixer(audio_card, "Master", 0);
         sound_mixer(audio_card, "Capture", 0);
-        delay(1);
+        // delay(1);
         fft_reset_m_bins();
+        q_empty(&qloop);
 
- 		digitalWrite(LPF_A, LOW);
+  		digitalWrite(LPF_A, LOW);
   		digitalWrite(LPF_B, LOW);
         digitalWrite(LPF_C, LOW);
   		digitalWrite(LPF_D, LOW);
         prev_lpf = -1; //force the lpf to be re-energized
-        delay(10);
-        //power down the PA chain to null any gain
+        // delay(10);
+			//power down the PA chain to null any gain
         digitalWrite(TX_LINE, LOW);
-        //audio codec is back on
+        // delay(5);
+			//audio codec is back on
         sound_mixer(audio_card, "Master", rx_vol);
         sound_mixer(audio_card, "Capture", rx_gain);
-        spectrum_reset();
-    }
+			//rx_tx_ramp = 10;
+		}
+
 }
 
 #if 0
