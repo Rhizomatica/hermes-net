@@ -38,7 +38,7 @@ sbitx_controller: $(OBJ) sbitx_controller.h shm.h ../include/radio_cmds.h
 	$(CC) -o $@ $(OBJ) $(LDFLAGS)
 
 sbitx_client: sbitx_client.c shm.c sbitx_io.c sbitx_controller.h sbitx_io.h shm.h help.h ../include/radio_cmds.h
-	$(CC) sbitx_client.c sbitx_io.c shm.c -o sbitx_client
+	$(CC) $(CFLAGS) sbitx_client.c sbitx_io.c shm.c -o sbitx_client
 
 .PHONY: clean install
 clean:

@@ -45,7 +45,6 @@
 
 static bool running;
 
-controller_conn *tmp_connector = NULL;
 extern void g_main_loop_quit ();
 extern GMainLoop *loop_g;
 
@@ -74,9 +73,11 @@ int cat_tx(void *arg)
 
     while(running)
     {
+
         pthread_cond_wait(&conn->cmd_condition, &conn->cmd_mutex);
 
         conn->response_available = false; // just in case something bad happened before...
+
         processCATCommand(conn->service_command, conn->response_service);
 
         if (conn->service_command[4] == CMD_RADIO_RESET)
@@ -156,7 +157,6 @@ bool initialize_message(controller_conn *connector)
         return false;
     }
 
-    connector->radio_fd = -1;
     connector->response_available = false;
 
     return EXIT_SUCCESS;
@@ -177,7 +177,6 @@ void sbitx_controller()
 
     initialize_message(connector);
 
-    tmp_connector = connector;
 
     signal (SIGINT, finish);
     signal (SIGQUIT, finish);
