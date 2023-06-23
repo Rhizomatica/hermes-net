@@ -1053,7 +1053,7 @@ void tr_switch(int tx_on){
         tx_process_restart = 1;
         in_tx = 1;
         digitalWrite(TX_LINE, HIGH);
-        delay(3);
+//        delay(3);
         set_tx_power_levels();
         prev_lpf = -1; //force this
         delay(3);
@@ -1061,14 +1061,13 @@ void tr_switch(int tx_on){
     }
     else
     {
-        delay(120);
-        in_tx = 0;
         //mute it all and hang on
         sound_mixer(audio_card, "Master", 0);
         sound_mixer(audio_card, "Capture", 0);
         // delay(1);
         fft_reset_m_bins();
         q_empty(&qloop);
+        in_tx = 0;
 
   		digitalWrite(LPF_A, LOW);
   		digitalWrite(LPF_B, LOW);
