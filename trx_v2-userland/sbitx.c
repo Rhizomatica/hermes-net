@@ -110,8 +110,6 @@ struct power_settings band_power[] ={
 #define TUNING_SHIFT (0)
 #define MDS_LEVEL (-135)
 
-struct Queue qremote;
-
 void radio_tune_to(u_int32_t f){
 	if (rx_list->mode == MODE_CW)
   	si5351bx_setfreq(2, f + bfo_freq - 24000 + TUNING_SHIFT - rx_pitch);
@@ -751,10 +749,6 @@ void tx_process(
 	  m++;
 	}
 
-	//push the samples to the remote audio queue, decimated to 16000 samples/sec
-	for (i = 0; i < MAX_BINS/2; i += 6)
-		q_write(&qremote, output_speaker[i]);
-
 	//convert to frequency
 	fftw_execute(plan_fwd);
 
@@ -844,7 +838,6 @@ void set_rx_filter(){
 void signal_handler(int signum){
 	digitalWrite(TX_LINE, LOW);
 }
-
 void setup_audio_codec(){
 	strcpy(audio_card, "hw:0");
 
@@ -1147,25 +1140,22 @@ void setup(){
 	pinMode(LPF_B, OUTPUT);
 	pinMode(LPF_C, OUTPUT);
 	pinMode(LPF_D, OUTPUT);
-  digitalWrite(LPF_A, LOW);
-  digitalWrite(LPF_B, LOW);
-  digitalWrite(LPF_C, LOW);
-  digitalWrite(LPF_D, LOW);
+    digitalWrite(LPF_A, LOW);
+    digitalWrite(LPF_B, LOW);
+    digitalWrite(LPF_C, LOW);
+    digitalWrite(LPF_D, LOW);
 	digitalWrite(TX_LINE, LOW);
 	digitalWrite(TX_POWER, LOW);
 
 	fft_init();
 	vfo_init_phase_table();
-  setup_oscillators();
-	q_init(&qremote, 8000);
+    setup_oscillators();
 
-	// modem_init();
-
-	add_rx(7000000, MODE_LSB, -3000, -300);
-	add_tx(7000000, MODE_LSB, -3000, -300);
+	add_rx(7000000, MODE_LSB, -3000, -50);
+	add_tx(7000000, MODE_LSB, -3000, -50);
 	rx_list->tuned_bin = 512;
     tx_list->tuned_bin = 512;
-	tx_init(7000000, MODE_LSB, -3000, -150);
+	tx_init(7000000, MODE_LSB, -3000, -50);
 
 
 	setup_audio_codec();
