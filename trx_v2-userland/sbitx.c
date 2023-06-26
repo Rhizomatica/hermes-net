@@ -179,14 +179,6 @@ int mag2db(double mag){
 	return c;
 }
 
-int remote_audio_output(int16_t *samples){
-	int length = q_length(&qremote);
-	for (int i = 0; i < length; i++){
-		samples[i] = q_read(&qremote) / 32786;
-	}
-	return length;
-}
-
 static int prev_lpf = -1;
 void set_lpf_40mhz(int frequency){
     int lpf = 0;
@@ -619,10 +611,6 @@ void rx_process(int32_t *input_rx,  int32_t *input_mic,
 			output_speaker[i] = sample;
 			output_tx[i] = 0;
 		}
-
-		//push the samples to the remote audio queue, decimated to 16000 samples/sec
-		for (i = 0; i < MAX_BINS/2; i += 6)
-			q_write(&qremote, output_speaker[i]);
 
 	}
 

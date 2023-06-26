@@ -174,6 +174,8 @@ The sound is playback is carried on in a non-blocking way
 int sound_start_play(char *device){
 	//found out the correct device through aplay -L (for pcm devices)
 
+    fprintf(stderr, "ALSA Playback device is: %s\n", device);
+
 	snd_pcm_hw_params_alloca(&hwparams);	//more alloc
 
 	//puts a playback handle into the pointer to the pointer
@@ -258,7 +260,9 @@ int sound_start_play(char *device){
 
 int sound_start_loopback_capture(char *device){
 
-	snd_pcm_hw_params_alloca(&hloop_params);
+    fprintf(stderr, "ALSA Loopback Capture device at: %s\n", device);
+
+    snd_pcm_hw_params_alloca(&hloop_params);
 	//printf ("opening audio tx stream to %s\n", device); 
 	int e = snd_pcm_open(&loopback_capture_handle, device, capture_stream, 0);
 	
@@ -359,7 +363,9 @@ int sound_start_capture(char *device){
 	snd_pcm_hw_params_alloca(&hwparams);
 
 	int e = snd_pcm_open(&pcm_capture_handle, device, capture_stream, 0);
-	
+
+    fprintf(stderr, "ALSA Capture device is: %s\n", device);
+
 	if (e < 0) {
 		fprintf(stderr, "Error opening PCM capture device %s: %s\n", device, snd_strerror(e));
 		return -1;
@@ -432,6 +438,8 @@ int sound_start_capture(char *device){
 
 int sound_start_loopback_play(char *device){
 	//found out the correct device through aplay -L (for pcm devices)
+
+    fprintf(stderr, "ALSA Loopback Playback device at: %s\n", device);
 
 	snd_pcm_hw_params_alloca(&hwparams);	//more alloc
 
@@ -541,34 +549,35 @@ int32_t	resample_out[10000];
 int last_second = 0;
 int nsamples = 0;
 int	played_samples = 0;
+
 void sound_loop(){
 	int32_t	 *line_out, *data_in, *data_out,
-						*input_i, *output_i, *input_q, *output_q;
-  int pcmreturn, i, j;
-  int frames;
+        *input_i, *output_i, *input_q, *output_q;
+    int pcmreturn, i, j;
+    int frames;
 
 	//we allocate enough for two channels of int32_t sized samples	
-  data_in = (int32_t *)malloc(buff_size * 2);
-  line_out = (int32_t *)malloc(buff_size * 2);
-  data_out = (int32_t *)malloc(buff_size * 2);
-  input_i = (int32_t *)malloc(buff_size * 2);
-  output_i = (int32_t *)malloc(buff_size * 2);
-  input_q = (int32_t *)malloc(buff_size * 2);
-  output_q = (int32_t *)malloc(buff_size * 2);
+    data_in = (int32_t *)malloc(buff_size * 2);
+    line_out = (int32_t *)malloc(buff_size * 2);
+    data_out = (int32_t *)malloc(buff_size * 2);
+    input_i = (int32_t *)malloc(buff_size * 2);
+    output_i = (int32_t *)malloc(buff_size * 2);
+    input_q = (int32_t *)malloc(buff_size * 2);
+    output_q = (int32_t *)malloc(buff_size * 2);
 
-  frames = buff_size / 8;
+    frames = buff_size / 8;
 	
-  snd_pcm_prepare(pcm_play_handle);
-  snd_pcm_prepare(loopback_play_handle);
-  snd_pcm_writei(pcm_play_handle, data_out, frames);
-  snd_pcm_writei(pcm_play_handle, data_out, frames);
+    snd_pcm_prepare(pcm_play_handle);
+    snd_pcm_prepare(loopback_play_handle);
+    snd_pcm_writei(pcm_play_handle, data_out, frames);
+    snd_pcm_writei(pcm_play_handle, data_out, frames);
 
-  pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier);
 
-  //Note: the virtual cable samples queue should be flushed at the start of tx
-  qloop.stall = 1;
+    //Note: the virtual cable samples queue should be flushed at the start of tx
+    qloop.stall = 1;
 
-  while(sound_thread_continue) {
+    while(sound_thread_continue) {
 
 		//restart the pcm capture if there is an error reading the samples
 		//this is opened as a blocking device, hence we derive accurate timing 
@@ -583,7 +592,7 @@ void sound_loop(){
 		i = 0; 
 		j = 0;
 		int ret_card = pcmreturn;
-    if (use_virtual_cable){
+        if (use_virtual_cable){
 
 			//printf(" we have %d in qloop, writing now\n", q_length(&qloop));
 			// if don't we have enough to last two iterations loop back...
@@ -624,93 +633,93 @@ void sound_loop(){
 		}
 
 /*
-	// This is the original pcm play write routine, now commented out.
-    while ((pcmreturn = snd_pcm_writei(pcm_play_handle, 
-			data_out, frames)) < 0) {
-       snd_pcm_prepare(pcm_play_handle);
-    }
+// This is the original pcm play write routine, now commented out.
+while ((pcmreturn = snd_pcm_writei(pcm_play_handle,
+data_out, frames)) < 0) {
+snd_pcm_prepare(pcm_play_handle);
+}
 */
 
-	// This is the new pcm play write routine
+        // This is the new pcm play write routine
 
-	int framesize = ret_card;
-	int offset = 0;
+        int framesize = ret_card;
+        int offset = 0;
 		
-	while(framesize > 0)
-	{
-		pcmreturn = snd_pcm_writei(pcm_play_handle, data_out + offset, framesize);
-		if((pcmreturn < 0) && (pcmreturn != -11))	// also ignore "temporarily unavailable" errors
-		{
-			// Handle an error condition from the snd_pcm_writei function
+        while(framesize > 0)
+        {
+            pcmreturn = snd_pcm_writei(pcm_play_handle, data_out + offset, framesize);
+            if((pcmreturn < 0) && (pcmreturn != -11))	// also ignore "temporarily unavailable" errors
+            {
+                // Handle an error condition from the snd_pcm_writei function
 //			printf("Play PCM Write Error: %s  count = %d\n",snd_strerror(pcmreturn), play_write_error++);
-			snd_pcm_prepare(pcm_play_handle);		
-		}
+                snd_pcm_prepare(pcm_play_handle);
+            }
 		
-		if(pcmreturn >= 0)
-		{
-			// Calculate remaining number of samples to be sent and new position in sample array.
-			// If all the samples were processed by the snd_pcm_writei function then framesize will be
-			// zero and the while() loop will end.
-			framesize -= pcmreturn;
-			offset += (pcmreturn * 2);
-		}
-	}
-	// End of new pcm play write routine
+            if(pcmreturn >= 0)
+            {
+                // Calculate remaining number of samples to be sent and new position in sample array.
+                // If all the samples were processed by the snd_pcm_writei function then framesize will be
+                // zero and the while() loop will end.
+                framesize -= pcmreturn;
+                offset += (pcmreturn * 2);
+            }
+        }
+        // End of new pcm play write routine
 
 
-	//decimate the line out to half, ie from 96000 to 48000
-	//play the received data (from left channel) to both of line out
+        //decimate the line out to half, ie from 96000 to 48000
+        //play the received data (from left channel) to both of line out
 		
-	int jj = 0;
-	int ii = 0;
-	while (ii < ret_card){
-		line_out[jj++] = output_i[ii] / LOOPBACK_LEVEL_DIVISOR;  // Left Channel. Reduce audio level to FLDIGI a bit
-		line_out[jj++] = output_i[ii] / LOOPBACK_LEVEL_DIVISOR;  // Right Channel. Note: FLDIGI does not use the this channel.
-		// The right channel can be used to output other integer values such as AGC, for capture by an
-		// application such as audacity.
-		ii += 2;	// Skip a pair of samples to account for the 96K sample to 48K sample rate change.
-	}
+        int jj = 0;
+        int ii = 0;
+        while (ii < ret_card){
+            line_out[jj++] = output_i[ii] / LOOPBACK_LEVEL_DIVISOR;  // Left Channel. Reduce audio level to FLDIGI a bit
+            line_out[jj++] = output_i[ii] / LOOPBACK_LEVEL_DIVISOR;  // Right Channel. Note: FLDIGI does not use the this channel.
+            // The right channel can be used to output other integer values such as AGC, for capture by an
+            // application such as audacity.
+            ii += 2;	// Skip a pair of samples to account for the 96K sample to 48K sample rate change.
+        }
 
 /*
-	// This is the original pcm loopback write routine, now commented out.
-    while((pcmreturn = snd_pcm_writei(loopback_play_handle, 
-			 line_out, jj)) < 0){
-			 //printf("loopback rx error: %s\n", snd_strerror(pcmreturn));
-       snd_pcm_prepare(loopback_play_handle);
-			//puts("preparing loopback");
-    }
+// This is the original pcm loopback write routine, now commented out.
+while((pcmreturn = snd_pcm_writei(loopback_play_handle,
+line_out, jj)) < 0){
+//printf("loopback rx error: %s\n", snd_strerror(pcmreturn));
+snd_pcm_prepare(loopback_play_handle);
+//puts("preparing loopback");
+}
 */    
 
-	// This is the new pcm loopback write routine
-	framesize = (ret_card + 1) /2;		// only writing half the number of samples because of the slower channel rate
-	offset = 0;
+        // This is the new pcm loopback write routine
+        framesize = (ret_card + 1) /2;		// only writing half the number of samples because of the slower channel rate
+        offset = 0;
 
-	while(framesize > 0)
-	{
-		pcmreturn = snd_pcm_writei(loopback_play_handle, line_out + offset, framesize);
-		if(pcmreturn < 0)
-		{
+        while(framesize > 0)
+        {
+            pcmreturn = snd_pcm_writei(loopback_play_handle, line_out + offset, framesize);
+            if(pcmreturn < 0)
+            {
 //			printf("Loopback PCM Write Error: %s  count = %d\n",snd_strerror(pcmreturn), loopback_write_error++);
-			// Handle an error condition from the snd_pcm_writei function
-			snd_pcm_prepare(loopback_play_handle);
-		}
+                // Handle an error condition from the snd_pcm_writei function
+                snd_pcm_prepare(loopback_play_handle);
+            }
 		
-		if(pcmreturn >= 0)
-		{
-			// Calculate remaining number of samples to be sent and new position in sample array.
-			// If all the samples were processed by the snd_pcm_writei function then framesize will be
-			// zero and the while() loop will end.	
-			framesize -= pcmreturn;
-			offset += (pcmreturn * 2);
-		}
-	}
-	// End of new pcm loopback write routine	
+            if(pcmreturn >= 0)
+            {
+                // Calculate remaining number of samples to be sent and new position in sample array.
+                // If all the samples were processed by the snd_pcm_writei function then framesize will be
+                // zero and the while() loop will end.
+                framesize -= pcmreturn;
+                offset += (pcmreturn * 2);
+            }
+        }
+        // End of new pcm loopback write routine
 	
     
 		//played_samples += pcmreturn;
-  }
+    }
 	//fclose(pf);
-  printf("********Ending sound thread\n");
+    printf("********Ending sound thread\n");
 }
 
 

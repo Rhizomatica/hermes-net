@@ -69,16 +69,6 @@ static void do_login(struct mg_connection *c, char *key){
 	get_updates(c, 1);
 }
 
-static int16_t remote_samples[10000]; //the max samples are set by the queue lenght in modems.c
-
-static void get_audio(struct mg_connection *c){
-	get_updates(c, 0);
-
-	int count = remote_audio_output(remote_samples);		
-	if (count > 0)
-		mg_ws_send(c, remote_samples, count * sizeof(int16_t), WEBSOCKET_OP_BINARY);
-}
-
 char request[200];
 int request_index = 0;
 
@@ -97,8 +87,8 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 	field = strtok(NULL, "=");
 	value = strtok(NULL, "\n");
 
-    if (cookie == NULL || strcmp(cookie, session_cookie)){
-		printf("Cookie received is: %s\n", cookie);
+    if (cookie != NULL){ //  || strcmp(cookie, session_cookie)){
+		printf("Cookie: %s\nSession Cookie: %s\n", cookie, session_cookie);
 	}
 
 	if (field == NULL || cookie == NULL){
@@ -115,8 +105,6 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 		printf("trying login with passkey : [%s]\n", value);
 		do_login(c, value);
 	}
-	else if (!strcmp(field, "audio"))
-		get_audio(c);
 	else if (!strcmp(field, "refresh"))
 		get_updates(c, 1);
 	else{
