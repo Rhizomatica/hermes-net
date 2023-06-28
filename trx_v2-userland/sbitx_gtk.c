@@ -1598,7 +1598,7 @@ gboolean ui_tick(gpointer gook)
             char buff[10];
             read_power();
 			sprintf(buff,"%d", fwdpower);
-			set_field("#fwdpower", buff);		
+			set_field("#fwdpower", buff);
 			sprintf(buff, "%d", vswr);
 			set_field("#vswr", buff);
 		}
@@ -1606,8 +1606,11 @@ gboolean ui_tick(gpointer gook)
 	if (!(ticks % 10))
     {
 		if (digitalRead(ENC1_SW) == 0)
-            printf("Button pressed?\n");
-            //focus_field(get_field("r1:volume"));
+            printf("Button 1 pressed\n");
+
+		if (digitalRead(ENC2_SW) == 0)
+            printf("Button 2 pressed\n");
+        //focus_field(get_field("r1:volume"));
     }
 #endif
 
@@ -1621,14 +1624,46 @@ gboolean ui_tick(gpointer gook)
 		else if (digitalRead(PTT) == HIGH && in_tx  == TX_PTT)
 			tx_off();
 	}
-#if 0
+#if 1
+    static bool discard_first_enc_a = true;
 	int scroll = enc_read(&enc_a);
-	if (scroll){
-		if (scroll < 0)
-            // TODO: volume down?
-		else
-            // TODO: volume up?
-	}
+    if (!discard_first_enc_a)
+    {
+        if (scroll){
+            struct field *vol = get_field("r1:volume");
+            int volume = atol(vol->value);
+
+            int previous_volume = volume;
+
+            if (scroll < 0)
+            {
+                if (volume < 2)
+                    volume = 0;
+                else
+                    volume -= 2;
+                printf("volume down to %d\n", volume);
+            }
+                // TODO: volume down?
+            else
+            {
+                printf("volume up\n");
+                if (volume > 98)
+                    volume = 100;
+                else
+                    volume += 2;
+                printf("volume up to %d\n", volume);
+            }
+
+            if (previous_volume != volume)
+            {
+                sprintf(command, "r1:volume=%u", volume);
+                do_cmd(command);
+            }
+        }
+    }
+    else
+        discard_first_enc_a = false;
+
 #endif
 
 	return TRUE;
