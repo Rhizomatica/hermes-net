@@ -75,8 +75,9 @@ struct encoder {
 	int prev_state;
 	int history;
 };
-void tuning_isr(void);
 
+void tuning_isr_a(void);
+void tuning_isr_b(void);
 
 struct encoder enc_a, enc_b;
 
@@ -1192,8 +1193,12 @@ void hw_init(){
 
 	g_timeout_add(10, ui_tick, NULL);
 
-	wiringPiISR(ENC2_A, INT_EDGE_BOTH, tuning_isr_a);
-	wiringPiISR(ENC2_B, INT_EDGE_BOTH, tuning_isr_b);
+    wiringPiISR(ENC2_A, INT_EDGE_BOTH, tuning_isr_b);
+    wiringPiISR(ENC2_B, INT_EDGE_BOTH, tuning_isr_b);
+
+    wiringPiISR(ENC1_A, INT_EDGE_BOTH, tuning_isr_a);
+    wiringPiISR(ENC1_B, INT_EDGE_BOTH, tuning_isr_a);
+
 }
 
 int get_cw_delay(){
