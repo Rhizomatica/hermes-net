@@ -1637,20 +1637,20 @@ gboolean ui_tick(gpointer gook)
 
             if (scroll < 0)
             {
-                if (volume < 2)
+                if (volume < 5)
                     volume = 0;
                 else
-                    volume -= 2;
+                    volume -= 4;
                 printf("volume down to %d\n", volume);
             }
                 // TODO: volume down?
             else
             {
                 printf("volume up\n");
-                if (volume > 98)
+                if (volume > 95)
                     volume = 100;
                 else
-                    volume += 2;
+                    volume += 4;
                 printf("volume up to %d\n", volume);
             }
 
