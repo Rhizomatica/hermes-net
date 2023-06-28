@@ -1557,7 +1557,8 @@ gboolean ui_tick(gpointer gook)
     int static ticks = 0;
     uint32_t freq;
     char command[64];
-    bool freq_dirty = false;
+    bool dirty = false;
+
 
     ticks++;
 
@@ -1575,7 +1576,7 @@ gboolean ui_tick(gpointer gook)
         do_cmd(command);
         sprintf(command, "%u", freq);
         set_field("r1:freq", command);
-        freq_dirty = true;
+        dirty = true;
 	}
 	while (tuning_ticks < 0){
         // TODO: freq up
@@ -1585,10 +1586,8 @@ gboolean ui_tick(gpointer gook)
         do_cmd(command);
         sprintf(command, "%u", freq);
         set_field("r1:freq", command);
-        freq_dirty = true;
+        dirty = true;
 	}
-    if (freq_dirty)
-        save_user_settings(0);
 
 #if 1
 	if (!(ticks % 3))
@@ -1641,9 +1640,8 @@ gboolean ui_tick(gpointer gook)
                     volume = 0;
                 else
                     volume -= 4;
-                printf("volume down to %d\n", volume);
+                // printf("volume down to %d\n", volume);
             }
-                // TODO: volume down?
             else
             {
                 printf("volume up\n");
@@ -1651,7 +1649,7 @@ gboolean ui_tick(gpointer gook)
                     volume = 100;
                 else
                     volume += 4;
-                printf("volume up to %d\n", volume);
+                //printf("volume up to %d\n", volume);
             }
 
             if (previous_volume != volume)
@@ -1660,11 +1658,16 @@ gboolean ui_tick(gpointer gook)
                 do_cmd(command);
                 sprintf(command, "%u", volume);
                 set_field("r1:volume", command);
+                dirty = true;
             }
         }
     }
     else
         discard_first_enc_a = false;
+
+    if (dirty)
+        save_user_settings(0);
+
 
 #endif
 
