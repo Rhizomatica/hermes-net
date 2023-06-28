@@ -1153,13 +1153,34 @@ int enc_read(struct encoder *e) {
   return result;
 }
 
+static int volume_ticks = 0;
+void tuning_isr_a(void){
+	int tuning = enc_read(&enc_a);
+    static bool first = true;
+    if (!first)
+    {
+        if (tuning < 0)
+            volume_ticks++;
+        if (tuning > 0)
+            volume_ticks--;
+    }
+    else
+        first = false;
+}
+
 static int tuning_ticks = 0;
-void tuning_isr(void){
+void tuning_isr_b(void){
 	int tuning = enc_read(&enc_b);
-	if (tuning < 0)
-		tuning_ticks++;
-	if (tuning > 0)
-		tuning_ticks--;	
+    static bool first = true;
+    if (!first)
+    {
+        if (tuning < 0)
+            tuning_ticks++;
+        if (tuning > 0)
+            tuning_ticks--;
+    }
+    else
+        first = false;
 }
 
 void hw_init(){
@@ -1171,8 +1192,8 @@ void hw_init(){
 
 	g_timeout_add(10, ui_tick, NULL);
 
-	wiringPiISR(ENC2_A, INT_EDGE_BOTH, tuning_isr);
-	wiringPiISR(ENC2_B, INT_EDGE_BOTH, tuning_isr);
+	wiringPiISR(ENC2_A, INT_EDGE_BOTH, tuning_isr_a);
+	wiringPiISR(ENC2_B, INT_EDGE_BOTH, tuning_isr_b);
 }
 
 int get_cw_delay(){
@@ -1563,33 +1584,54 @@ gboolean ui_tick(gpointer gook)
     ticks++;
 
 	// check the tuning knob
-	struct field *f = get_field("r1:freq");
+    struct field *f = get_field("r1:freq");
 	freq = atol(f->value);
 
 	if (abs(tuning_ticks) > 50)
 		tuning_ticks *= 4;
 	while (tuning_ticks > 0){
-        // TODO: freq down
 		tuning_ticks--;
         freq -= tuning_step;
-        sprintf(command, "r1:freq=%u", freq);
-        do_cmd(command);
         sprintf(command, "%u", freq);
         set_field("r1:freq", command);
         dirty = true;
 	}
 	while (tuning_ticks < 0){
-        // TODO: freq up
 		tuning_ticks++;
         freq += tuning_step;
-        sprintf(command, "r1:freq=%u", freq);
-        do_cmd(command);
         sprintf(command, "%u", freq);
         set_field("r1:freq", command);
         dirty = true;
 	}
+    // check the volume knob
 
-#if 1
+    struct field *vol = get_field("r1:volume");
+    int volume = atol(vol->value);
+
+	if (abs(volume_ticks) > 50)
+		volume_ticks *= 4;
+	while (volume_ticks > 0){
+		volume_ticks--;
+        if (volume < 5)
+            volume = 0;
+        else
+            volume -= 4;
+        sprintf(command, "%u", volume);
+        set_field("r1:volume", command);
+        dirty = true;
+	}
+	while (volume_ticks < 0){
+		volume_ticks++;
+        if (volume > 95)
+            volume = 100;
+        else
+            volume += 4;
+        sprintf(command, "%u", volume);
+        set_field("r1:volume", command);
+        dirty = true;
+	}
+
+
 	if (!(ticks % 3))
     {
         if(in_tx)
@@ -1602,6 +1644,7 @@ gboolean ui_tick(gpointer gook)
 			set_field("#vswr", buff);
 		}
     }
+
 	if (!(ticks % 10))
     {
 		if (digitalRead(ENC1_SW) == 0)
@@ -1611,7 +1654,6 @@ gboolean ui_tick(gpointer gook)
             printf("Button 2 pressed\n");
         //focus_field(get_field("r1:volume"));
     }
-#endif
 
  
 	f = get_field("r1:mode");
@@ -1623,7 +1665,7 @@ gboolean ui_tick(gpointer gook)
 		else if (digitalRead(PTT) == HIGH && in_tx  == TX_PTT)
 			tx_off();
 	}
-#if 1
+#if 0
     static bool discard_first_enc_a = true;
 	int scroll = enc_read(&enc_a);
     if (!discard_first_enc_a)
@@ -1644,7 +1686,6 @@ gboolean ui_tick(gpointer gook)
             }
             else
             {
-                printf("volume up\n");
                 if (volume > 95)
                     volume = 100;
                 else
@@ -1654,8 +1695,6 @@ gboolean ui_tick(gpointer gook)
 
             if (previous_volume != volume)
             {
-                sprintf(command, "r1:volume=%u", volume);
-                do_cmd(command);
                 sprintf(command, "%u", volume);
                 set_field("r1:volume", command);
                 dirty = true;
@@ -1665,13 +1704,11 @@ gboolean ui_tick(gpointer gook)
     else
         discard_first_enc_a = false;
 
+#endif
     if (dirty)
         save_user_settings(0);
 
-
-#endif
-
-	return TRUE;
+    return TRUE;
 }
 
 void ui_init(int argc, char *argv[]){
