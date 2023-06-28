@@ -1583,13 +1583,25 @@ gboolean ui_tick(gpointer gook)
     int static ticks = 0;
     uint32_t freq;
     char command[64];
+    struct field *f;
     bool dirty = false;
 
 
     ticks++;
 
+    // ptt control
+	f = get_field("r1:mode");
+	//straight key in CW
+	if (f && (!strcmp(f->value, "2TONE") || !strcmp(f->value, "LSB") ||
+	!strcmp(f->value, "USB") || !strcmp(f->value, "CW"))){
+		if (digitalRead(PTT) == LOW && in_tx == 0)
+			tx_on(TX_PTT);
+		else if (digitalRead(PTT) == HIGH && in_tx  == TX_PTT)
+			tx_off();
+	}
+
 	// check the tuning knob
-    struct field *f = get_field("r1:freq");
+    f = get_field("r1:freq");
 	freq = atol(f->value);
 
 	if (abs(tuning_ticks) > 50)
@@ -1610,11 +1622,11 @@ gboolean ui_tick(gpointer gook)
 	}
     // check the volume knob
 
-    struct field *vol = get_field("r1:volume");
-    int volume = atol(vol->value);
+    f = get_field("r1:volume");
+    int volume = atol(f->value);
 
 	if (abs(volume_ticks) > 50)
-		volume_ticks *= 4;
+		volume_ticks *= 2;
 	while (volume_ticks > 0){
 		volume_ticks--;
         if (volume < 5)
@@ -1660,56 +1672,6 @@ gboolean ui_tick(gpointer gook)
         //focus_field(get_field("r1:volume"));
     }
 
- 
-	f = get_field("r1:mode");
-	//straight key in CW
-	if (f && (!strcmp(f->value, "2TONE") || !strcmp(f->value, "LSB") || 
-	!strcmp(f->value, "USB") || !strcmp(f->value, "CW"))){
-		if (digitalRead(PTT) == LOW && in_tx == 0)
-			tx_on(TX_PTT);
-		else if (digitalRead(PTT) == HIGH && in_tx  == TX_PTT)
-			tx_off();
-	}
-#if 0
-    static bool discard_first_enc_a = true;
-	int scroll = enc_read(&enc_a);
-    if (!discard_first_enc_a)
-    {
-        if (scroll){
-            struct field *vol = get_field("r1:volume");
-            int volume = atol(vol->value);
-
-            int previous_volume = volume;
-
-            if (scroll < 0)
-            {
-                if (volume < 5)
-                    volume = 0;
-                else
-                    volume -= 4;
-                // printf("volume down to %d\n", volume);
-            }
-            else
-            {
-                if (volume > 95)
-                    volume = 100;
-                else
-                    volume += 4;
-                //printf("volume up to %d\n", volume);
-            }
-
-            if (previous_volume != volume)
-            {
-                sprintf(command, "%u", volume);
-                set_field("r1:volume", command);
-                dirty = true;
-            }
-        }
-    }
-    else
-        discard_first_enc_a = false;
-
-#endif
     if (dirty)
         save_user_settings(0);
 
