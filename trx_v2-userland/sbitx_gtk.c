@@ -1658,6 +1658,8 @@ gboolean ui_tick(gpointer gook)
             {
                 sprintf(command, "r1:volume=%u", volume);
                 do_cmd(command);
+                sprintf(command, "%u", volume);
+                set_field("r1:volume", command);
             }
         }
     }
