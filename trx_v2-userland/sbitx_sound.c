@@ -55,14 +55,20 @@ examples of using sound_mixer function:
 
 */
 
+#include <stdbool.h>
+
+extern bool disable_alsa;
+
+// just disable the fft and copy the frames?
+//
 void sound_volume(char *card_name, char *element, int volume)
 {
     long min, max;
     snd_mixer_t *handle;
     snd_mixer_selem_id_t *sid;
-		char *card;
+    char *card;
 
-		card = card_name;
+    card = card_name;
     snd_mixer_open(&handle, 0);
     snd_mixer_attach(handle, card);
     snd_mixer_selem_register(handle, NULL, NULL);
@@ -81,6 +87,8 @@ void sound_volume(char *card_name, char *element, int volume)
 
 void sound_mixer(char *card_name, char *element, int make_on)
 {
+    if (disable_alsa)
+        return;
     long min, max;
     snd_mixer_t *handle;
     snd_mixer_selem_id_t *sid;

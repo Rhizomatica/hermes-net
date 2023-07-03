@@ -2082,9 +2082,40 @@ void cmd_exec(char *cmd){
 
 GMainLoop *loop_g;
 
+bool disable_alsa = false;
+
 int main( int argc, char* argv[] ) {
 
 	puts(VER_STR);
+
+    if (argc > 2)
+    {
+    manual:
+        fprintf(stderr, "Usage modes: \n%s -a\n", argv[0]);
+        fprintf(stderr, "%s -h\n", argv[0]);
+        fprintf(stderr, "\nOptions:\n");
+        fprintf(stderr, " -a                         Disables ALSA\n");
+        fprintf(stderr, " -h                         Prints this help.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    int opt;
+    while ((opt = getopt(argc, argv, "ha")) != -1)
+    {
+        switch (opt)
+        {
+        case 'a':
+            disable_alsa = true;
+            break;
+        case 'h':
+        default:
+            goto manual;
+        }
+    }
+
+    fprintf(stderr, "ALSA %s\n", disable_alsa?"DISABLED":"ENABLED");
+
+
     active_layout = main_controls;
 
     loop_g = g_main_loop_new(NULL, 0);

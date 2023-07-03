@@ -79,6 +79,7 @@ int32_t modulation_buff[MAX_BINS];
 
 extern uint16_t reflected_threshold; // vswr * 10
 extern bool is_swr_protect_enabled;
+extern bool disable_alsa;
 
 extern struct Queue qloop;
 
@@ -1157,11 +1158,12 @@ void setup(){
     tx_list->tuned_bin = 512;
 	tx_init(7000000, MODE_LSB, -3000, -50);
 
-
-	setup_audio_codec();
-	sound_thread_start("plughw:0,0");
-
-	sleep(1); //why? to allow the aloop to initialize?
+    if (disable_alsa == false)
+    {
+        setup_audio_codec();
+        sound_thread_start("plughw:0,0");
+        sleep(1); //why? to allow the aloop to initialize?
+    }
 
 	vfo_start(&tone_a, 700, 0);
 	vfo_start(&tone_b, 1900, 0);

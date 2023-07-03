@@ -38,6 +38,8 @@ bool radio_cmd(controller_conn *connector, uint8_t *srv_cmd, uint8_t *response)
 
     memcpy(connector->service_command, srv_cmd, 5);
 
+    connector->response_available = false; // just in case something bad happened before...
+
     pthread_cond_signal(&connector->cmd_condition);
     pthread_mutex_unlock(&connector->cmd_mutex);
 

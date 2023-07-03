@@ -76,8 +76,6 @@ int cat_tx(void *arg)
 
         pthread_cond_wait(&conn->cmd_condition, &conn->cmd_mutex);
 
-        conn->response_available = false; // just in case something bad happened before...
-
         processCATCommand(conn->service_command, conn->response_service);
 
         if (conn->service_command[4] == CMD_RADIO_RESET)
