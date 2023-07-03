@@ -48,10 +48,13 @@ bool radio_cmd(controller_conn *connector, uint8_t *srv_cmd, uint8_t *response)
 
     // ~3 ms max wait
     uint32_t tries = 0;
+    uint32_t sleep_time = 100;
     while (connector->response_available == false && tries < 30)
     {
-        usleep(100); // 0.1 ms
+        usleep(sleep_time); // 0.1 ms
         tries++;
+        if (!(tries % 4))
+            sleep_time <<= 1;
     }
 
     if (connector->response_available == true)
