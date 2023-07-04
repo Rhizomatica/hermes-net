@@ -76,7 +76,7 @@ install: trx_v1-userland uuxcomp uucpd
 	install -D system_scripts/compression/decompress_audio.sh $(DESTDIR)$(prefix)/bin/decompress_audio.sh
 	install -D system_scripts/email/mailkill.sh $(DESTDIR)$(prefix)/bin/mailkill.sh
 	install -D system_scripts/email/mail_size_enforcement.sh $(DESTDIR)$(prefix)/bin/mail_size_enforcement.sh
-	install -D system_scripts/uucpd/vara_watchdog.sh $(DESTDIR)$(prefix)/bin
+#	install -D system_scripts/uucpd/vara_watchdog.sh $(DESTDIR)$(prefix)/bin
 
 
 install_gateway:
