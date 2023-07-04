@@ -322,16 +322,21 @@ exit_local:
 
 bool initialize_modem_vara(rhizo_conn *connector)
 {
-    bool ret = true;
-
+    bool ret;
+try_connect_again:
+    ret = true;
     ret &= tcp_connect(connector->ip_address, connector->tcp_base_port, &connector->control_socket);
     ret &= tcp_connect(connector->ip_address, connector->tcp_base_port+1, &connector->data_socket);
 
     if (ret == false)
     {
-        fprintf(stderr, "Connection to TNC failure.\n");
-        connector->shutdown = true;
-        return false;
+        fprintf(stderr, "Connection to TNC failure. Trying again\n");
+        close(connector->control_socket);
+        close(connector->data_socket);
+        sleep(1);
+        goto try_connect_again;
+        // connector->shutdown = true;
+        // return false;
     }
 
     if (connector->serial_keying == true)
