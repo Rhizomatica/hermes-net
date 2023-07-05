@@ -1682,17 +1682,38 @@ gboolean ui_tick(gpointer gook)
                 char buff[64];
                 if (in_tx)
                 {
+                    sprintf(buff, "intx");
+                    mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
                     sprintf(buff, "fwdpower %d", fwdpower);
                     mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
                     sprintf(buff, "vswr %d", vswr);
                     mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
                 }
+                else
+                {
+                    sprintf(buff, "inrx");
+                    mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+                }
+
                 sprintf(buff, "freq %ld", get_freq());
                 mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+
+                if (rx_list->mode == MODE_USB)
+                    sprintf(buff, "mode USB");
+                else if (rx_list->mode == MODE_LSB)
+                    sprintf(buff, "mode LSB");
+                else if (rx_list->mode == MODE_CW)
+                    sprintf(buff, "mode CW");
+                mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+
+                if (is_swr_protect_enabled)
+                    sprintf(buff, "protection on");
+                else
+                    sprintf(buff, "protection off");
+                mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+
             }
         }
-
-        // get_updates(c, 1);
     }
 
     if (dirty)
