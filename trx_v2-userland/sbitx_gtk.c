@@ -38,7 +38,6 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include "ini.h"
 #include "i2cbb.h"
 #include "webserver.h"
-#include "mongoose.h"
 #include "sbitx_controller.h"
 #include "../include/radio_cmds.h"
 
@@ -127,8 +126,6 @@ void set_bandwidth(int hz);
 
 struct field *active_layout = NULL;
 
-extern struct mg_mgr mgr;  // Event manager
-
 struct field {
 	char	*cmd;
 	int		(*fn)(struct field *f, cairo_t *gfx, int event, int param_a, int param_b, int param_c);
@@ -166,11 +163,11 @@ struct cmd {
 
 //variables to power up and down the tx
 
-static int in_tx = TX_OFF;
+atomic_int in_tx = TX_OFF;
 static int tx_start_time = 0;
 
 // high swr protection
-bool is_swr_protect_enabled = false;
+atomic_bool is_swr_protect_enabled = false;
 bool connected_status = false;
 bool led_status = false;
 uint32_t serial_number = 0;
@@ -183,7 +180,7 @@ char*mode_name[MAX_MODES] = {
 };
 
 static long int tuning_step = 1000;
-static int tx_mode = MODE_USB;
+static atomic_int tx_mode = MODE_USB;
 
 #define BAND80M	0
 #define BAND40M	1
@@ -236,7 +233,7 @@ int	data_delay = 700;
 
 #define MAX_RIT 25000
 
-extern uint16_t fwdpower, vswr;
+extern atomic_ushort fwdpower, vswr;
 extern int bfo_freq;
 extern int frequency_offset;
 
@@ -1671,49 +1668,6 @@ gboolean ui_tick(gpointer gook)
 		if (digitalRead(ENC2_SW) == 0)
             printf("Button 2 pressed\n");
         //focus_field(get_field("r1:volume"));
-    }
-
-    if (!(ticks % 20))
-    {
-        for( struct mg_connection* c = mgr.conns; c != NULL; c = c->next )
-        {
-            if( c->is_accepted && c->is_websocket)
-            {
-                char buff[64];
-                if (in_tx)
-                {
-                    sprintf(buff, "intx");
-                    mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-                    sprintf(buff, "fwdpower %d", fwdpower);
-                    mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-                    sprintf(buff, "vswr %d", vswr);
-                    mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-                }
-                else
-                {
-                    sprintf(buff, "inrx");
-                    mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-                }
-
-                sprintf(buff, "freq %ld", get_freq());
-                mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-
-                if (rx_list->mode == MODE_USB)
-                    sprintf(buff, "mode USB");
-                else if (rx_list->mode == MODE_LSB)
-                    sprintf(buff, "mode LSB");
-                else if (rx_list->mode == MODE_CW)
-                    sprintf(buff, "mode CW");
-                mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-
-                if (is_swr_protect_enabled)
-                    sprintf(buff, "protection on");
-                else
-                    sprintf(buff, "protection off");
-                mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-
-            }
-        }
     }
 
     if (dirty)

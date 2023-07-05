@@ -7,6 +7,7 @@
 #include <complex.h>
 #include <fftw3.h>
 #include <wiringPi.h>
+#include <stdatomic.h>
 #include "sdr.h"
 #include "sdr_ui.h"
 
@@ -15,6 +16,10 @@ static char s_web_root[1000];
 static char session_cookie[100];
 struct mg_mgr mgr;  // Event manager
 
+
+extern atomic_int in_tx;
+extern atomic_ushort fwdpower, vswr;
+extern atomic_bool is_swr_protect_enabled;
 
 int set_field(char *id, char *value);
 
@@ -122,7 +127,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
       // Upgrade to websocket. From now on, a connection is a full-duplex
       // Websocket connection, which will receive MG_EV_WS_MSG events.
         mg_ws_upgrade(c, hm, NULL);
-        printf("WebSocket opened Ptr %llu\n", c);
+        printf("WebSocket opened Ptr %p\n", c);
     } else if (mg_http_match_uri(hm, "/rest")) {
       // Serve REST response
       mg_http_reply(c, 200, "", "{\"result\": %d}\n", 123);
@@ -143,7 +148,52 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 void *webserver_thread_function(void *server){
   mg_mgr_init(&mgr);  // Initialise event manager
   mg_http_listen(&mgr, s_listen_on, fn, NULL);  // Create HTTP listener
-  for (;;) mg_mgr_poll(&mgr, 200);             // Infinite event loop
+  for (;;)
+  {
+      // lock
+      mg_mgr_poll(&mgr, 200);
+
+      for( struct mg_connection* c = mgr.conns; c != NULL; c = c->next )
+      {
+          if( c->is_accepted && c->is_websocket)
+          {
+              char buff[64];
+              if (in_tx)
+              {
+                  sprintf(buff, "intx");
+                  mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+                  sprintf(buff, "fwdpower %d", fwdpower);
+                  mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+                  sprintf(buff, "vswr %d", vswr);
+                  mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+              }
+              else
+              {
+                  sprintf(buff, "inrx");
+                  mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+              }
+
+              sprintf(buff, "freq %ld", get_freq());
+              mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+
+              if (rx_list->mode == MODE_USB)
+                  sprintf(buff, "mode USB");
+              else if (rx_list->mode == MODE_LSB)
+                  sprintf(buff, "mode LSB");
+              else if (rx_list->mode == MODE_CW)
+                  sprintf(buff, "mode CW");
+              mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+
+              if (is_swr_protect_enabled)
+                  sprintf(buff, "protection on");
+              else
+                  sprintf(buff, "protection off");
+              mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+
+          }
+      }
+  }
+
 	printf("exiting webserver thread\n");
 }
 

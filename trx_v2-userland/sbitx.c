@@ -16,6 +16,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include <errno.h>
+#include <stdatomic.h>
 #include "sdr.h"
 #include "sdr_ui.h"
 #include "sound.h"
@@ -36,7 +37,7 @@ FILE *pf_debug = NULL;
 #define LPF_C 10
 #define LPF_D 11
 
-uint16_t fwdpower, vswr;
+atomic_ushort fwdpower, vswr;
 int frequency_offset = 0;
 float fft_bins[MAX_BINS]; // spectrum ampltiudes  
 int spectrum_plot[MAX_BINS];
