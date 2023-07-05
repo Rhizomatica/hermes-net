@@ -143,7 +143,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 void *webserver_thread_function(void *server){
   mg_mgr_init(&mgr);  // Initialise event manager
   mg_http_listen(&mgr, s_listen_on, fn, NULL);  // Create HTTP listener
-  for (;;) mg_mgr_poll(&mgr, 1000);             // Infinite event loop
+  for (;;) mg_mgr_poll(&mgr, 200);             // Infinite event loop
 	printf("exiting webserver thread\n");
 }
 

@@ -1673,11 +1673,25 @@ gboolean ui_tick(gpointer gook)
         //focus_field(get_field("r1:volume"));
     }
 
-    if (!(ticks % 1000))
+    if (!(ticks % 20))
     {
         for( struct mg_connection* c = mgr.conns; c != NULL; c = c->next )
+        {
             if( c->is_accepted )
-                mg_ws_send( c, "teste", 6, WEBSOCKET_OP_TEXT );
+            {
+                char buff[64];
+                if (in_tx)
+                {
+                    sprintf(buff, "fwdpower %d", fwdpower);
+                    mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+                    sprintf(buff, "vswr %d", vswr);
+                    mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+                }
+                sprintf(buff, "freq %ld", get_freq());
+                mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+            }
+        }
+
         // get_updates(c, 1);
     }
 
