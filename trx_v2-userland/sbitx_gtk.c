@@ -1677,7 +1677,7 @@ gboolean ui_tick(gpointer gook)
     {
         for( struct mg_connection* c = mgr.conns; c != NULL; c = c->next )
         {
-            if( c->is_accepted )
+            if( c->is_accepted && c->is_websocket)
             {
                 char buff[64];
                 if (in_tx)
