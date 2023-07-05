@@ -105,7 +105,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if (ev == MG_EV_ACCEPT) {
         struct mg_tls_opts opts = {
             .cert = "/etc/ssl/private/hermes.radio.crt",    // Certificate file
-            .certkey = "key.pem",  // Private key file
+            .certkey = "/etc/ssl/private/hermes.key",  // Private key file
         };
         mg_tls_init(c, &opts);
     }
