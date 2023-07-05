@@ -1567,7 +1567,7 @@ gboolean ui_tick(gpointer gook)
 
 
     if (dirty)
-        save_user_settings(0);
+        save_user_settings(1);
 
     return TRUE;
 }

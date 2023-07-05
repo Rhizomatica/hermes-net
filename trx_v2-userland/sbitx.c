@@ -454,60 +454,6 @@ double agc2(struct rx *r){
 	//printf("%d:s meter: %d %d %d \n", count++, (int)r->agc_gain, (int)r->signal_strength, r->agc_loop);
   return 100000000000 / r->agc_gain;  
 }
-/*
-double tgc(struct rx *r){
-	int i;
-  double signal_strength, agc_gain_should_be;
-
-	//do nothing if agc is off
-  if (r->agc_speed == -1){
-	  for (i=0; i < MAX_BINS/2; i++)
-			__real__ (r->fft_time[i+(MAX_BINS/2)]) *=10000000;
-    return 10000000;
-  }
-
-  //find the peak signal amplitude
-  signal_strength = 0.0;
-	for (i=0; i < MAX_BINS/2; i++){
-		double s = creal(r->fft_time[i+(MAX_BINS/2)]) * 1000;
-		if (signal_strength < s) 
-			signal_strength = s;
-	}
-	//also calculate the moving average of the signal strength
-  r->signal_avg = (r->signal_avg * 0.93) + (signal_strength * 0.07);
-	if (signal_strength == 0)
-		agc_gain_should_be = 10000000;
-	else
-		agc_gain_should_be = 100000000000/signal_strength;
-	r->signal_strength = signal_strength;
-
-	double agc_ramp = 0.0;
-
-  // climb up the agc quickly if the signal is louder than before 
-	if (agc_gain_should_be < r->agc_gain){
-		r->agc_gain = agc_gain_should_be;
-		//reset the agc to hang count down 
-    r->agc_loop = r->agc_speed;
-  }
-	else if (r->agc_loop <= 0){
-		agc_ramp = (agc_gain_should_be - r->agc_gain) / (MAX_BINS/2);	
-	}
- 
-	if (agc_ramp != 0){
-  	for (i = 0; i < MAX_BINS/2; i++){
-	  	__real__ (r->fft_time[i+(MAX_BINS/2)]) *= r->agc_gain;
-		}
-		r->agc_gain += agc_ramp;		
-	}
-	else 
-  	for (i = 0; i < MAX_BINS/2; i++)
-	  	__real__ (r->fft_time[i+(MAX_BINS/2)]) *= r->agc_gain;
-
-  r->agc_loop--;
-
-  return 100000000000 / r->agc_gain;  
-}
-*/
 
 void my_fftw_execute(fftw_plan f){
 	fftw_execute(f);
