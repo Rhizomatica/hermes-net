@@ -38,6 +38,7 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include "ini.h"
 #include "i2cbb.h"
 #include "webserver.h"
+#include "mongoose.h"
 #include "sbitx_controller.h"
 #include "../include/radio_cmds.h"
 
@@ -126,6 +127,7 @@ void set_bandwidth(int hz);
 
 struct field *active_layout = NULL;
 
+extern struct mg_mgr mgr;  // Event manager
 
 struct field {
 	char	*cmd;
@@ -182,7 +184,6 @@ char*mode_name[MAX_MODES] = {
 
 static long int tuning_step = 1000;
 static int tx_mode = MODE_USB;
-
 
 #define BAND80M	0
 #define BAND40M	1
@@ -1670,6 +1671,14 @@ gboolean ui_tick(gpointer gook)
 		if (digitalRead(ENC2_SW) == 0)
             printf("Button 2 pressed\n");
         //focus_field(get_field("r1:volume"));
+    }
+
+    if (!(ticks % 1000))
+    {
+        for( struct mg_connection* c = mgr.conns; c != NULL; c = c->next )
+            if( c->is_accepted )
+                mg_ws_send( c, "teste", 6, WEBSOCKET_OP_TEXT );
+        // get_updates(c, 1);
     }
 
     if (dirty)

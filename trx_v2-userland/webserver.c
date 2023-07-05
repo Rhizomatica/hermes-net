@@ -13,7 +13,8 @@
 static const char *s_listen_on = "wss://0.0.0.0:8080";
 static char s_web_root[1000];
 static char session_cookie[100];
-static struct mg_mgr mgr;  // Event manager
+struct mg_mgr mgr;  // Event manager
+
 
 int set_field(char *id, char *value);
 
@@ -51,24 +52,6 @@ static void get_updates(struct mg_connection *c, int all){
 	}
 }
 
-static void do_login(struct mg_connection *c, char *key){
-
-	char passkey[32];
-	get_field_value("#passkey", passkey);
-	if (!key || strcmp(passkey, key)){
-		web_respond(c, "login error");
-		c->is_draining = 1;
-		printf("passkey didn't match. Closing socket\n");
-		return;
-	}
-	
-	sprintf(session_cookie, "%x", rand());
-	char response[128];
-	sprintf(response, "login %s", session_cookie);
-	web_respond(c, response);	
-	get_updates(c, 1);
-}
-
 char request[200];
 int request_index = 0;
 
@@ -101,10 +84,6 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 		web_respond(c, "quit Illformed request");
 		c->is_draining = 1;
 	}
-	else if (!strcmp(field, "login")){
-		printf("trying login with passkey : [%s]\n", value);
-		do_login(c, value);
-	}
 	else if (!strcmp(field, "refresh"))
 		get_updates(c, 1);
 	else{
@@ -125,7 +104,7 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if (ev == MG_EV_ACCEPT) {
         struct mg_tls_opts opts = {
-            .cert = "cert.pem",    // Certificate file
+            .cert = "/etc/ssl/private/hermes.radio.crt",    // Certificate file
             .certkey = "key.pem",  // Private key file
         };
         mg_tls_init(c, &opts);
@@ -142,7 +121,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if (mg_http_match_uri(hm, "/websocket")) {
       // Upgrade to websocket. From now on, a connection is a full-duplex
       // Websocket connection, which will receive MG_EV_WS_MSG events.
-      mg_ws_upgrade(c, hm, NULL);
+        mg_ws_upgrade(c, hm, NULL);
+        printf("WebSocket opened Ptr %llu\n", c);
     } else if (mg_http_match_uri(hm, "/rest")) {
       // Serve REST response
       mg_http_reply(c, 200, "", "{\"result\": %d}\n", 123);
