@@ -581,7 +581,11 @@ void read_power(){
 
 	memcpy(&vfwd, response, 2);
 	memcpy(&vref, response+2, 2);
-	if (vref >= vfwd)
+
+    if (vref == vfwd)
+        vfwd++;
+
+    if (vref > vfwd)
 		vswr = 100;
 	else
 		vswr = (10*(vfwd + vref))/(vfwd-vref);
