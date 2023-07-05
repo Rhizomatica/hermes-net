@@ -1346,4 +1346,3 @@ void sdr_request(char *request, char *response){
   /* else
 		printf("*Error request[%s] not accepted\n", request); */
 }
-

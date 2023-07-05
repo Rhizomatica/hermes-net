@@ -91,8 +91,6 @@ struct encoder enc_a, enc_b;
 #define FIELD_STATIC 5
 #define FIELD_CONSOLE 6
 
-struct Queue q_web;
-
 // event ids, some of them are mapped from gtk itself
 #define FIELD_DRAW 0
 #define FIELD_UPDATE 1 
@@ -557,94 +555,6 @@ int set_field(char *id, char *value){
 	return 0;
 }
 
-
-void web_add_string(char *string){
-	while (*string){
-		q_write(&q_web, *string++);
-	}
-}
-
-void  web_write(int style, char *data){
-	char tag[20];
-
-	switch(style){
-		case FONT_FT8_RX:
-			strcpy(tag, "WSJTX-RX");
-			break;
-		case FONT_FLDIGI_RX:
-			strcpy(tag, "FLDIGI-RX");
-			break;
-		case FONT_CW_RX:
-			strcpy(tag, "CW-RX");
-			break;
-		case FONT_FT8_TX:
-			strcpy(tag, "WSJTX-TX");
-			break;
-		case FONT_FT8_QUEUED:
-			strcpy(tag, "WSJTX-Q");
-			break;
-		case FONT_FLDIGI_TX:
-			strcpy(tag, "FLDIGI-TX");
-			break;
-		case FONT_CW_TX:
-			strcpy(tag, "CW-TX");
-			break;
-		case FONT_TELNET:
-			strcpy(tag, "TELNET");
-			break;
-		default:
-			strcpy(tag, "LOG");
-	}
-
-	web_add_string("<");
-	web_add_string(tag);		
-	web_add_string(">");
-	while (*data){
-				switch(*data){
-				case '<':
-					q_write(&q_web, '&');
-					q_write(&q_web, 'l');
-					q_write(&q_web, 't');
-					q_write(&q_web, ';');
-					break;
-				case '>':
-					q_write(&q_web, '&');
-					q_write(&q_web, 'g');
-					q_write(&q_web, 't');
-					q_write(&q_web, ';');
-					break;
-			 	case '"':
-					q_write(&q_web, '&');
-					q_write(&q_web, 'q');
-					q_write(&q_web, 'u');
-					q_write(&q_web, 't');
-					q_write(&q_web, 'e');
-					q_write(&q_web, ';');
-					break;
-				case '\'':
-					q_write(&q_web, '&');
-					q_write(&q_web, 'a');
-					q_write(&q_web, 'p');
-					q_write(&q_web, 'o');
-					q_write(&q_web, 's');
-					q_write(&q_web, ';');
-					break;
-				case '\n':
-					q_write(&q_web, '&');
-					q_write(&q_web, '#');
-					q_write(&q_web, 'x');
-					q_write(&q_web, 'A');
-					q_write(&q_web, ';');
-					break;	
-				default:
-					q_write(&q_web, *data);
-			}
-			data++;
-	}			
-	web_add_string("</");
-	web_add_string(tag);
-	web_add_string(">");
-}
 
 
 static int mode_id(char *mode_str){
@@ -1329,21 +1239,6 @@ void bin_dump(int length, uint8_t *data){
 	printf("\n");
 }
 
-int  web_get_console(char *buff, int max){
-	char c;
-	int i;
-
-	if (q_length(&q_web) == 0)
-		return 0;
-	strcpy(buff, "CONSOLE ");
-	buff += strlen("CONSOLE ");
-	for (i = 0; (c = q_read(&q_web)) && i < max; i++){
-		if (c < 128 && c >= ' ')
-			*buff++ = c;
-	}
-	*buff = 0;
-	return i;
-}
 
 void meter_calibrate(){
 	printf("starting meter calibration\n"
@@ -1670,52 +1565,13 @@ gboolean ui_tick(gpointer gook)
         //focus_field(get_field("r1:volume"));
     }
 
+
     if (dirty)
         save_user_settings(0);
 
     return TRUE;
 }
 
-void ui_init(int argc, char *argv[]){
- 
-    q_init(&q_web, 1000);
-
-    webserver_start();
-}
-
-/* handle modem callbacks for more data */
-
-
-int get_tx_data_byte(char *c){
-	//take out the first byte and return it to the modem
-	struct field *f = get_field("#text_in");
-	int length = strlen(f->value);
-
-	if (f->value[0] == '\\' || !length)
-		return 0;
-	if (length){
-		*c = f->value[0];
-		//now shift the buffer down, hopefully, this copies the trailing null too
-		for (int i = 0; i < length; i++)
-			f->value[i] = f->value[i+1];
-	}
-	f->is_dirty = 1;
-	f->update_remote = 1;
-	//update_field(f);
-	return length;
-}
-
-int get_tx_data_length(){
-	struct field *f = get_field("#text_in");
-
-	if (strlen(f->value) == 0)
-		return 0;
-
-	if (f->value[0] != COMMAND_ESCAPE)
-		return strlen(get_field("#text_in")->value);
-	else
-		return 0;
-}
 
 int is_in_tx(){
 	return in_tx;
@@ -1778,9 +1634,9 @@ void change_band(char *request){
 	set_mode(mode_name[band_stack[new_band].mode[stack]]);	
 	//set_field("r1:mode", mode_name[band_stack[new_band].mode[stack]]);	
 
-  // this fixes bug with filter settings not being applied after a band change, not sure why it's a bug - k3ng 2022-09-03
-  set_field("r1:low",get_field("r1:low")->value);
-  set_field("r1:high",get_field("r1:high")->value);
+    // this fixes bug with filter settings not being applied after a band change, not sure why it's a bug - k3ng 2022-09-03
+    set_field("r1:low",get_field("r1:low")->value);
+    set_field("r1:high",get_field("r1:high")->value);
 
 	abort_tx();
 }
@@ -2118,7 +1974,7 @@ int main( int argc, char* argv[] ) {
 
     loop_g = g_main_loop_new(NULL, 0);
 
-	ui_init(argc, argv);
+    webserver_start();
 	hw_init();
 
 	setup();

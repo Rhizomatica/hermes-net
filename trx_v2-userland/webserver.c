@@ -27,35 +27,7 @@ static void web_respond(struct mg_connection *c, char *message){
 	mg_ws_send(c, message, strlen(message), WEBSOCKET_OP_TEXT);
 }
 
-static void get_console(struct mg_connection *c){
-	char buff[2100];
-	
-	int n = web_get_console(buff, 2000);
-	if (!n)
-		return;
-	mg_ws_send(c, buff, strlen(buff), WEBSOCKET_OP_TEXT);
-}
 
-
-static void get_updates(struct mg_connection *c, int all){
-	//send the settings of all the fields to the client
-	char buff[2000];
-	int i = 0;
-
-	get_console(c);
-
-
-	while(1){
-		int update = remote_update_field(i, buff);
-		// return of -1 indicates the eof fields
-		if (update == -1)
-			return;
-	//send the status anyway
-		if (all || update )
-			mg_ws_send(c, buff, strlen(buff), WEBSOCKET_OP_TEXT); 
-		i++;
-	}
-}
 
 char request[200];
 int request_index = 0;
@@ -89,16 +61,13 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 		web_respond(c, "quit Illformed request");
 		c->is_draining = 1;
 	}
-	else if (!strcmp(field, "refresh"))
-		get_updates(c, 1);
 	else{
 		char buff[1200];
 		if (value)
 			sprintf(buff, "%s %s", field, value);
 		else
 			strcpy(buff, field);
-        printf("TODO: execute %s\n", buff);
-		get_updates(c, 0);
+        printf("TODO: %s\n", buff);
 	}
 }
 
