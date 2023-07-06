@@ -142,7 +142,7 @@ by the argument type and possible responses.
 
 ## sbitx_controller commands
 
-No parameter required.
+The "-a" parameter disables all ALSA code, and "-h" shows the help.
 
 Example:
 * sbitx_controller
