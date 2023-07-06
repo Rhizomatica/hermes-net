@@ -26,7 +26,7 @@ LDFLAGS=`pkg-config --libs glib-2.0` -lwiringPi -lasound -lm -lfftw3 -lfftw3f -p
 
 all: sbitx_controller sbitx_client
 
-SOURCES=vfo.c sbitx_sound.c fft_filter.c sbitx_gtk.c sbitx_utils.c i2cbb.c si5351v2.c ini.c queue.c mongoose.c webserver.c sbitx.c sbitx_controller.c shm.c
+SOURCES=vfo.c sbitx_sound.c fft_filter.c sbitx_gtk.c i2cbb.c si5351v2.c ini.c queue.c mongoose.c webserver.c sbitx.c sbitx_controller.c shm.c
 
 OBJ=$(SOURCES:.c=.o)
 
