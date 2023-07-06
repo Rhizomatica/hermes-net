@@ -59,36 +59,11 @@ examples of using sound_mixer function:
 
 extern bool disable_alsa;
 
-// just disable the fft and copy the frames?
-//
-void sound_volume(char *card_name, char *element, int volume)
-{
-    long min, max;
-    snd_mixer_t *handle;
-    snd_mixer_selem_id_t *sid;
-    char *card;
-
-    card = card_name;
-    snd_mixer_open(&handle, 0);
-    snd_mixer_attach(handle, card);
-    snd_mixer_selem_register(handle, NULL, NULL);
-    snd_mixer_load(handle);
-
-    snd_mixer_selem_id_alloca(&sid);
-    snd_mixer_selem_id_set_index(sid, 0);
-    snd_mixer_selem_id_set_name(sid, element);
-    snd_mixer_elem_t* elem = snd_mixer_find_selem(handle, sid);
-
-    snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
-    snd_mixer_selem_set_playback_volume_all(elem, volume * max / 100);
-
-    snd_mixer_close(handle);
-}
-
 void sound_mixer(char *card_name, char *element, int make_on)
 {
     if (disable_alsa)
         return;
+
     long min, max;
     snd_mixer_t *handle;
     snd_mixer_selem_id_t *sid;
@@ -136,7 +111,7 @@ void sound_mixer(char *card_name, char *element, int make_on)
 }
 
 int rate = 96000; /* Sample rate */
-static snd_pcm_uframes_t buff_size = 8192; /* Periodsize (bytes) */
+static snd_pcm_uframes_t buff_size = 8192; /* Periodsize (bytes) */ // lets go 512? or 1024? or even 256?
 static int n_periods_per_buffer = 2;       /* Number of periods */
 //static int n_periods_per_buffer = 1024;       /* Number of periods */
 
