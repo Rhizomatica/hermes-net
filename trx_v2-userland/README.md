@@ -10,7 +10,7 @@ To compile the project, run "make", and to install, run "make install".
 
 ## Userland Details
 
-CW mode just generates a tone. GPS-based calibration is not supported by the radio yet.
+CW mode just generates a tone. GPS-based calibration is not supported by the radio (as it does not need).
 
 ## sbitx_client commands
 
