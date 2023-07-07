@@ -485,7 +485,7 @@ int sound_start_loopback_play(char *device){
 	// the buffer size is each periodsize x n_periods
 	snd_pcm_uframes_t  n_frames= (buff_size  * n_periods_per_buffer)/8;
 	//lets pump it up to see if we can reduce the dropped frames
-	n_frames *= 4;
+	n_frames *= 2;
 	//printf("trying for loopback buffer size of %ld\n", n_frames);
 	e = snd_pcm_hw_params_set_buffer_size_near(loopback_play_handle, hwparams, &n_frames);
 	if (e < 0) {
