@@ -43,7 +43,6 @@ float fft_bins[MAX_BINS]; // spectrum ampltiudes
 int spectrum_plot[MAX_BINS];
 fftw_complex *fft_spectrum;
 fftw_plan plan_spectrum;
-float spectrum_window[MAX_BINS];
 void set_rx1(int frequency);
 void tr_switch(int tx_on);
 
@@ -147,7 +146,6 @@ void fft_init(){
 		__imag__ fft_m[i]  = 0.0;
 	}
 
-	make_hann_window(spectrum_window, MAX_BINS);
 }
 
 void fft_reset_m_bins(){
@@ -495,24 +493,6 @@ void rx_process(int32_t *input_rx,  int32_t *input_mic,
 
 	// STEP 3: convert the time domain samples to  frequency domain
 	my_fftw_execute(plan_fwd);
-
-	//STEP 3B: this is a side line, we use these frequency domain
-	// values to paint the spectrum in the user interface
-	// I discovered that the raw time samples give horrible spectrum
-	// and they need to be multiplied wiht a window function 
-	// they use a separate fft plan
-	// NOTE: the spectrum update has nothing to do with the actual
-	// signal processing. If you are not showing the spectrum or the
-	// waterfall, you can skip these steps
-	for (i = 0; i < MAX_BINS; i++)
-			__real__ fft_in[i] *= spectrum_window[i];
-	my_fftw_execute(plan_spectrum);
-
-	// the spectrum display is updated
-	// spectrum_update();
-
-
-	// ... back to the actual processing, after spectrum update  
 
 	// we may add another sub receiver within the pass band later,
 	// hence, the linkced list of receivers here
