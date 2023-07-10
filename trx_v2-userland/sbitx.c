@@ -42,7 +42,6 @@ int frequency_offset = 0;
 float fft_bins[MAX_BINS]; // spectrum ampltiudes  
 int spectrum_plot[MAX_BINS];
 fftw_complex *fft_spectrum;
-fftw_plan plan_spectrum;
 void set_rx1(int frequency);
 void tr_switch(int tx_on);
 
@@ -138,13 +137,6 @@ void fft_init(){
 	memset(fft_m, 0, sizeof(fftw_complex) * MAX_BINS/2);
 
 	plan_fwd = fftw_plan_dft_1d(MAX_BINS, fft_in, fft_out, FFTW_FORWARD, FFTW_ESTIMATE);
-	plan_spectrum = fftw_plan_dft_1d(MAX_BINS, fft_in, fft_spectrum, FFTW_FORWARD, FFTW_ESTIMATE);
-
-	//zero up the previous 'M' bins
-	for (int i= 0; i < MAX_BINS/2; i++){
-		__real__ fft_m[i]  = 0.0;
-		__imag__ fft_m[i]  = 0.0;
-	}
 
 }
 
@@ -156,11 +148,6 @@ void fft_reset_m_bins(){
 	memset(fft_spectrum, 0, sizeof(fftw_complex) * MAX_BINS);
 	memset(tx_list->fft_time, 0, sizeof(fftw_complex) * MAX_BINS);
 	memset(tx_list->fft_freq, 0, sizeof(fftw_complex) * MAX_BINS);
-/*	for (int i= 0; i < MAX_BINS/2; i++){
-		__real__ fft_m[i]  = 0.0;
-		__imag__ fft_m[i]  = 0.0;
-	}
-*/
 }
 
 int mag2db(double mag){
