@@ -1,5 +1,5 @@
-# Rhizo-uuardop: UUCP <-> HF tools
-# Copyright (C) 2019-2021 Rhizomatica
+# Assorted utils
+# Copyright (C) 2019-2023 Rhizomatica
 # Author: Rafael Diniz <rafael@riseup.net>
 #
 # This is free software; you can redistribute it and/or modify
@@ -22,9 +22,9 @@
 prefix=/usr
 CC=gcc
 CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector
+LDFLAGS=-lm -lasound
 
-
-all: keyon keyoff
+all: keyon keyoff alsa-capture
 
 %.o : %.c %.h
 	gcc -c $(CFLAGS) $< -o $@
@@ -34,6 +34,9 @@ keyon: keyon.o serial.o
 
 keyoff: keyoff.o serial.o
 	$(CC) $(CFLAGS) -o $@ $^
+
+alsa-capture: alsa-capture.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 
 .PHONY: clean
