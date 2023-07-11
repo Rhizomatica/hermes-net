@@ -138,7 +138,7 @@ int main (int argc, char *argv[])
 
 
     for (i = 0; i < 1000000; ++i) {
-        if ((err = snd_pcm_readi (capture_handle, buffer, period_size)) < 0) {
+        if ((err = snd_pcm_readi (capture_handle, buffer, period_size)) != period_size) {
             fprintf (stderr, "read from audio interface failed (%s)\n",
                      snd_strerror (err));
             if (err == -EPIPE)
@@ -146,10 +146,20 @@ int main (int argc, char *argv[])
                 fprintf(stdout, "overrun\n");
                 snd_pcm_prepare (capture_handle);
             }
-            else
+            else if (err < 0) {
+                fprintf(stderr,
+                        "error from readi: %s\n",
+                        snd_strerror(err));
                 exit (1);
+            }  else if (err != period_size) {
+                fprintf(stderr,
+                        "short read, read %d frames\n", err);
+            }
+
         }
-        fprintf(stdout, "read %d done\n", i);
+
+
+        // fprintf(stdout, "read %d done\n", i);
     }
 
     free(buffer);

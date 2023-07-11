@@ -24,7 +24,7 @@ CC=gcc
 CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector
 LDFLAGS=-lm -lasound
 
-all: keyon keyoff alsa-capture
+all: keyon keyoff alsa-capture alsa-show
 
 %.o : %.c %.h
 	gcc -c $(CFLAGS) $< -o $@
@@ -36,6 +36,9 @@ keyoff: keyoff.o serial.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 alsa-capture: alsa-capture.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+alsa-show: alsa-show.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 
