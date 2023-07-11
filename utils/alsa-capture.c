@@ -224,13 +224,19 @@ int main (int argc, char *argv[])
     printf("can sync start = %d\n", val);
 
 
-    uint32_t buffer_size = period_size * (snd_pcm_format_width(format) / 8) * channels;
+    int sample_size = snd_pcm_format_width(format) / 8;
+    uint32_t buffer_size = period_size * sample_size * channels;
     fprintf(stdout, "buffer size %u\n", buffer_size);
 
     buffer = malloc(buffer_size);
 
     fprintf(stdout, "buffer allocated\n");
 
+    uint8_t *left = (uint8_t *) malloc(buffer_size/2);
+    uint8_t *right = (uint8_t *) malloc(buffer_size/2);
+
+    FILE *left_fp = fopen("left.raw", "w");
+    FILE *right_fp = fopen("right.raw", "w");
 
     for (i = 0; i < 1000000; ++i) {
         if ((err = snd_pcm_readi (capture_handle, buffer, period_size)) != period_size) {
@@ -253,11 +259,24 @@ int main (int argc, char *argv[])
 
         }
 
+        for (int j = 0; j < period_size; j++)
+        {
+            memcpy(&left[j*sample_size], &buffer[j * sample_size * channels], sample_size);
+            memcpy(&right[j*sample_size], &buffer[j * sample_size * channels + sample_size], sample_size);
+        }
 
         // fprintf(stdout, "read %d done\n", i);
+        fwrite(left, buffer_size/2, 1, left_fp);
+        fwrite(right, buffer_size/2, 1, right_fp);
+
     }
 
     free(buffer);
+    free(left);
+    free(right);
+
+    fclose(left_fp);
+    fclose(right_fp);
 
     fprintf(stdout, "buffer freed\n");
 
