@@ -21,12 +21,15 @@ int main (int argc, char *argv[])
     int i;
     int err;
     char *buffer;
-    int buffer_frames = 128;
+    uint64_t period_size = 128; // in frames
+    uint64_t n_periods = 2; // number of periods
+
     unsigned int rate = 96000;
     uint32_t channels = 2;
     snd_pcm_t *capture_handle;
     snd_pcm_hw_params_t *hw_params;
 	snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
+
 
     if ((err = snd_pcm_open (&capture_handle, argv[1], SND_PCM_STREAM_CAPTURE, 0)) < 0) {
         fprintf (stderr, "cannot open audio device %s (%s)\n",
@@ -69,6 +72,27 @@ int main (int argc, char *argv[])
 
     fprintf(stdout, "hw_params format setted\n");
 
+
+
+    if ((err = snd_pcm_hw_params_test_period_size (capture_handle, hw_params, period_size, 0)) < 0) {
+        fprintf (stderr, "period size of %lu not good (%s)\n", period_size,
+                 snd_strerror (err));
+        exit (1);
+    }
+
+    if ((err = snd_pcm_hw_params_set_period_size_near(capture_handle, hw_params, &period_size, 0)) < 0) {
+        fprintf (stderr, "cannot set period size (%s)\n",
+                 snd_strerror (err));
+        exit (1);
+    }
+
+/* Set number of periods. Periods used to be called fragments. */
+    if ((err = snd_pcm_hw_params_set_periods(capture_handle, hw_params, n_periods, 0)) < 0){
+        fprintf(stderr, "Error setting periods.\n");
+        return(-1);
+    }
+
+
     if ((err = snd_pcm_hw_params_set_rate_near (capture_handle, hw_params, &rate, 0)) < 0) {
         fprintf (stderr, "cannot set sample rate (%s)\n",
                  snd_strerror (err));
@@ -105,7 +129,7 @@ int main (int argc, char *argv[])
 
     fprintf(stdout, "audio interface prepared\n");
 
-    uint32_t buffer_size = buffer_frames * snd_pcm_format_width(format) / 8 * channels;
+    uint32_t buffer_size = period_size * snd_pcm_format_width(format) / 8 * channels;
     fprintf(stdout, "buffer size %u\n", buffer_size);
 
     buffer = malloc(buffer_size);
@@ -113,7 +137,7 @@ int main (int argc, char *argv[])
     fprintf(stdout, "buffer allocated\n");
 
     for (i = 0; i < 10; ++i) {
-        if ((err = snd_pcm_readi (capture_handle, buffer, buffer_frames)) != buffer_frames) {
+        if ((err = snd_pcm_readi (capture_handle, buffer, period_size)) != period_size) {
             fprintf (stderr, "read from audio interface failed (%s)\n",
                      snd_strerror (err));
 
