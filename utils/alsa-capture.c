@@ -129,6 +129,101 @@ int main (int argc, char *argv[])
 
     fprintf(stdout, "audio interface prepared\n");
 
+    /* Display information about the PCM interface */
+    unsigned int val, val2;
+    printf("PCM capture_handle name = '%s'\n",
+           snd_pcm_name(capture_handle));
+
+    printf("PCM state = %s\n",
+           snd_pcm_state_name(snd_pcm_state(capture_handle)));
+
+    snd_pcm_hw_params_get_access(hw_params,
+                                 (snd_pcm_access_t *) &val);
+    printf("access type = %s\n",
+           snd_pcm_access_name((snd_pcm_access_t)val));
+
+    snd_pcm_hw_params_get_format(hw_params, &val);
+    printf("format = '%s' (%s)\n",
+           snd_pcm_format_name((snd_pcm_format_t)val),
+           snd_pcm_format_description(
+               (snd_pcm_format_t)val));
+
+    snd_pcm_hw_params_get_subformat(hw_params,
+                                    (snd_pcm_subformat_t *)&val);
+    printf("subformat = '%s' (%s)\n",
+           snd_pcm_subformat_name((snd_pcm_subformat_t)val),
+           snd_pcm_subformat_description(
+               (snd_pcm_subformat_t)val));
+
+    snd_pcm_hw_params_get_channels(hw_params, &val);
+    printf("channels = %d\n", val);
+
+    snd_pcm_hw_params_get_rate(hw_params, &val, 0);
+    printf("rate = %d bps\n", val);
+
+    snd_pcm_hw_params_get_period_time(hw_params,
+                                      &val, 0);
+    printf("period time = %d us\n", val);
+
+    snd_pcm_uframes_t frames;
+    snd_pcm_hw_params_get_period_size(hw_params,
+                                      &frames, 0);
+    printf("period size = %d frames\n", (int)frames);
+
+    snd_pcm_hw_params_get_buffer_time(hw_params,
+                                      &val, 0);
+    printf("buffer time = %d us\n", val);
+
+    snd_pcm_hw_params_get_buffer_size(hw_params,
+                                      (snd_pcm_uframes_t *) &val);
+    printf("buffer size = %d frames\n", val);
+
+    snd_pcm_hw_params_get_periods(hw_params, &val, 0);
+    printf("periods per buffer = %d frames\n", val);
+
+
+    snd_pcm_hw_params_get_rate_numden(hw_params,
+                                      &val, &val2);
+    printf("exact rate = %d/%d bps\n", val, val2);
+
+    val = snd_pcm_hw_params_get_sbits(hw_params);
+    printf("significant bits = %d\n", val);
+
+    snd_pcm_hw_params_get_tick_time(hw_params,
+                                    &val, 0);
+    printf("tick time = %d us\n", val);
+
+    val = snd_pcm_hw_params_is_batch(hw_params);
+    printf("is batch = %d\n", val);
+
+    val = snd_pcm_hw_params_is_block_transfer(hw_params);
+    printf("is block transfer = %d\n", val);
+
+    val = snd_pcm_hw_params_is_double(hw_params);
+    printf("is double = %d\n", val);
+
+    val = snd_pcm_hw_params_is_half_duplex(hw_params);
+    printf("is half duplex = %d\n", val);
+
+    val = snd_pcm_hw_params_is_joint_duplex(hw_params);
+    printf("is joint duplex = %d\n", val);
+
+    val = snd_pcm_hw_params_can_overrange(hw_params);
+    printf("can overrange = %d\n", val);
+
+    val = snd_pcm_hw_params_can_mmap_sample_resolution(hw_params);
+    printf("can mmap = %d\n", val);
+
+    val = snd_pcm_hw_params_can_pause(hw_params);
+    printf("can pause = %d\n", val);
+
+    val = snd_pcm_hw_params_can_resume(hw_params);
+    printf("can resume = %d\n", val);
+
+    val = snd_pcm_hw_params_can_sync_start(hw_params);
+    printf("can sync start = %d\n", val);
+
+
     uint32_t buffer_size = period_size * (snd_pcm_format_width(format) / 8) * channels;
     fprintf(stdout, "buffer size %u\n", buffer_size);
 
