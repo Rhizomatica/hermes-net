@@ -129,21 +129,25 @@ int main (int argc, char *argv[])
 
     fprintf(stdout, "audio interface prepared\n");
 
-    uint32_t buffer_size = period_size * snd_pcm_format_width(format) / 8 * channels;
+    uint32_t buffer_size = period_size * (snd_pcm_format_width(format) / 8) * channels;
     fprintf(stdout, "buffer size %u\n", buffer_size);
 
     buffer = malloc(buffer_size);
 
     fprintf(stdout, "buffer allocated\n");
 
-    for (i = 0; i < 10; ++i) {
-        if ((err = snd_pcm_readi (capture_handle, buffer, period_size)) != period_size) {
+
+    for (i = 0; i < 1000000; ++i) {
+        if ((err = snd_pcm_readi (capture_handle, buffer, period_size)) < 0) {
             fprintf (stderr, "read from audio interface failed (%s)\n",
                      snd_strerror (err));
-
-
-
-            exit (1);
+            if (err == -EPIPE)
+            {
+                fprintf(stdout, "overrun\n");
+                snd_pcm_prepare (capture_handle);
+            }
+            else
+                exit (1);
         }
         fprintf(stdout, "read %d done\n", i);
     }
