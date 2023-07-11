@@ -12,7 +12,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <alsa/asoundlib.h>
+
 
 int main (int argc, char *argv[])
 {
@@ -21,6 +23,7 @@ int main (int argc, char *argv[])
     char *buffer;
     int buffer_frames = 128;
     unsigned int rate = 96000;
+    uint32_t channels = 2;
     snd_pcm_t *capture_handle;
     snd_pcm_hw_params_t *hw_params;
 	snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
@@ -102,14 +105,20 @@ int main (int argc, char *argv[])
 
     fprintf(stdout, "audio interface prepared\n");
 
-    buffer = malloc(128 * snd_pcm_format_width(format) / 8 * 2);
+    uint32_t buffer_size = buffer_frames * snd_pcm_format_width(format) / 8 * channels;
+    fprintf(stdout, "buffer size %u\n", buffer_size);
+
+    buffer = malloc(buffer_size);
 
     fprintf(stdout, "buffer allocated\n");
 
     for (i = 0; i < 10; ++i) {
         if ((err = snd_pcm_readi (capture_handle, buffer, buffer_frames)) != buffer_frames) {
             fprintf (stderr, "read from audio interface failed (%s)\n",
-                     err, snd_strerror (err));
+                     snd_strerror (err));
+
+
+
             exit (1);
         }
         fprintf(stdout, "read %d done\n", i);
