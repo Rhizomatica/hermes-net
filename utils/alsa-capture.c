@@ -15,14 +15,14 @@
 #include <stdint.h>
 #include <alsa/asoundlib.h>
 
-
+// latency = periodsize * periods / (rate * bytes_per_frame)
 int main (int argc, char *argv[])
 {
     int i;
     int err;
     char *buffer;
-    uint64_t period_size = 128; // in frames
-    uint64_t n_periods = 2; // number of periods
+    uint64_t period_size = 256; // in frames
+    uint64_t n_periods = 4; // number of periods
 
     unsigned int rate = 96000;
     uint32_t channels = 2;
