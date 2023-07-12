@@ -1,5 +1,5 @@
 /* Rhizo-uuhf: Tools to integrate HF TNCs to UUCP
- * Copyright (C) 2019-2022 Rhizomatica
+ * Copyright (C) 2019-2023 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
@@ -193,18 +193,6 @@ int main (int argc, char *argv[])
 {
     rhizo_conn *connector = NULL;
 
-    if (shm_is_created(SYSV_SHM_KEY_STR, sizeof(rhizo_conn)))
-    {
-        fprintf(stderr, "Connector SHM is already created!\nDestroying it and creating again.\n");
-        shm_destroy(SYSV_SHM_KEY_STR, sizeof(rhizo_conn));
-    }
-    shm_create(SYSV_SHM_KEY_STR, sizeof(rhizo_conn));
-
-    connector = shm_attach(SYSV_SHM_KEY_STR, sizeof(rhizo_conn));
-    tmp_conn = connector;
-
-    initialize_connector(connector);
-
     signal (SIGINT, finish);
     signal (SIGQUIT, finish);
     signal (SIGTERM, finish);
@@ -224,19 +212,32 @@ int main (int argc, char *argv[])
         fprintf(stderr, "%s -h\n", argv[0]);
         fprintf(stderr, "\nOptions:\n");
         fprintf(stderr, " -r [ardop,vara]            Choose modem/radio type.\n");
-        fprintf(stderr, " -c callsign                    Station Callsign (Eg: PU2HFF). Not setting it will cause the hostname to be retrieved from uucp config\n");
-        fprintf(stderr, " -d remote_callsign      Remote Station Callsign.\n");
-        fprintf(stderr, " -a tnc_ip_address        IP address of the TNC,\n");
-        fprintf(stderr, " -p tnc_tcp_base_port  TNC's TCP base port of the TNC. ARDOP uses ports tcp_base_port and tcp_base_port+1.\n");
-        fprintf(stderr, " -t timeout                    Time to wait before disconnect when idling (only for ardop).\n");
+        fprintf(stderr, " -c callsign                Station Callsign (Eg: PU2HFF). Not setting it will cause the hostname to be retrieved from uucp config\n");
+        fprintf(stderr, " -d remote_callsign         Remote Station Callsign.\n");
+        fprintf(stderr, " -a tnc_ip_address          IP address of the TNC,\n");
+        fprintf(stderr, " -p tnc_tcp_base_port       TNC's TCP base port of the TNC. ARDOP uses ports tcp_base_port and tcp_base_port+1.\n");
+        fprintf(stderr, " -t timeout                 Time to wait before disconnect when idling (only for ardop).\n");
         fprintf(stderr, " -f features                   Supported features ARDOP: ofdm, noofdm (default: ofdm).\n");
-        fprintf(stderr, "                                     Supported features VARA, BW mode: 500, 2300 or 2750 (default: 2300).\n");
+        fprintf(stderr, "                               Supported features VARA, BW mode: 500, 2300 or 2750 (default: 2300).\n");
+        fprintf(stderr, "                               Supported features VARA, P2P mode: \"p\" to enable (eg. 2300p).\n");
         fprintf(stderr, " -s serial_device           Set the serial device file path for keying the radio (VARA ONLY).\n");
-        fprintf(stderr, " -l                                  Tell UUCICO to ask login prompt (default: disabled).\n");
-        fprintf(stderr, " -o [icom,ubitx,shm]     Sets radio type (supported: icom, ubitx or shm)\n");
-        fprintf(stderr, " -h                                 Prints this help.\n");
+        fprintf(stderr, " -l                         Tell UUCICO to ask login prompt (default: disabled).\n");
+        fprintf(stderr, " -o [icom,ubitx,shm]        Sets radio type (supported: icom, ubitx or shm)\n");
+        fprintf(stderr, " -h                         Prints this help.\n");
         exit(EXIT_FAILURE);
     }
+
+    if (shm_is_created(SYSV_SHM_KEY_STR, sizeof(rhizo_conn)))
+    {
+        fprintf(stderr, "Connector SHM is already created!\nDestroying it and creating again.\n");
+        shm_destroy(SYSV_SHM_KEY_STR, sizeof(rhizo_conn));
+    }
+    shm_create(SYSV_SHM_KEY_STR, sizeof(rhizo_conn));
+
+    connector = shm_attach(SYSV_SHM_KEY_STR, sizeof(rhizo_conn));
+    tmp_conn = connector;
+
+    initialize_connector(connector);
 
     int opt;
     while ((opt = getopt(argc, argv, "hlc:d:p:a:t:f:o:r:s:")) != -1)
@@ -285,7 +286,11 @@ int main (int argc, char *argv[])
             else if(strstr(optarg, "ofdm"))
                 connector->ofdm_mode = true;
             else
+            {
                 connector->vara_mode = atoi(optarg);
+                if (strchr(optarg, 'p'))
+                    connector->vara_mode |= 0x4000;
+            }
             break;
         default:
             goto manual;
@@ -305,12 +310,13 @@ int main (int argc, char *argv[])
 //        fprintf(stderr, "Destination call-sign not set. Using CQ.\n");
     }
 
+    uint16_t vara_mode = connector->vara_mode & 0x3fff;
     if (!strcmp("vara", connector->modem_type) &&
-        (connector->vara_mode != 500)  &&
-        (connector->vara_mode != 2300) &&
-        (connector->vara_mode != 2750) )
+        (vara_mode != 500)  &&
+        (vara_mode != 2300) &&
+        (vara_mode != 2750) )
     {
-        fprintf(stderr, "Wrong Vara Mode BW %u.\n", connector->vara_mode);
+        fprintf(stderr, "Wrong Vara Mode BW %u.\n", vara_mode);
         goto manual;
     }
 

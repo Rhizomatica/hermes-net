@@ -228,17 +228,29 @@ void *vara_control_worker_thread_tx(void *conn)
     ret &= tcp_write(connector->control_socket, (uint8_t *) buffer, strlen(buffer));
 
     memset(buffer,0,sizeof(buffer));
-    sprintf(buffer,"BW%u\r", connector->vara_mode);
+    // sprintf(buffer,"COMPRESSION FILES\r");
+    // sprintf(buffer,"COMPRESSION TEXT\r");
+    sprintf(buffer,"COMPRESSION OFF\r");
+    ret &= tcp_write(connector->control_socket, (uint8_t *) buffer, strlen(buffer));
+
+    uint16_t vara_mode = connector->vara_mode & 0x3fff;
+    bool vara_p2p_mode = (connector->vara_mode & 0x4000) ? true : false;
+
+    fprintf(stderr, "Vara mode: %d%s\n", vara_mode, vara_p2p_mode?"p":"");
+
+    memset(buffer,0,sizeof(buffer));
+    sprintf(buffer,"BW%u\r", vara_mode);
     // strcpy(buffer,"BW2300\r");
     // strcpy(buffer,"BW500\r");
     // strcpy(buffer,"BW2750\r");
     ret &= tcp_write(connector->control_socket, (uint8_t *) buffer, strlen(buffer));
 
-    memset(buffer,0,sizeof(buffer));
-    sprintf(buffer,"COMPRESSION FILES\r");
-    // sprintf(buffer,"COMPRESSION TEXT\r");
-    // sprintf(buffer,"COMPRESSION OFF\r");
-    ret &= tcp_write(connector->control_socket, (uint8_t *) buffer, strlen(buffer));
+    if (vara_p2p_mode)
+    {
+        memset(buffer,0,sizeof(buffer));
+        strcpy(buffer,"P2P SESSION\r");
+        ret &= tcp_write(connector->control_socket, (uint8_t *) buffer, strlen(buffer));
+    }
 
     // check lost tcp connection
     if (ret == false)
