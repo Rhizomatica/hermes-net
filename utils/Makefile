@@ -21,10 +21,10 @@
 
 prefix=/usr
 CC=gcc
-CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector
+CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector -Wno-deprecated-declarations
 LDFLAGS=-lm -lasound
 
-all: keyon keyoff alsa-capture alsa-show
+all: keyon keyoff alsa-capture alsa-show alsa-play
 
 %.o : %.c %.h
 	gcc -c $(CFLAGS) $< -o $@
@@ -39,6 +39,9 @@ alsa-capture: alsa-capture.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 alsa-show: alsa-show.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+alsa-play: alsa-play.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 

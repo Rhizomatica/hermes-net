@@ -1,29 +1,37 @@
 /*
 
-This example opens the default PCM device, sets
-some parameters, and then displays the value
-of most of the hardware parameters. It does not
-perform any sound playback or recording.
+This example reads standard from input and writes
+to the default PCM device for 5 seconds of data.
 
 */
 
 /* Use the newer ALSA API */
-#define ALSA_PCM_NEW_HW_PARAMS_API
+// #define ALSA_PCM_NEW_HW_PARAMS_API
 
-/* All of the ALSA library API is defined
- * in this header */
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <alsa/asoundlib.h>
 
-int main() {
+int main(int argc, char *argv[]) {
+  long loops;
   int rc;
   snd_pcm_t *handle;
   snd_pcm_hw_params_t *params;
   unsigned int val, val2;
   int dir;
-  snd_pcm_uframes_t frames;
+  char *buffer;
+
+
+  snd_pcm_uframes_t period_size = 256; // in frames
+  uint64_t n_periods = 4; // number of periods
+  unsigned int rate = 96000;
+  uint32_t channels = 2;
+  snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
+
 
   /* Open PCM device for playback. */
-  rc = snd_pcm_open(&handle, "hw:0,0",
+  rc = snd_pcm_open(&handle, argv[1],
                     SND_PCM_STREAM_PLAYBACK, 0);
   if (rc < 0) {
     fprintf(stderr,
@@ -32,11 +40,18 @@ int main() {
     exit(1);
   }
 
+  fprintf(stdout, "audio interface opened\n");
+
   /* Allocate a hardware parameters object. */
   snd_pcm_hw_params_alloca(&params);
 
+  fprintf(stdout, "hw_params allocated\n");
+
   /* Fill it in with default values. */
   snd_pcm_hw_params_any(handle, params);
+
+  fprintf(stdout, "hw_params initialized\n");
+
 
   /* Set the desired hardware parameters. */
 
@@ -44,17 +59,28 @@ int main() {
   snd_pcm_hw_params_set_access(handle, params,
                       SND_PCM_ACCESS_RW_INTERLEAVED);
 
+  fprintf(stdout, "hw_params access setted\n");
+
   /* Signed 16-bit little-endian format */
   snd_pcm_hw_params_set_format(handle, params,
-                              SND_PCM_FORMAT_S16_LE);
+                              format);
 
-  /* Two channels (stereo) */
-  snd_pcm_hw_params_set_channels(handle, params, 2);
+  fprintf(stdout, "hw_params format setted\n");
 
-  /* 44100 bits/second sampling rate (CD quality) */
-  val = 96000;
-  snd_pcm_hw_params_set_rate_near(handle,
-                                 params, &val, &dir);
+  /* channels */
+  snd_pcm_hw_params_set_channels(handle, params, channels);
+
+  /* sampling rate */
+  snd_pcm_hw_params_set_rate_near(handle, params,
+                                  &rate, &dir);
+
+  /* Set period size. */
+  snd_pcm_hw_params_set_period_size_near(handle,
+                              params, &period_size, &dir);
+
+/* Set number of periods. Periods used to be called fragments. */
+  snd_pcm_hw_params_set_periods(handle, params, n_periods, 0);
+
 
   /* Write the parameters to the driver */
   rc = snd_pcm_hw_params(handle, params);
@@ -64,6 +90,9 @@ int main() {
             snd_strerror(rc));
     exit(1);
   }
+
+  fprintf(stdout, "hw_params setted\n");
+
 
   /* Display information about the PCM interface */
 
@@ -102,8 +131,8 @@ int main() {
   printf("period time = %d us\n", val);
 
   snd_pcm_hw_params_get_period_size(params,
-                                    &frames, &dir);
-  printf("period size = %d frames\n", (int)frames);
+                                    &period_size, &dir);
+  printf("period size = %d frames\n", (int)period_size);
 
   snd_pcm_hw_params_get_buffer_time(params,
                                     &val, &dir);
@@ -157,7 +186,67 @@ int main() {
   val = snd_pcm_hw_params_can_sync_start(params);
   printf("can sync start = %d\n", val);
 
+
+  /* Use a buffer large enough to hold one period */
+  snd_pcm_hw_params_get_period_size(params, &period_size,
+                                    &dir);
+
+
+  rc = snd_pcm_prepare (handle);
+
+  if (rc < 0){
+      fprintf (stderr, "cannot prepare audio interface for use (%s)\n",
+               snd_strerror (rc));
+      exit (1);
+  }
+
+  fprintf(stdout, "audio interface prepared\n");
+
+  int sample_size = snd_pcm_format_width(format) / 8;
+  uint32_t buffer_size = period_size * sample_size * channels;
+
+
+  fprintf(stdout, "buffer size %u\n", buffer_size);
+
+  buffer = malloc(buffer_size);
+
+  fprintf(stdout, "buffer allocated\n");
+
+  /* We want to loop for 5 seconds */
+  snd_pcm_hw_params_get_period_time(params,
+                                    &val, &dir);
+  /* 5 seconds in microseconds divided by
+   * period time */
+  loops = 5000000 / val;
+
+  while (loops > 0) {
+    loops--;
+    rc = read(0, buffer, buffer_size);
+    if (rc == 0) {
+      fprintf(stderr, "end of file on input\n");
+      break;
+    } else if (rc != buffer_size) {
+      fprintf(stderr,
+              "short read: read %d bytes\n", rc);
+    }
+    rc = snd_pcm_writei(handle, buffer, period_size);
+    if (rc == -EPIPE) {
+      /* EPIPE means underrun */
+      fprintf(stderr, "underrun occurred\n");
+      snd_pcm_prepare(handle);
+    } else if (rc < 0) {
+      fprintf(stderr,
+              "error from writei: %s\n",
+              snd_strerror(rc));
+    }  else if (rc != (int)period_size) {
+      fprintf(stderr,
+              "short write, write %d frames\n", rc);
+    }
+  }
+
+  snd_pcm_drain(handle);
   snd_pcm_close(handle);
+  free(buffer);
 
   return 0;
 }

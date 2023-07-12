@@ -73,6 +73,13 @@ int main (int argc, char *argv[])
     fprintf(stdout, "hw_params format setted\n");
 
 
+    if ((err = snd_pcm_hw_params_set_rate_near (capture_handle, hw_params, &rate, 0)) < 0) {
+        fprintf (stderr, "cannot set sample rate (%s)\n",
+                 snd_strerror (err));
+        exit (1);
+    }
+
+    fprintf(stdout, "hw_params rate setted\n");
 
     if ((err = snd_pcm_hw_params_test_period_size (capture_handle, hw_params, period_size, 0)) < 0) {
         fprintf (stderr, "period size of %lu not good (%s)\n", period_size,
@@ -93,14 +100,6 @@ int main (int argc, char *argv[])
     }
 
 
-    if ((err = snd_pcm_hw_params_set_rate_near (capture_handle, hw_params, &rate, 0)) < 0) {
-        fprintf (stderr, "cannot set sample rate (%s)\n",
-                 snd_strerror (err));
-        exit (1);
-    }
-
-    fprintf(stdout, "hw_params rate setted\n");
-
     if ((err = snd_pcm_hw_params_set_channels (capture_handle, hw_params, 2)) < 0) {
         fprintf (stderr, "cannot set channel count (%s)\n",
                  snd_strerror (err));
@@ -117,18 +116,6 @@ int main (int argc, char *argv[])
 
     fprintf(stdout, "hw_params setted\n");
 
-    snd_pcm_hw_params_free (hw_params);
-
-    fprintf(stdout, "hw_params freed\n");
-
-    if ((err = snd_pcm_prepare (capture_handle)) < 0) {
-        fprintf (stderr, "cannot prepare audio interface for use (%s)\n",
-                 snd_strerror (err));
-        exit (1);
-    }
-
-    fprintf(stdout, "audio interface prepared\n");
-
     /* Display information about the PCM interface */
     unsigned int val, val2;
     printf("PCM capture_handle name = '%s'\n",
@@ -142,7 +129,7 @@ int main (int argc, char *argv[])
     printf("access type = %s\n",
            snd_pcm_access_name((snd_pcm_access_t)val));
 
-    snd_pcm_hw_params_get_format(hw_params, &val);
+    snd_pcm_hw_params_get_format(hw_params, (snd_pcm_format_t *) &val);
     printf("format = '%s' (%s)\n",
            snd_pcm_format_name((snd_pcm_format_t)val),
            snd_pcm_format_description(
@@ -224,6 +211,19 @@ int main (int argc, char *argv[])
     printf("can sync start = %d\n", val);
 
 
+    snd_pcm_hw_params_free (hw_params);
+
+    fprintf(stdout, "hw_params freed\n");
+
+    if ((err = snd_pcm_prepare (capture_handle)) < 0) {
+        fprintf (stderr, "cannot prepare audio interface for use (%s)\n",
+                 snd_strerror (err));
+        exit (1);
+    }
+
+    fprintf(stdout, "audio interface prepared\n");
+
+
     int sample_size = snd_pcm_format_width(format) / 8;
     uint32_t buffer_size = period_size * sample_size * channels;
     fprintf(stdout, "buffer size %u\n", buffer_size);
@@ -280,7 +280,9 @@ int main (int argc, char *argv[])
 
     fprintf(stdout, "buffer freed\n");
 
+    snd_pcm_drain(capture_handle);
     snd_pcm_close (capture_handle);
+
     fprintf(stdout, "audio interface closed\n");
 
     exit (0);
