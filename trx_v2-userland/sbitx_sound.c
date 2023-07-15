@@ -65,8 +65,8 @@ void sound_mixer(char *card_name, char *element, int make_on)
 }
 
 unsigned int hw_rate = 96000; /* Sample rate */
-snd_pcm_uframes_t hw_period_size = 256; // in frames
-uint64_t hw_n_periods = 4; // number of periods
+snd_pcm_uframes_t hw_period_size = 1024; // in frames
+uint64_t hw_n_periods = 2; // number of periods
 
 unsigned int loopback_rate = 48000; /* Sample rate */
 snd_pcm_uframes_t loopback_period_size = 512; // in frames
