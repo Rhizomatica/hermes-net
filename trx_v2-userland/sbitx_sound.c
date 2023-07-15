@@ -301,7 +301,7 @@ int sound_start_loopback_capture(char *device){
 	}
 
 	// the buffer size is each periodsize x n_periods
-	snd_pcm_uframes_t  n_frames= (buff_size  * n_periods_per_buffer)/ 8;
+	snd_pcm_uframes_t  n_frames= (buff_size  * n_periods_per_buffer) / 16; // we divide by 8 and by 2, as we are downsampled by 2
 	//printf("trying for buffer size of %ld\n", n_frames);
 	e = snd_pcm_hw_params_set_buffer_size_near(loopback_capture_handle, hloop_params, &n_frames);
 	if (e < 0) {
@@ -483,9 +483,9 @@ int sound_start_loopback_play(char *device){
 
 
 	// the buffer size is each periodsize x n_periods
-	snd_pcm_uframes_t  n_frames= (buff_size  * n_periods_per_buffer)/8;
+	snd_pcm_uframes_t  n_frames= (buff_size  * n_periods_per_buffer) / 16;
 	//lets pump it up to see if we can reduce the dropped frames
-	n_frames *= 2;
+	// n_frames *= 2;
 	//printf("trying for loopback buffer size of %ld\n", n_frames);
 	e = snd_pcm_hw_params_set_buffer_size_near(loopback_play_handle, hwparams, &n_frames);
 	if (e < 0) {
@@ -674,7 +674,7 @@ snd_pcm_prepare(loopback_play_handle);
 */    
 
         // This is the new pcm loopback write routine
-        framesize = (ret_card + 1) /2;		// only writing half the number of samples because of the slower channel rate
+        framesize = ret_card / 2;		// only writing half the number of samples because of the slower channel rate
         offset = 0;
 
         while(framesize > 0)
