@@ -89,10 +89,10 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    device_name: hw:1,0
+    device_name: hw:0,0
     maxoutbuf: '0'
     minoutbuf: '0'
-    num_outputs: '1'
+    num_outputs: '2'
     ok_to_block: 'True'
     samp_rate: samp_rate
   states:
@@ -121,20 +121,50 @@ blocks:
     plotwaterfall: 'True'
     rate: '10'
     showports: 'False'
-    showrf: 'False'
+    showrf: 'True'
     type: float
     wintype: firdes.WIN_HAMMING
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [672, 212.0]
+    coordinate: [664, 100.0]
     rotation: 0
     state: true
+- name: qtgui_sink_x_0_0
+  id: qtgui_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    bw: samp_rate
+    comment: ''
+    fc: '0'
+    fftsize: '1024'
+    gui_hint: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    name: '""'
+    plotconst: 'True'
+    plotfreq: 'True'
+    plottime: 'True'
+    plotwaterfall: 'True'
+    rate: '10'
+    showports: 'False'
+    showrf: 'True'
+    type: float
+    wintype: firdes.WIN_HAMMING
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [664, 276.0]
+    rotation: 0
+    state: enabled
 
 connections:
 - [analog_sig_source_x_0, '0', audio_sink_0, '0']
 - [audio_source_0, '0', qtgui_sink_x_0, '0']
+- [audio_source_0, '1', qtgui_sink_x_0_0, '0']
 
 metadata:
   file_format: 1

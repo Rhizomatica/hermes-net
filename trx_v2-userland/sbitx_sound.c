@@ -302,14 +302,14 @@ int sound_start_loopback_capture(char *device){
 
 	// the buffer size is each periodsize x n_periods
 	snd_pcm_uframes_t  n_frames= (buff_size  * n_periods_per_buffer) / 16; // we divide by 8 and by 2, as we are downsampled by 2
-	//printf("trying for buffer size of %ld\n", n_frames);
+	printf("trying for buffer size of %ld\n", n_frames);
 	e = snd_pcm_hw_params_set_buffer_size_near(loopback_capture_handle, hloop_params, &n_frames);
 	if (e < 0) {
 		    fprintf(stderr, "*Error setting loopback capture buffersize.\n");
 		    return(-1);
 	}
+	printf("set capture loop buffer to %ld\n", n_frames);
 
-	//printf("%d: set buffer to \n", __LINE__, n_frames);
 	if (snd_pcm_hw_params(loopback_capture_handle, hloop_params) < 0) {
 		fprintf(stderr, "*Error setting capture HW params.\n");
 		return(-1);
@@ -476,7 +476,7 @@ int sound_start_loopback_play(char *device){
 	// frame = bytes_per_sample x n_channel
 	// period = frames transfered at a time (160 for voip, etc.)
 	// we use two periods per buffer.
-	if ((e = snd_pcm_hw_params_set_periods(loopback_play_handle, hwparams, 8, 0)) < 0) {
+	if ((e = snd_pcm_hw_params_set_periods(loopback_play_handle, hwparams, n_periods_per_buffer, 0)) < 0) {
 		fprintf(stderr, "*Error setting playback periods.\n");
 		return(-1);
 	}
@@ -484,6 +484,7 @@ int sound_start_loopback_play(char *device){
 
 	// the buffer size is each periodsize x n_periods
 	snd_pcm_uframes_t  n_frames= (buff_size  * n_periods_per_buffer) / 16;
+	printf("trying for buffer size of %ld\n", n_frames);
 	//lets pump it up to see if we can reduce the dropped frames
 	// n_frames *= 2;
 	//printf("trying for loopback buffer size of %ld\n", n_frames);
@@ -492,6 +493,7 @@ int sound_start_loopback_play(char *device){
 		    fprintf(stderr, "*Error setting loopback playback buffersize.\n");
 		    return(-1);
 	}
+	printf("set playback loop buffer to %ld\n", n_frames);
 
 	//printf("loopback playback buffer size is set to %d\n", n_frames);
 
