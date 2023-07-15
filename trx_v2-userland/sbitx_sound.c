@@ -9,52 +9,6 @@
 #include "sdr.h"
 
 
-/* follows the tutorial at http://alsamodular.sourceforge.net/alsa_programming_howto.html
-Next thing to try is http://www.saunalahti.fi/~s7l/blog/2005/08/21/Full%20Duplex%20ALSA
-
-	We are using 4 bytes per sample, 
-	each frame is consists of two channels of audio, hence 8 bytes 
-  We are shooting for 1024x2 = 2048 samples per period. that is 8K
-  At two periods in the buffer, the buffer has to be 16K
-
-	To simply the work, we are picking up some settings for the Wolfson codec
-	as it connects to a raspberry pi. These values are interdependent
-	and they will work out of the box. It takes the guess work out of
-	configuring the Raspberry Pi with Wolfson codec.
-*/
-
-
-/*
-	MIXER api
-
-	https://alsa.opensrc.org/HowTo_access_a_mixer_control
-
-https://android.googlesource.com/platform/hardware/qcom/audio/+/jb-mr1-dev/alsa_sound/ALSAMixer.cpp
-
-https://github.com/bear24rw/alsa-utils/blob/master/amixer/amixer.c
-
-There are six kinds of controls:
-	playback volume 
-	playback switch
-	playback enumeration
-	capture volume
-	capture switch
-	capture enumeration
-
-examples of using amixer to mute and unmute:
-amixer -c 1  set 'Output Mixer Mic Sidetone' unmute
-amixer -c 1  set 'Output Mixer Mic Sidetone' mute
-
-
-examples of using sound_mixer function:
-'Mic' 0/1 = mute/unmute the mic
-'Line' 0/1= mute/unmute the line in
-'Master' 0-100 controls the earphone volume only, line out remains unaffected
-'Input Mux' 1/0 take the input either from the Mic or Line In
-
-
-*/
-
 #include <stdbool.h>
 
 extern bool disable_alsa;
@@ -110,9 +64,19 @@ void sound_mixer(char *card_name, char *element, int make_on)
     snd_mixer_close(handle);
 }
 
-int rate = 96000; /* Sample rate */
-static snd_pcm_uframes_t buff_size = 8192; /* Periodsize (bytes) */ // lets go 512? or 1024? or even 256?
-static int n_periods_per_buffer = 2;       /* Number of periods */
+unsigned int hw_rate = 96000; /* Sample rate */
+snd_pcm_uframes_t hw_period_size = 256; // in frames
+uint64_t hw_n_periods = 4; // number of periods
+
+unsigned int loopback_rate = 48000; /* Sample rate */
+snd_pcm_uframes_t loopback_period_size = 512; // in frames
+uint64_t loopback_n_periods = 2; // number of periods
+
+snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
+uint32_t channels = 2;
+
+//static snd_pcm_uframes_t buff_size = 8192; /* Periodsize (bytes) */ // lets go 512? or 1024? or even 256?
+//static int n_periods_per_buffer = 2;       /* Number of periods */
 //static int n_periods_per_buffer = 1024;       /* Number of periods */
 
 static snd_pcm_t *pcm_play_handle=0;   	//handle for the pcm device
@@ -185,7 +149,7 @@ int sound_start_play(char *device){
 	}
 
   /* Set sample format */
-	e = snd_pcm_hw_params_set_format(pcm_play_handle, hwparams, SND_PCM_FORMAT_S32_LE);
+	e = snd_pcm_hw_params_set_format(pcm_play_handle, hwparams, format);
 	if (e < 0) {
 		fprintf(stderr, "*Error setting plyaback format.\n");
 		return(-1);
@@ -194,41 +158,36 @@ int sound_start_play(char *device){
 
 	/* Set sample rate. If the exact rate is not supported */
 	/* by the hardware, use nearest possible rate.         */ 
-	exact_rate = rate;
+	exact_rate = hw_rate;
 	e = snd_pcm_hw_params_set_rate_near(pcm_play_handle, hwparams, &exact_rate, 0);
 	if ( e< 0) {
 		fprintf(stderr, "Error setting playback rate.\n");
 		return(-1);
 	}
-	if (rate != exact_rate)
-		fprintf(stderr, "*The playback rate %d changed to %d Hz\n", rate, exact_rate);
+	if (hw_rate != exact_rate)
+		fprintf(stderr, "*The playback rate %d changed to %d Hz\n", hw_rate, exact_rate);
 /*	else
 		fprintf(stderr, "Playback sampling rate is set to %d\n", exact_rate);
 */
 
 	/* Set number of channels */
-	if ((e = snd_pcm_hw_params_set_channels(pcm_play_handle, hwparams, 2)) < 0) {
+	if ((e = snd_pcm_hw_params_set_channels(pcm_play_handle, hwparams, channels)) < 0) {
 		fprintf(stderr, "*Error setting playback channels.\n");
 		return(-1);
 	}
 
 
-	// frame = bytes_per_sample x n_channel
-	// period = frames transfered at a time (160 for voip, etc.)
-	// we use two periods per buffer.
-	if ((e = snd_pcm_hw_params_set_periods(pcm_play_handle, hwparams, n_periods_per_buffer, 0)) < 0) {
+    /* Set period size. */
+    if ((e = snd_pcm_hw_params_set_period_size_near(pcm_play_handle,hwparams, &hw_period_size, 0)) < 0)
+    {
+        fprintf (stderr, "cannot set period size (%s)\n",snd_strerror (e));
+        return (-1);
+    }
+
+
+	if ((e = snd_pcm_hw_params_set_periods(pcm_play_handle, hwparams, hw_n_periods, 0)) < 0) {
 		fprintf(stderr, "*Error setting playback periods.\n");
 		return(-1);
-	}
-
-
-	// the buffer size is each periodsize x n_periods
-	snd_pcm_uframes_t  n_frames= (buff_size  * n_periods_per_buffer)/8;
-	//printf("trying for buffer size of %ld\n", n_frames);
-	e = snd_pcm_hw_params_set_buffer_size_near(pcm_play_handle, hwparams, &n_frames);
-	if (e < 0) {
-		    fprintf(stderr, "*Error setting playback buffersize.\n");
-		    return(-1);
 	}
 
 	if (snd_pcm_hw_params(pcm_play_handle, hwparams) < 0) {
@@ -268,15 +227,13 @@ int sound_start_loopback_capture(char *device){
 	}
 
   /* Set sample format */
-	e = snd_pcm_hw_params_set_format(loopback_capture_handle, hloop_params, SND_PCM_FORMAT_S32_LE);
+	e = snd_pcm_hw_params_set_format(loopback_capture_handle, hloop_params, format);
 	if (e < 0) {
 		fprintf(stderr, "*Error setting loopback capture format.\n");
 		return(-1);
 	}
 
-	/* Set sample rate. If the exact rate is not supported */
-	/* by the hardware, use nearest possible rate.         */ 
-	exact_rate = 48000;
+	exact_rate = loopback_rate;
 	//printf("Setting loopback capture rate to %d\n", exact_rate);
 	e = snd_pcm_hw_params_set_rate_near(loopback_capture_handle, hloop_params, &exact_rate, 0);
 	if ( e< 0) {
@@ -284,31 +241,27 @@ int sound_start_loopback_capture(char *device){
 		return(-1);
 	}
 
-	if (48000 != exact_rate)
+	if (loopback_rate != exact_rate)
 		fprintf(stderr, "#The loopback capture rate set to %d Hz\n", exact_rate);
 
 	/* Set number of channels */
-	if ((e = snd_pcm_hw_params_set_channels(loopback_capture_handle, hloop_params, 2)) < 0) {
+	if ((e = snd_pcm_hw_params_set_channels(loopback_capture_handle, hloop_params, channels)) < 0) {
 		fprintf(stderr, "*Error setting loopback capture channels.\n");
 		return(-1);
 	}
 
-	//printf("%d: set the #channels\n", __LINE__, 2);
-	/* Set number of periods. Periods used to be called fragments. */ 
-	if ((e = snd_pcm_hw_params_set_periods(loopback_capture_handle, hloop_params, n_periods_per_buffer, 0)) < 0) {
+    /* Set period size. */
+    if ((e = snd_pcm_hw_params_set_period_size_near(loopback_capture_handle, hloop_params, &loopback_period_size, 0)) < 0)
+    {
+        fprintf (stderr, "cannot set period size (%s)\n",snd_strerror (e));
+        return (-1);
+    }
+
+	if ((e = snd_pcm_hw_params_set_periods(loopback_capture_handle, hloop_params, loopback_n_periods, 0)) < 0) {
 		fprintf(stderr, "*Error setting loopback capture periods.\n");
 		return(-1);
 	}
 
-	// the buffer size is each periodsize x n_periods
-	snd_pcm_uframes_t  n_frames= (buff_size  * n_periods_per_buffer) / 16; // we divide by 8 and by 2, as we are downsampled by 2
-	printf("trying for buffer size of %ld\n", n_frames);
-	e = snd_pcm_hw_params_set_buffer_size_near(loopback_capture_handle, hloop_params, &n_frames);
-	if (e < 0) {
-		    fprintf(stderr, "*Error setting loopback capture buffersize.\n");
-		    return(-1);
-	}
-	printf("set capture loop buffer to %ld\n", n_frames);
 
 	if (snd_pcm_hw_params(loopback_capture_handle, hloop_params) < 0) {
 		fprintf(stderr, "*Error setting capture HW params.\n");
@@ -368,7 +321,7 @@ int sound_start_capture(char *device){
 	}
 
   /* Set sample format */
-	e = snd_pcm_hw_params_set_format(pcm_capture_handle, hwparams, SND_PCM_FORMAT_S32_LE);
+	e = snd_pcm_hw_params_set_format(pcm_capture_handle, hwparams, format);
 	if (e < 0) {
 		fprintf(stderr, "*Error setting capture format.\n");
 		return(-1);
@@ -377,39 +330,36 @@ int sound_start_capture(char *device){
 
 	/* Set sample rate. If the exact rate is not supported */
 	/* by the hardware, use nearest possible rate.         */ 
-	exact_rate = rate;
+	exact_rate = hw_rate;
 	e = snd_pcm_hw_params_set_rate_near(pcm_capture_handle, hwparams, &exact_rate, 0);
 	if ( e< 0) {
 		fprintf(stderr, "*Error setting capture rate.\n");
 		return(-1);
 	}
 
-	if (rate != exact_rate)
-		fprintf(stderr, "#The capture rate %d changed to %d Hz\n", rate, exact_rate);
+	if (hw_rate != exact_rate)
+		fprintf(stderr, "#The capture rate %d changed to %d Hz\n", hw_rate, exact_rate);
 
 
 	/* Set number of channels */
-	if ((e = snd_pcm_hw_params_set_channels(pcm_capture_handle, hwparams, 2)) < 0) {
+	if ((e = snd_pcm_hw_params_set_channels(pcm_capture_handle, hwparams, channels)) < 0) {
 		fprintf(stderr, "*Error setting capture channels.\n");
 		return(-1);
 	}
 
+    /* Set period size. */
+    if ((e = snd_pcm_hw_params_set_period_size_near(pcm_capture_handle,hwparams, &hw_period_size, 0)) < 0)
+    {
+        fprintf (stderr, "cannot set period size (%s)\n",snd_strerror (e));
+        return (-1);
+    }
 
 	/* Set number of periods. Periods used to be called fragments. */ 
-	if ((e = snd_pcm_hw_params_set_periods(pcm_capture_handle, hwparams, n_periods_per_buffer, 0)) < 0) {
+	if ((e = snd_pcm_hw_params_set_periods(pcm_capture_handle, hwparams, hw_n_periods, 0)) < 0) {
 		fprintf(stderr, "*Error setting capture periods.\n");
 		return(-1);
 	}
 
-
-	// the buffer size is each periodsize x n_periods
-	snd_pcm_uframes_t  n_frames= (buff_size  * n_periods_per_buffer)/ 8;
-	//printf("trying for buffer size of %ld\n", n_frames);
-	e = snd_pcm_hw_params_set_buffer_size_near(pcm_play_handle, hwparams, &n_frames);
-	if (e < 0) {
-		    fprintf(stderr, "*Error setting capture buffersize.\n");
-		    return(-1);
-	}
 
 	if (snd_pcm_hw_params(pcm_capture_handle, hwparams) < 0) {
 		fprintf(stderr, "*Error setting capture HW params.\n");
@@ -424,7 +374,7 @@ int sound_start_loopback_play(char *device){
 
     fprintf(stderr, "ALSA Loopback Playback device at: %s\n", device);
 
-	snd_pcm_hw_params_alloca(&hwparams);	//more alloc
+    snd_pcm_hw_params_alloca(&hloop_params);
 
 	//printf ("opening audio rx stream to %s\n", device); 
 	int e = snd_pcm_open(&loopback_play_handle, device, play_stream, SND_PCM_NONBLOCK);
@@ -434,21 +384,21 @@ int sound_start_loopback_play(char *device){
 		return -1;
 	}
 
-	e = snd_pcm_hw_params_any(loopback_play_handle, hwparams);
+	e = snd_pcm_hw_params_any(loopback_play_handle, hloop_params);
 
 	if (e < 0) {
 		fprintf(stderr, "*Error getting loopback playback params (%d)\n", e);
 		return(-1);
 	}
 
-	e = snd_pcm_hw_params_set_access(loopback_play_handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED);
+	e = snd_pcm_hw_params_set_access(loopback_play_handle, hloop_params, SND_PCM_ACCESS_RW_INTERLEAVED);
 	if (e < 0) {
 		fprintf(stderr, "*Error setting loopback access.\n");
 		return(-1);
 	}
 
   /* Set sample format */
-	e = snd_pcm_hw_params_set_format(loopback_play_handle, hwparams, SND_PCM_FORMAT_S32_LE);
+	e = snd_pcm_hw_params_set_format(loopback_play_handle, hloop_params, format);
 	if (e < 0) {
 		fprintf(stderr, "*Error setting loopback format.\n");
 		return(-1);
@@ -456,48 +406,37 @@ int sound_start_loopback_play(char *device){
 
 	/* Set sample rate. If the exact rate is not supported */
 	/* by the hardware, use nearest possible rate.         */ 
-	exact_rate = 48000;
-	e = snd_pcm_hw_params_set_rate_near(loopback_play_handle, hwparams, &exact_rate, 0);
+	exact_rate = loopback_rate;
+	e = snd_pcm_hw_params_set_rate_near(loopback_play_handle, hloop_params, &exact_rate, 0);
 	if ( e< 0) {
 		fprintf(stderr, "Error setting playback rate.\n");
 		return(-1);
 	}
-	if (48000 != exact_rate)
-		fprintf(stderr, "*The loopback playback rate %d changed to %d Hz\n", rate, exact_rate);
+	if (loopback_rate != exact_rate)
+		fprintf(stderr, "*The loopback playback rate %d changed to %d Hz\n", loopback_rate, exact_rate);
 
 
 	/* Set number of channels */
-	if ((e = snd_pcm_hw_params_set_channels(loopback_play_handle, hwparams, 2)) < 0) {
+	if ((e = snd_pcm_hw_params_set_channels(loopback_play_handle, hloop_params, channels)) < 0) {
 		fprintf(stderr, "*Error setting playback channels.\n");
 		return(-1);
 	}
 
 
-	// frame = bytes_per_sample x n_channel
-	// period = frames transfered at a time (160 for voip, etc.)
-	// we use two periods per buffer.
-	if ((e = snd_pcm_hw_params_set_periods(loopback_play_handle, hwparams, n_periods_per_buffer, 0)) < 0) {
+    /* Set period size. */
+    if ((e = snd_pcm_hw_params_set_period_size_near(loopback_play_handle, hloop_params, &loopback_period_size, 0)) < 0)
+    {
+        fprintf (stderr, "cannot set period size (%s)\n",snd_strerror (e));
+        return (-1);
+    }
+
+
+	if ((e = snd_pcm_hw_params_set_periods(loopback_play_handle, hloop_params, loopback_n_periods, 0)) < 0) {
 		fprintf(stderr, "*Error setting playback periods.\n");
 		return(-1);
 	}
 
-
-	// the buffer size is each periodsize x n_periods
-	snd_pcm_uframes_t  n_frames= (buff_size  * n_periods_per_buffer) / 16;
-	printf("trying for buffer size of %ld\n", n_frames);
-	//lets pump it up to see if we can reduce the dropped frames
-	// n_frames *= 2;
-	//printf("trying for loopback buffer size of %ld\n", n_frames);
-	e = snd_pcm_hw_params_set_buffer_size_near(loopback_play_handle, hwparams, &n_frames);
-	if (e < 0) {
-		    fprintf(stderr, "*Error setting loopback playback buffersize.\n");
-		    return(-1);
-	}
-	printf("set playback loop buffer to %ld\n", n_frames);
-
-	//printf("loopback playback buffer size is set to %d\n", n_frames);
-
-	if (snd_pcm_hw_params(loopback_play_handle, hwparams) < 0) {
+	if (snd_pcm_hw_params(loopback_play_handle, hloop_params) < 0) {
 		fprintf(stderr, "*Error setting loopback playback HW params.\n");
 		return(-1);
 	}
@@ -541,16 +480,23 @@ void sound_loop(){
     int pcmreturn, i, j;
     int frames;
 
-	//we allocate enough for two channels of int32_t sized samples	
-    data_in = (int32_t *)malloc(buff_size * 2);
-    line_out = (int32_t *)malloc(buff_size * 2);
-    data_out = (int32_t *)malloc(buff_size * 2);
-    input_i = (int32_t *)malloc(buff_size * 2);
-    output_i = (int32_t *)malloc(buff_size * 2);
-    input_q = (int32_t *)malloc(buff_size * 2);
-    output_q = (int32_t *)malloc(buff_size * 2);
+	//we allocate enough for two channels of int32_t sized samples
+    int sample_size = snd_pcm_format_width(format) / 8;
+    // uint32_t buffer_size = hw_period_size * sample_size * channels;
+    // frames = hw_period_size;
+    frames = 1024;
+    uint32_t buffer_size = 1024 * sample_size * channels;
 
-    frames = buff_size / 8;
+	//we allocate enough for two channels of int32_t sized samples	
+    data_in = (int32_t *)malloc(buffer_size);
+    line_out = (int32_t *)malloc(buffer_size);
+    data_out = (int32_t *)malloc(buffer_size);
+    input_i = (int32_t *)malloc(buffer_size);
+    output_i = (int32_t *)malloc(buffer_size);
+    input_q = (int32_t *)malloc(buffer_size);
+    output_q = (int32_t *)malloc(buffer_size);
+
+
 	
     snd_pcm_prepare(pcm_play_handle);
     snd_pcm_prepare(loopback_play_handle);
@@ -710,19 +656,20 @@ snd_pcm_prepare(loopback_play_handle);
 void loopback_loop(){
 	int32_t *data_in;
     int pcmreturn, j;
-    int frames;
 
-	//we allocate enough for two channels of int32_t sized samples	
-  data_in = (int32_t *)malloc(buff_size * 2);
-  frames = buff_size / 8;
-  snd_pcm_prepare(loopback_capture_handle);
+	//we allocate enough for two channels of int32_t sized samples
+    int sample_size = snd_pcm_format_width(format) / 8;
+    uint32_t buffer_size = loopback_period_size * sample_size * channels;
+    data_in = (int32_t *)malloc(buffer_size);
+
+    snd_pcm_prepare(loopback_capture_handle);
 
   while(sound_thread_continue) {
 
 		//restart the pcm capture if there is an error reading the samples
 		//this is opened as a blocking device, hence we derive accurate timing 
 
-		while ((pcmreturn = snd_pcm_readi(loopback_capture_handle, data_in, frames/2)) < 0){
+		while ((pcmreturn = snd_pcm_readi(loopback_capture_handle, data_in, loopback_period_size)) < 0){
 			snd_pcm_prepare(loopback_capture_handle);
 			//putchar('=');
 		}

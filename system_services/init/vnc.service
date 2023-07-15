@@ -1,6 +1,6 @@
 [Unit]
 Description=vnc server
-After=syslog.target
+After=syslog.target sbitx.service
 
 [Service]
 Type=forking
