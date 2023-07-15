@@ -14,7 +14,7 @@ perform any sound playback or recording.
  * in this header */
 #include <alsa/asoundlib.h>
 
-int main() {
+int main(int argc, char *argv[]) {
   int rc;
   snd_pcm_t *handle;
   snd_pcm_hw_params_t *params;
@@ -23,7 +23,7 @@ int main() {
   snd_pcm_uframes_t frames;
 
   /* Open PCM device for playback. */
-  rc = snd_pcm_open(&handle, "hw:0,0",
+  rc = snd_pcm_open(&handle, argv[1],
                     SND_PCM_STREAM_PLAYBACK, 0);
   if (rc < 0) {
     fprintf(stderr,
