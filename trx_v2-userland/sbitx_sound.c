@@ -605,7 +605,6 @@ void sound_loop(){
 		}
 
 		//printf("%d %ld %d\n", count++, nsamples, pcmreturn);
-			
 		sound_process(input_i, input_q, output_i, output_q, ret_card);
 
 		i = 0; 
@@ -770,7 +769,7 @@ void *sound_thread_function(void *ptr){
 	}
 
 //  printf("opening loopback on plughw:1,0 sound card\n");	
-	if(sound_start_loopback_play("plughw:1,0")){
+	if(sound_start_loopback_play("hw:1,0")){
 		fprintf(stderr, "*Error opening loopback play device");
 		return NULL;
 	}
@@ -790,7 +789,7 @@ void *loopback_thread_function(void *ptr){
 //	printf("loopback thread is %x\n", loopback_thread);
 //  printf("opening loopback on plughw:1,0 sound card\n");	
 
-	if (sound_start_loopback_capture("plughw:2,1")){
+	if (sound_start_loopback_capture("hw:2,1")){
 		fprintf(stderr, "*Error opening loopback capture device");
 		return NULL;
 	}

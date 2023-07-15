@@ -1079,7 +1079,7 @@ void setup(){
     if (disable_alsa == false)
     {
         setup_audio_codec();
-        sound_thread_start("plughw:0,0");
+        sound_thread_start("hw:0,0");
         sleep(1); //why? to allow the aloop to initialize?
     }
 
