@@ -13,6 +13,47 @@
 
 extern bool disable_alsa;
 
+unsigned int hw_rate = 96000; /* Sample rate */
+snd_pcm_uframes_t hw_period_size = 1024; // in frames
+uint64_t hw_n_periods = 2; // number of periods
+
+unsigned int loopback_rate = 48000; /* Sample rate */
+snd_pcm_uframes_t loopback_period_size = 512; // in frames
+uint64_t loopback_n_periods = 2; // number of periods
+
+snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
+uint32_t channels = 2;
+
+//static snd_pcm_uframes_t buff_size = 8192; /* Periodsize (bytes) */ // lets go 512? or 1024? or even 256?
+//static int n_periods_per_buffer = 2;       /* Number of periods */
+//static int n_periods_per_buffer = 1024;       /* Number of periods */
+
+static snd_pcm_t *pcm_play_handle=0;   	//handle for the pcm device
+static snd_pcm_t *pcm_capture_handle=0;   	//handle for the pcm device
+static snd_pcm_t *loopback_play_handle=0;   	//handle for the pcm device
+static snd_pcm_t *loopback_capture_handle=0;   	//handle for the pcm device
+
+static snd_pcm_stream_t play_stream = SND_PCM_STREAM_PLAYBACK;	//playback stream
+static snd_pcm_stream_t capture_stream = SND_PCM_STREAM_CAPTURE;	//playback stream
+
+static snd_pcm_hw_params_t *hwparams;
+static snd_pcm_hw_params_t *hloop_params;
+static snd_pcm_sw_params_t *sloop_params;
+static uint32_t exact_rate;   /* Sample rate returned by */
+static int	sound_thread_continue = 0;
+pthread_t sound_thread, loopback_thread;
+
+#define LOOPBACK_LEVEL_DIVISOR 8				// Constant used to reduce audio level to the loopback channel (FLDIGI)
+
+// Note: Error messages appear when the sbitx program is started from the command line
+static pthread_barrier_t barrier;
+
+int use_virtual_cable = 0;
+
+struct Queue qloop;
+
+
+
 void sound_mixer(char *card_name, char *element, int make_on)
 {
     if (disable_alsa)
@@ -64,45 +105,6 @@ void sound_mixer(char *card_name, char *element, int make_on)
     snd_mixer_close(handle);
 }
 
-unsigned int hw_rate = 96000; /* Sample rate */
-snd_pcm_uframes_t hw_period_size = 1024; // in frames
-uint64_t hw_n_periods = 2; // number of periods
-
-unsigned int loopback_rate = 48000; /* Sample rate */
-snd_pcm_uframes_t loopback_period_size = 512; // in frames
-uint64_t loopback_n_periods = 2; // number of periods
-
-snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
-uint32_t channels = 2;
-
-//static snd_pcm_uframes_t buff_size = 8192; /* Periodsize (bytes) */ // lets go 512? or 1024? or even 256?
-//static int n_periods_per_buffer = 2;       /* Number of periods */
-//static int n_periods_per_buffer = 1024;       /* Number of periods */
-
-static snd_pcm_t *pcm_play_handle=0;   	//handle for the pcm device
-static snd_pcm_t *pcm_capture_handle=0;   	//handle for the pcm device
-static snd_pcm_t *loopback_play_handle=0;   	//handle for the pcm device
-static snd_pcm_t *loopback_capture_handle=0;   	//handle for the pcm device
-
-static snd_pcm_stream_t play_stream = SND_PCM_STREAM_PLAYBACK;	//playback stream
-static snd_pcm_stream_t capture_stream = SND_PCM_STREAM_CAPTURE;	//playback stream
-
-static snd_pcm_hw_params_t *hwparams;
-static snd_pcm_hw_params_t *hloop_params;
-static snd_pcm_sw_params_t *sloop_params;
-static uint32_t exact_rate;   /* Sample rate returned by */
-static int	sound_thread_continue = 0;
-pthread_t sound_thread, loopback_thread;
-
-#define LOOPBACK_LEVEL_DIVISOR 8				// Constant used to reduce audio level to the loopback channel (FLDIGI)
-
-// Note: Error messages appear when the sbitx program is started from the command line
-static pthread_barrier_t barrier;
-
-int use_virtual_cable = 0;
-
-struct Queue qloop;
-
 /* this function should be called just once in the application process.
 Calling it frequently will result in more allocation of hw_params memory blocks
 without releasing them.
@@ -117,7 +119,6 @@ IMPORTANT:
 The sound is playback is carried on in a non-blocking way  
 
 */
-
 int sound_start_play(char *device){
 	//found out the correct device through aplay -L (for pcm devices)
 
