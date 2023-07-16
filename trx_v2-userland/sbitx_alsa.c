@@ -28,8 +28,6 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
     int dir = 0;
     snd_pcm_uframes_t frames;
 
-    snd_pcm_hw_params_alloca(&params); // stack allocation
-
     /* Display information about the PCM interface */
 
     printf("PCM handle name = '%s'\n",
