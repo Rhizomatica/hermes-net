@@ -1,15 +1,19 @@
+// Code based on original Ashhar sbitx code, with many changes
+
 #include <stdio.h>
 #include <alsa/asoundlib.h>
 #include <pthread.h>
 #include <complex.h>
 #include <fftw3.h>
 #include <time.h>
+#include <stdbool.h>
+
+#include "sbitx_alsa.h"
 #include "sound.h"
 #include "wiringPi.h"
 #include "sdr.h"
 
 
-#include <stdbool.h>
 
 extern bool disable_alsa;
 
@@ -23,10 +27,6 @@ uint64_t loopback_n_periods = 2; // number of periods
 
 snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
 uint32_t channels = 2;
-
-//static snd_pcm_uframes_t buff_size = 8192; /* Periodsize (bytes) */ // lets go 512? or 1024? or even 256?
-//static int n_periods_per_buffer = 2;       /* Number of periods */
-//static int n_periods_per_buffer = 1024;       /* Number of periods */
 
 static snd_pcm_t *pcm_play_handle=0;   	//handle for the pcm device
 static snd_pcm_t *pcm_capture_handle=0;   	//handle for the pcm device
@@ -45,7 +45,7 @@ pthread_t sound_thread, loopback_thread;
 
 #define LOOPBACK_LEVEL_DIVISOR 8				// Constant used to reduce audio level to the loopback channel (FLDIGI)
 
-// Note: Error messages appear when the sbitx program is started from the command line
+
 static pthread_barrier_t barrier;
 
 int use_virtual_cable = 0;
@@ -79,29 +79,29 @@ void sound_mixer(char *card_name, char *element, int make_on)
 	*/
     //find out if the his element is capture side or plaback
     if(snd_mixer_selem_has_capture_switch(elem)){
-			//puts("this is a capture switch.");  
+        //puts("this is a capture switch.");
 	  	snd_mixer_selem_set_capture_switch_all(elem, make_on);
-		}
+    }
     else if (snd_mixer_selem_has_playback_switch(elem)){
 		//	puts("this is a playback switch.");
-			snd_mixer_selem_set_playback_switch_all(elem, make_on);
-		}
+        snd_mixer_selem_set_playback_switch_all(elem, make_on);
+    }
     else if (snd_mixer_selem_has_playback_volume(elem)){
-			//puts("this is  playback volume");
-			long volume = make_on;
+        //puts("this is  playback volume");
+        long volume = make_on;
     	snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
     	snd_mixer_selem_set_playback_volume_all(elem, volume * max / 100);
     }	
     else if (snd_mixer_selem_has_capture_volume(elem)){
 		//	puts("this is a capture volume");
-			long volume = make_on;
+        long volume = make_on;
     	snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
     	snd_mixer_selem_set_capture_volume_all(elem, volume * max / 100);
     }
-		else if (snd_mixer_selem_is_enumerated(elem)){
+    else if (snd_mixer_selem_is_enumerated(elem)){
 //			puts("TBD: this is an enumerated capture element");
-			snd_mixer_selem_set_enum_item(elem, 0, make_on);
-		}
+        snd_mixer_selem_set_enum_item(elem, 0, make_on);
+    }
     snd_mixer_close(handle);
 }
 
@@ -124,9 +124,8 @@ int sound_start_play(char *device){
 
     fprintf(stderr, "ALSA Playback device is: %s\n", device);
 
-	snd_pcm_hw_params_alloca(&hwparams);	//more alloc
+	snd_pcm_hw_params_alloca(&hwparams); // stack allocation
 
-	//puts a playback handle into the pointer to the pointer
 	int e = snd_pcm_open(&pcm_play_handle, device, play_stream, SND_PCM_NONBLOCK);
 	
 	if (e < 0) {
@@ -134,7 +133,6 @@ int sound_start_play(char *device){
 		return -1;
 	}
 
-	//fills up the hwparams with values, hwparams was allocated above
 	e = snd_pcm_hw_params_any(pcm_play_handle, hwparams);
 
 	if (e < 0) {
@@ -142,23 +140,18 @@ int sound_start_play(char *device){
 		return(-1);
 	}
 
-	// set the pcm access to interleaved
 	e = snd_pcm_hw_params_set_access(pcm_play_handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED);
 	if (e < 0) {
 		fprintf(stderr, "*Error setting playback access.\n");
 		return(-1);
 	}
 
-  /* Set sample format */
 	e = snd_pcm_hw_params_set_format(pcm_play_handle, hwparams, format);
 	if (e < 0) {
 		fprintf(stderr, "*Error setting plyaback format.\n");
 		return(-1);
 	}
 
-
-	/* Set sample rate. If the exact rate is not supported */
-	/* by the hardware, use nearest possible rate.         */ 
 	exact_rate = hw_rate;
 	e = snd_pcm_hw_params_set_rate_near(pcm_play_handle, hwparams, &exact_rate, 0);
 	if ( e< 0) {
@@ -167,16 +160,12 @@ int sound_start_play(char *device){
 	}
 	if (hw_rate != exact_rate)
 		fprintf(stderr, "*The playback rate %d changed to %d Hz\n", hw_rate, exact_rate);
-/*	else
-		fprintf(stderr, "Playback sampling rate is set to %d\n", exact_rate);
-*/
 
 	/* Set number of channels */
 	if ((e = snd_pcm_hw_params_set_channels(pcm_play_handle, hwparams, channels)) < 0) {
 		fprintf(stderr, "*Error setting playback channels.\n");
 		return(-1);
 	}
-
 
     /* Set period size. */
     if ((e = snd_pcm_hw_params_set_period_size_near(pcm_play_handle,hwparams, &hw_period_size, 0)) < 0)
@@ -185,7 +174,7 @@ int sound_start_play(char *device){
         return (-1);
     }
 
-
+    /* nr. of periods */
 	if ((e = snd_pcm_hw_params_set_periods(pcm_play_handle, hwparams, hw_n_periods, 0)) < 0) {
 		fprintf(stderr, "*Error setting playback periods.\n");
 		return(-1);
@@ -195,7 +184,11 @@ int sound_start_play(char *device){
 		fprintf(stderr, "*Error setting playback HW params.\n");
 		return(-1);
 	}
-//	puts("All hw params set to play sound");
+
+    printf("============= REPORT RADIO PLAYBACK DEVICE %s =============\n", device);
+
+    show_alsa(pcm_play_handle);
+
 
 	return 0;
 }
@@ -285,6 +278,28 @@ int sound_start_loopback_capture(char *device){
 
 		fprintf(stderr, "Unable to set stop threshold for loopback  capture\n");
 	}
+
+    unsigned int val;
+    e = snd_pcm_sw_params_get_silence_size(sloop_params, (snd_pcm_uframes_t *) &val);
+    if(!e)
+        printf("sw silence size (frames): %u", val);
+    //snd_pcm_sw_params_set_silence_size
+
+    e = snd_pcm_sw_params_get_silence_threshold(sloop_params, (snd_pcm_uframes_t *) &val);
+    if(!e)
+        printf("silence threshold (frames: %u", val);
+    //   snd_pcm_sw_params_set_silence_threshold
+#if 0
+
+	if ((e = snd_pcm_sw_params(loopback_capture_handle,sloop_params)) < 0){
+		fprintf(stderr, "Unable to set alsa sw parameters\n");
+	}
+#endif
+    printf("============= REPORT LOOPBACK CAPTURE DEVICE %s =============\n", device);
+
+    show_alsa(loopback_capture_handle);
+
+    snd_pcm_sw_params_free(sloop_params);
 	return 0;
 }
 
@@ -367,6 +382,10 @@ int sound_start_capture(char *device){
 		return(-1);
 	}
 
+    printf("============= REPORT RADIO CAPTURE DEVICE %s =============\n", device);
+
+    show_alsa(pcm_play_handle);
+
 	return 0;
 }
 
@@ -441,6 +460,10 @@ int sound_start_loopback_play(char *device){
 		fprintf(stderr, "*Error setting loopback playback HW params.\n");
 		return(-1);
 	}
+
+    printf("============= REPORT LOOPBACK PLAYBACK DEVICE %s =============\n", device);
+
+    show_alsa(loopback_play_handle);
 
 	return 0;
 }
