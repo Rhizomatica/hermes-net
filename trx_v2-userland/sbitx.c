@@ -758,7 +758,7 @@ void signal_handler(int signum){
 	digitalWrite(TX_LINE, LOW);
 }
 void setup_audio_codec(){
-	strcpy(audio_card, "hw:0,0");
+	strcpy(audio_card, "hw:0");
 
 	//configure all the channels of the mixer
 	sound_mixer(audio_card, "Input Mux", 0);
