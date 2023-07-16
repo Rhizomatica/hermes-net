@@ -131,3 +131,39 @@ void show_alsa(snd_pcm_t *handle)
     printf("is monotonic = %d\n", val);
 
 }
+
+
+void *radio_capture_thread()
+{
+
+    return NULL;
+}
+
+
+void *radio_playback_thread()
+{
+
+
+    return NULL;
+}
+
+void *loop_capture_thread()
+{
+
+
+    return NULL;
+}
+
+void *loop_playback_thread()
+{
+
+
+    return NULL;
+}
+
+
+void sound_system()
+{
+    // here we start the sound system and create all the threads
+
+}

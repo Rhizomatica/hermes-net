@@ -478,9 +478,6 @@ void sound_process2(int32_t *input_i, int32_t *input_q, int32_t *output_i, int32
 	}	
 }
 
-//check that we haven't free()-ed up the hwparams block
-//don't call this function at all until that is fixed
-//you don't have to call it anyway
 void sound_stop(){
 	snd_pcm_drop(pcm_play_handle);
 	snd_pcm_drain(pcm_play_handle);
@@ -681,7 +678,6 @@ void loopback_loop(){
 	int32_t *data_in;
     int pcmreturn, j;
 
-	//we allocate enough for two channels of int32_t sized samples
     int sample_size = snd_pcm_format_width(format) / 8;
     uint32_t buffer_size = loopback_period_size * sample_size * channels;
     data_in = (int32_t *)malloc(buffer_size);
@@ -790,11 +786,11 @@ void sound_thread_stop(){
 }
 
 void sound_input(int loop){
-  if (loop){
-    use_virtual_cable = 1;
+    if (loop){
+        use_virtual_cable = 1;
 	}
-  else{
-    use_virtual_cable = 0;
+    else{
+        use_virtual_cable = 0;
 	}
 }
 
