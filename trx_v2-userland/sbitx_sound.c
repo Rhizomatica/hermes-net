@@ -193,7 +193,7 @@ int sound_start_play(char *device){
 
     show_alsa(pcm_play_handle, hwparams);
 
-    snd_pcm_hw_params_free(hwparams);
+    //snd_pcm_hw_params_free(hwparams);
 
 	return 0;
 }
@@ -311,9 +311,9 @@ int sound_start_loopback_capture(char *device){
 
     show_alsa(loopback_capture_handle, hloop_params);
 
-    snd_pcm_sw_params_free(sloop_params);
+    //snd_pcm_sw_params_free(sloop_params);
 
-    snd_pcm_hw_params_free(hloop_params);
+    //snd_pcm_hw_params_free(hloop_params);
 
     return 0;
 }
@@ -408,7 +408,7 @@ int sound_start_capture(char *device){
 
     show_alsa(pcm_play_handle, hwparams);
 
-    snd_pcm_hw_params_free(hwparams);
+    //snd_pcm_hw_params_free(hwparams);
 
 	return 0;
 }
@@ -495,7 +495,7 @@ int sound_start_loopback_play(char *device){
 
     show_alsa(loopback_play_handle, hloop_params);
 
-    snd_pcm_hw_params_free(hloop_params);
+    //snd_pcm_hw_params_free(hloop_params);
 
 	return 0;
 }
