@@ -36,9 +36,6 @@ static snd_pcm_t *loopback_capture_handle=0;   	//handle for the pcm device
 static snd_pcm_stream_t play_stream = SND_PCM_STREAM_PLAYBACK;	//playback stream
 static snd_pcm_stream_t capture_stream = SND_PCM_STREAM_CAPTURE;	//playback stream
 
-static snd_pcm_hw_params_t *hwparams;
-static snd_pcm_hw_params_t *hloop_params;
-static snd_pcm_sw_params_t *sloop_params;
 static uint32_t exact_rate;   /* Sample rate returned by */
 static int	sound_thread_continue = 0;
 pthread_t sound_thread, loopback_thread;
@@ -120,13 +117,20 @@ The sound is playback is carried on in a non-blocking way
 
 */
 int sound_start_play(char *device){
-	//found out the correct device through aplay -L (for pcm devices)
+    int e;
 
     fprintf(stderr, "ALSA Playback device is: %s\n", device);
 
-	snd_pcm_hw_params_alloca(&hwparams); // stack allocation
+    snd_pcm_hw_params_t *hwparams;
 
-	int e = snd_pcm_open(&pcm_play_handle, device, play_stream, SND_PCM_NONBLOCK);
+    if ((e = snd_pcm_hw_params_malloc (&hwparams)) < 0) {
+        fprintf (stderr, "cannot allocate hardware parameter structure (%s)\n",
+                 snd_strerror (e));
+        return -1;
+    }
+
+
+    e = snd_pcm_open(&pcm_play_handle, device, play_stream, SND_PCM_NONBLOCK);
 	
 	if (e < 0) {
 		fprintf(stderr, "Error opening PCM playback device %s: %s\n", device, snd_strerror(e));
@@ -187,20 +191,28 @@ int sound_start_play(char *device){
 
     printf("============= REPORT RADIO PLAYBACK DEVICE %s =============\n", device);
 
-    show_alsa(pcm_play_handle);
+    show_alsa(pcm_play_handle, hwparams);
 
+    snd_pcm_hw_params_free(hwparams);
 
 	return 0;
 }
 
 
 int sound_start_loopback_capture(char *device){
+    int e;
 
     fprintf(stderr, "ALSA Loopback Capture device at: %s\n", device);
 
-    snd_pcm_hw_params_alloca(&hloop_params);
-	//printf ("opening audio tx stream to %s\n", device); 
-	int e = snd_pcm_open(&loopback_capture_handle, device, capture_stream, 0);
+    snd_pcm_hw_params_t *hloop_params;
+
+    if ((e = snd_pcm_hw_params_malloc (&hloop_params)) < 0) {
+        fprintf (stderr, "cannot allocate hardware parameter structure (%s)\n",
+                 snd_strerror (e));
+        return -1;
+    }
+
+	snd_pcm_open(&loopback_capture_handle, device, capture_stream, 0);
 	
 	if (e < 0) {
 		fprintf(stderr, "Err: Opening loop capture  %s: %s\n", device, snd_strerror(e));
@@ -262,8 +274,9 @@ int sound_start_loopback_capture(char *device){
 		return(-1);
 	}
 
-	//printf("%d: set  hwparams\n", __LINE__);
-	/* set some parameters in the driver to handle the latencies */
+
+    snd_pcm_sw_params_t *sloop_params;
+
 	snd_pcm_sw_params_malloc(&sloop_params);
 	if((e = snd_pcm_sw_params_current(loopback_capture_handle, sloop_params)) < 0){
 		fprintf(stderr, "Error getting current loopback capture sw params : %s\n", snd_strerror(e));
@@ -297,10 +310,13 @@ int sound_start_loopback_capture(char *device){
 #endif
     printf("============= REPORT LOOPBACK CAPTURE DEVICE %s =============\n", device);
 
-    show_alsa(loopback_capture_handle);
+    show_alsa(loopback_capture_handle, hloop_params);
 
     snd_pcm_sw_params_free(sloop_params);
-	return 0;
+
+    snd_pcm_hw_params_free(hloop_params);
+
+    return 0;
 }
 
 /*
@@ -312,9 +328,16 @@ just wait for the next block to arrive
 */
 
 int sound_start_capture(char *device){
-	snd_pcm_hw_params_alloca(&hwparams);
+    int e;
+    snd_pcm_hw_params_t *hwparams;
 
-	int e = snd_pcm_open(&pcm_capture_handle, device, capture_stream, 0);
+    if ((e = snd_pcm_hw_params_malloc (&hwparams)) < 0) {
+        fprintf (stderr, "cannot allocate hardware parameter structure (%s)\n",
+                 snd_strerror (e));
+        return -1;
+    }
+
+	e = snd_pcm_open(&pcm_capture_handle, device, capture_stream, 0);
 
     fprintf(stderr, "ALSA Capture device is: %s\n", device);
 
@@ -384,20 +407,28 @@ int sound_start_capture(char *device){
 
     printf("============= REPORT RADIO CAPTURE DEVICE %s =============\n", device);
 
-    show_alsa(pcm_play_handle);
+    show_alsa(pcm_play_handle, hwparams);
+
+    snd_pcm_hw_params_free(hwparams);
 
 	return 0;
 }
 
 int sound_start_loopback_play(char *device){
-	//found out the correct device through aplay -L (for pcm devices)
-
+    int e;
     fprintf(stderr, "ALSA Loopback Playback device at: %s\n", device);
 
-    snd_pcm_hw_params_alloca(&hloop_params);
+
+    snd_pcm_hw_params_t *hloop_params;
+
+    if ((e = snd_pcm_hw_params_malloc (&hloop_params)) < 0) {
+        fprintf (stderr, "cannot allocate hardware parameter structure (%s)\n",
+                 snd_strerror (e));
+        return -1;
+    }
 
 	//printf ("opening audio rx stream to %s\n", device); 
-	int e = snd_pcm_open(&loopback_play_handle, device, play_stream, SND_PCM_NONBLOCK);
+	snd_pcm_open(&loopback_play_handle, device, play_stream, SND_PCM_NONBLOCK);
 	
 	if (e < 0) {
 		fprintf(stderr, "Error opening loopback playback device %s: %s\n", device, snd_strerror(e));
@@ -463,7 +494,9 @@ int sound_start_loopback_play(char *device){
 
     printf("============= REPORT LOOPBACK PLAYBACK DEVICE %s =============\n", device);
 
-    show_alsa(loopback_play_handle);
+    show_alsa(loopback_play_handle, hloop_params);
+
+    snd_pcm_hw_params_free(hloop_params);
 
 	return 0;
 }

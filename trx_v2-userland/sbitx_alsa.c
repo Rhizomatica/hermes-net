@@ -22,9 +22,8 @@
 #include "sbitx_alsa.h"
 
 
-void show_alsa(snd_pcm_t *handle)
+void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 {
-    snd_pcm_hw_params_t *params;
     unsigned int val, val2;
     int dir = 0;
     snd_pcm_uframes_t frames;
