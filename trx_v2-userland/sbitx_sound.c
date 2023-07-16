@@ -129,7 +129,6 @@ int sound_start_play(char *device){
         return -1;
     }
 
-
     e = snd_pcm_open(&pcm_play_handle, device, play_stream, SND_PCM_NONBLOCK);
 	
 	if (e < 0) {
@@ -275,6 +274,7 @@ int sound_start_loopback_capture(char *device){
 	}
 
     printf("============= REPORT LOOPBACK CAPTURE DEVICE %s =============\n", device);
+#if 0
     snd_pcm_sw_params_t *sloop_params;
 
 	snd_pcm_sw_params_malloc(&sloop_params);
@@ -302,7 +302,7 @@ int sound_start_loopback_capture(char *device){
     if(!e)
         printf("silence threshold (frames): %u\n", val);
     //   snd_pcm_sw_params_set_silence_threshold
-#if 0
+//#if 0
 
 	if ((e = snd_pcm_sw_params(loopback_capture_handle,sloop_params)) < 0){
 		fprintf(stderr, "Unable to set alsa sw parameters\n");
