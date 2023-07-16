@@ -274,7 +274,7 @@ int sound_start_loopback_capture(char *device){
 		return(-1);
 	}
 
-
+    printf("============= REPORT LOOPBACK CAPTURE DEVICE %s =============\n", device);
     snd_pcm_sw_params_t *sloop_params;
 
 	snd_pcm_sw_params_malloc(&sloop_params);
@@ -295,12 +295,12 @@ int sound_start_loopback_capture(char *device){
     unsigned int val;
     e = snd_pcm_sw_params_get_silence_size(sloop_params, (snd_pcm_uframes_t *) &val);
     if(!e)
-        printf("sw silence size (frames): %u", val);
+        printf("sw silence size (frames): %u\n", val);
     //snd_pcm_sw_params_set_silence_size
 
     e = snd_pcm_sw_params_get_silence_threshold(sloop_params, (snd_pcm_uframes_t *) &val);
     if(!e)
-        printf("silence threshold (frames: %u", val);
+        printf("silence threshold (frames): %u\n", val);
     //   snd_pcm_sw_params_set_silence_threshold
 #if 0
 
@@ -308,7 +308,6 @@ int sound_start_loopback_capture(char *device){
 		fprintf(stderr, "Unable to set alsa sw parameters\n");
 	}
 #endif
-    printf("============= REPORT LOOPBACK CAPTURE DEVICE %s =============\n", device);
 
     show_alsa(loopback_capture_handle, hloop_params);
 
