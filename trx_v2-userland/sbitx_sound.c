@@ -22,8 +22,8 @@ snd_pcm_uframes_t hw_period_size = 1024; // in frames
 uint64_t hw_n_periods = 2; // number of periods
 
 unsigned int loopback_rate = 48000; /* Sample rate */
-snd_pcm_uframes_t loopback_period_size = 512; // in frames
-uint64_t loopback_n_periods = 2; // number of periods
+snd_pcm_uframes_t loopback_period_size = 256; // in frames
+uint64_t loopback_n_periods = 4; // number of periods
 
 snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
 uint32_t channels = 2;
@@ -570,8 +570,8 @@ void sound_loop(){
 
 
 		while ((pcmreturn = snd_pcm_readi(pcm_capture_handle, data_in, frames)) < 0){
+            printf("xrun in radio capture!\n");
 			snd_pcm_prepare(pcm_capture_handle);
-			//putchar('=');
 		}
 		i = 0; 
 		j = 0;
@@ -633,8 +633,7 @@ snd_pcm_prepare(pcm_play_handle);
             pcmreturn = snd_pcm_writei(pcm_play_handle, data_out + offset, framesize);
             if((pcmreturn < 0) && (pcmreturn != -11))	// also ignore "temporarily unavailable" errors
             {
-                // Handle an error condition from the snd_pcm_writei function
-//			printf("Play PCM Write Error: %s  count = %d\n",snd_strerror(pcmreturn), play_write_error++);
+                printf("xrun in radio playback!\n");
                 snd_pcm_prepare(pcm_play_handle);
             }
 		
@@ -682,8 +681,7 @@ snd_pcm_prepare(loopback_play_handle);
             pcmreturn = snd_pcm_writei(loopback_play_handle, line_out + offset, framesize);
             if(pcmreturn < 0)
             {
-//			printf("Loopback PCM Write Error: %s  count = %d\n",snd_strerror(pcmreturn), loopback_write_error++);
-                // Handle an error condition from the snd_pcm_writei function
+                printf("xrun in loopback playback!\n");
                 snd_pcm_prepare(loopback_play_handle);
             }
 		
@@ -722,8 +720,8 @@ void loopback_loop(){
 		//this is opened as a blocking device, hence we derive accurate timing 
 
 		while ((pcmreturn = snd_pcm_readi(loopback_capture_handle, data_in, loopback_period_size)) < 0){
+            printf("xrun in loopback capture!\n");
 			snd_pcm_prepare(loopback_capture_handle);
-			//putchar('=');
 		}
 		j = 0;
 
