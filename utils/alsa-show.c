@@ -32,8 +32,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  /* Allocate a hardware parameters object. */
-  snd_pcm_hw_params_alloca(&params);
+  snd_pcm_hw_params_malloc (&params);
 
   snd_pcm_hw_params_current (handle, params);
 
