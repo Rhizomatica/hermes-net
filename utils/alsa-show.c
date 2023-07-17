@@ -35,35 +35,8 @@ int main(int argc, char *argv[]) {
   /* Allocate a hardware parameters object. */
   snd_pcm_hw_params_alloca(&params);
 
-  /* Fill it in with default values. */
-  snd_pcm_hw_params_any(handle, params);
+  snd_pcm_hw_params_current (handle, params);
 
-  /* Set the desired hardware parameters. */
-
-  /* Interleaved mode */
-  snd_pcm_hw_params_set_access(handle, params,
-                      SND_PCM_ACCESS_RW_INTERLEAVED);
-
-  /* Signed 16-bit little-endian format */
-  snd_pcm_hw_params_set_format(handle, params,
-                              SND_PCM_FORMAT_S16_LE);
-
-  /* Two channels (stereo) */
-  snd_pcm_hw_params_set_channels(handle, params, 2);
-
-  /* 44100 bits/second sampling rate (CD quality) */
-  val = 96000;
-  snd_pcm_hw_params_set_rate_near(handle,
-                                 params, &val, &dir);
-
-  /* Write the parameters to the driver */
-  rc = snd_pcm_hw_params(handle, params);
-  if (rc < 0) {
-    fprintf(stderr,
-            "unable to set hw parameters: %s\n",
-            snd_strerror(rc));
-    exit(1);
-  }
 
   /* Display information about the PCM interface */
 
