@@ -676,9 +676,9 @@ snd_pcm_prepare(loopback_play_handle);
         framesize = ret_card / 2;		// only writing half the number of samples because of the slower channel rate
         offset = 0;
 
-        while(framesize > 0)
+        while(framesize >= loopback_period_size)
         {
-            pcmreturn = snd_pcm_writei(loopback_play_handle, line_out + offset, framesize);
+            pcmreturn = snd_pcm_writei(loopback_play_handle, line_out + offset, loopback_period_size);
             if(pcmreturn < 0)
             {
                 printf("xrun in loopback playback!\n");
