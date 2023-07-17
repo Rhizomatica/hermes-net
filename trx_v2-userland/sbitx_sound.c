@@ -22,8 +22,8 @@ snd_pcm_uframes_t hw_period_size = 1024; // in frames
 uint64_t hw_n_periods = 2; // number of periods
 
 unsigned int loopback_rate = 48000; /* Sample rate */
-snd_pcm_uframes_t loopback_period_size = 512; // in frames
-uint64_t loopback_n_periods = 2; // number of periods
+snd_pcm_uframes_t loopback_period_size = 256; // in frames
+uint64_t loopback_n_periods = 4; // number of periods
 
 snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
 uint32_t channels = 2;
@@ -672,7 +672,7 @@ snd_pcm_prepare(pcm_play_handle);
 //            if (avail < loopback_period_size)
 //            {
 //                printf("Drop frame from radio rx to loopback! Avail: %u\n", avail);
-//                goto bail; // here we just lose the data... fuck it
+//                goto bail; // here we just l1ose the data... fuck it
 //            }
             pcmreturn = snd_pcm_writei(loopback_play_handle, line_out + offset, loopback_period_size);
             if(pcmreturn < 0)
