@@ -22,8 +22,8 @@ snd_pcm_uframes_t hw_period_size = 1024; // in frames
 uint64_t hw_n_periods = 2; // number of periods
 
 unsigned int loopback_rate = 48000; /* Sample rate */
-snd_pcm_uframes_t loopback_period_size = 256; // in frames
-uint64_t loopback_n_periods = 4; // number of periods
+snd_pcm_uframes_t loopback_period_size = 512; // in frames
+uint64_t loopback_n_periods = 2; // number of periods
 
 snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
 uint32_t channels = 2;
@@ -553,8 +553,8 @@ void sound_loop(){
 	
     snd_pcm_prepare(pcm_play_handle);
     snd_pcm_prepare(loopback_play_handle);
-    snd_pcm_writei(pcm_play_handle, data_out, frames);
-    snd_pcm_writei(pcm_play_handle, data_out, frames);
+//    snd_pcm_writei(pcm_play_handle, data_out, frames);
+//    snd_pcm_writei(loopback_play_handle, data_out, frames/2);
 
     pthread_barrier_wait(&barrier);
 
@@ -662,22 +662,18 @@ snd_pcm_prepare(pcm_play_handle);
             ii += 2;	// Skip a pair of samples to account for the 96K sample to 48K sample rate change.
         }
 
-/*
-// This is the original pcm loopback write routine, now commented out.
-while((pcmreturn = snd_pcm_writei(loopback_play_handle,
-line_out, jj)) < 0){
-//printf("loopback rx error: %s\n", snd_strerror(pcmreturn));
-snd_pcm_prepare(loopback_play_handle);
-//puts("preparing loopback");
-}
-*/    
-
         // This is the new pcm loopback write routine
         framesize = ret_card / 2;		// only writing half the number of samples because of the slower channel rate
         offset = 0;
 
         while(framesize >= loopback_period_size)
         {
+            unsigned int avail = snd_pcm_avail(loopback_play_handle);
+            if (avail < loopback_period_size)
+            {
+                printf("Discarding frame from radio rx to loopback! Avail: %u\n", avail);
+                goto bail; // here we just lose the data... fuck it
+            }
             pcmreturn = snd_pcm_writei(loopback_play_handle, line_out + offset, loopback_period_size);
             if(pcmreturn < 0)
             {
@@ -696,7 +692,7 @@ snd_pcm_prepare(loopback_play_handle);
         }
         // End of new pcm loopback write routine
 	
-    
+    bail:;
 		//played_samples += pcmreturn;
     }
 	//fclose(pf);
