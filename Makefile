@@ -50,7 +50,7 @@ v2: trx_v2-userland uuxcomp uucpd-v2
 install_v2: v2
 	$(MAKE) -C trx_v2-userland install
 	$(MAKE) -C uuxcomp install
-	$(MAKE) -C uucpd install
+	IS_SBITX=1 $(MAKE) -C uucpd install
 	install -m 644 -D system_services/init/uuardopd2.service $(DESTDIR)/etc/systemd/system/uuardopd.service
 	install -m 644 -D system_services/init/vnc.service $(DESTDIR)/etc/systemd/system/vnc.service
 	install -m 644 -D system_services/alsa/asound-sbitx-hermes.conf $(DESTDIR)/etc/asound.conf
