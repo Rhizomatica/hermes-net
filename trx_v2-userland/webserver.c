@@ -158,7 +158,7 @@ void *webserver_thread_function(void *server){
 
               if ((!(counter++ % 4)) || send_ws_update) // each 300 ms...
               {
-                  sprintf(buff, "{\"type\": 2,\n");
+                  sprintf(buff, "{\"type\": 1,\n");
                   sprintf(buff+strlen(buff), "\"rx\": %s,\n", in_tx?"false":"true");
                   sprintf(buff+strlen(buff), "\"tx\": %s,\n", in_tx?"true":"false");
                   sprintf(buff+strlen(buff), "\"led\": %s,\n", led_status ? "true":"false");
