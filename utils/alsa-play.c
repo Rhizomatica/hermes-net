@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
 
   /* Interleaved mode */
   snd_pcm_hw_params_set_access(handle, params,
-                      SND_PCM_ACCESS_RW_INTERLEAVED);
+                      SND_PCM_ACCESS_MMAP_INTERLEAVED);
 
   fprintf(stdout, "hw_params access setted\n");
 
@@ -229,7 +229,7 @@ int main(int argc, char *argv[]) {
       fprintf(stderr,
               "short read: read %d bytes\n", rc);
     }
-    rc = snd_pcm_writei(handle, buffer, period_size);
+    rc = snd_pcm_mmap_writei(handle, buffer, period_size);
     if (rc == -EPIPE) {
       /* EPIPE means underrun */
       fprintf(stderr, "underrun occurred\n");

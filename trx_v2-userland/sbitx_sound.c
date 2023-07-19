@@ -406,7 +406,7 @@ int sound_start_capture(char *device){
 
     printf("============= REPORT RADIO CAPTURE DEVICE %s =============\n", device);
 
-    show_alsa(pcm_play_handle, hwparams);
+    show_alsa(pcm_capture_handle, hwparams);
 
     //snd_pcm_hw_params_free(hwparams);
 

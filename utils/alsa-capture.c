@@ -56,7 +56,7 @@ int main (int argc, char *argv[])
 
     fprintf(stdout, "hw_params initialized\n");
 
-    if ((err = snd_pcm_hw_params_set_access (capture_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
+    if ((err = snd_pcm_hw_params_set_access (capture_handle, hw_params, SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0) {
         fprintf (stderr, "cannot set access type (%s)\n",
                  snd_strerror (err));
         exit (1);
@@ -239,7 +239,7 @@ int main (int argc, char *argv[])
     FILE *right_fp = fopen("right.raw", "w");
 
     for (i = 0; i < 1000000; ++i) {
-        if ((err = snd_pcm_readi (capture_handle, buffer, period_size)) != period_size) {
+        if ((err = snd_pcm_mmap_readi(capture_handle, buffer, period_size)) != period_size) {
             fprintf (stderr, "read from audio interface failed (%s)\n",
                      snd_strerror (err));
             if (err == -EPIPE)
