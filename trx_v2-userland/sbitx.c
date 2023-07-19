@@ -71,6 +71,7 @@ static int rx_pitch = 700; //used only to offset the lo for CW,CWR
 static int bridge_compensation = 100;
 static double voice_clip_level = 0.022;
 static int in_calibration = 1; // this turns off alc, clipping et al
+atomic_bool send_ws_update = false;
 
 FILE *pf_record;
 int16_t record_buffer[1024];
@@ -587,6 +588,7 @@ void read_power(){
         sound_input(0);
         tx_off();
         peak_removal_counter = 0;
+        send_ws_update = true;
     }
 
 }
@@ -983,7 +985,7 @@ void tr_switch(int tx_on){
         sound_mixer(audio_card, "Capture", rx_gain);
 			//rx_tx_ramp = 10;
 		}
-
+    send_ws_update = true;
 }
 
 #if 0

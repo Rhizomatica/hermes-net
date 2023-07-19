@@ -234,6 +234,7 @@ int	data_delay = 700;
 extern atomic_ushort fwdpower, vswr;
 extern int bfo_freq;
 extern int frequency_offset;
+extern atomic_bool send_ws_update;
 
 extern void read_hw_ini();
 extern void save_hw_settings();
@@ -1353,6 +1354,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
     case CMD_RESET_PROTECTION: // RESET PROTECTION
         response[0] = CMD_RESP_RESET_PROTECTION_ACK;
         is_swr_protect_enabled = false;
+        send_ws_update = true;
         break;
 
 
@@ -1567,7 +1569,10 @@ gboolean ui_tick(gpointer gook)
 
 
     if (dirty)
+    {
         save_user_settings(1);
+        send_ws_update = true;
+    }
 
     return TRUE;
 }

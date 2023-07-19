@@ -20,6 +20,9 @@ struct mg_mgr mgr;  // Event manager
 extern atomic_int in_tx;
 extern atomic_ushort fwdpower, vswr;
 extern atomic_bool is_swr_protect_enabled;
+extern bool connected_status;
+extern bool led_status;
+extern atomic_bool send_ws_update;
 
 int set_field(char *id, char *value);
 
@@ -117,47 +120,60 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 void *webserver_thread_function(void *server){
   mg_mgr_init(&mgr);  // Initialise event manager
   mg_http_listen(&mgr, s_listen_on, fn, NULL);  // Create HTTP listener
+  uint64_t counter = 0;
+
   for (;;)
   {
       // lock
-      mg_mgr_poll(&mgr, 200);
+      mg_mgr_poll(&mgr, 100);
 
       for( struct mg_connection* c = mgr.conns; c != NULL; c = c->next )
       {
           if( c->is_accepted && c->is_websocket)
           {
-              char buff[64];
+
+// A: caso INTX
+//  .type: Number , // 0
+//  .fwd_watts: Number,
+//  .swr: Number,
+
+              char buff[4096];
               if (in_tx)
               {
-                  sprintf(buff, "intx");
-                  mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-                  sprintf(buff, "fwdpower %d", fwdpower);
-                  mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-                  sprintf(buff, "vswr %d", vswr);
-                  mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+                  sprintf(buff, "{\"type\": 0,\n");
+                  sprintf(buff+strlen(buff), "\"fwd_watts\": %d,\n", fwdpower);
+                  sprintf(buff+strlen(buff), "\"swr\": %d}", vswr);
+                  mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT);
               }
-              else
+
+// B: caso geral
+//  .type: Number , // 1
+//  .tx: Boolean,
+//  .rx: Boolean,
+//  .led: Boolean,
+//  .connection: Boolean,
+//  .mode: String,
+//  .protection: Boolean,
+//  .freq: Number
+
+              if ((!(counter++ % 4)) || send_ws_update) // each 300 ms...
               {
-                  sprintf(buff, "inrx");
+                  sprintf(buff, "{\"type\": 2,\n");
+                  sprintf(buff+strlen(buff), "\"rx\": %s,\n", in_tx?"false":"true");
+                  sprintf(buff+strlen(buff), "\"tx\": %s,\n", in_tx?"true":"false");
+                  sprintf(buff+strlen(buff), "\"led\": %s,\n", led_status ? "true":"false");
+                  sprintf(buff+strlen(buff), "\"connection\": %s,\n", connected_status ? "true":"false");
+                  if (rx_list->mode == MODE_USB)
+                      sprintf(buff+strlen(buff), "\"mode\": \"USB\",\n");
+                  else if (rx_list->mode == MODE_LSB)
+                      sprintf(buff+strlen(buff), "\"mode\": \"LSB\",\n");
+                  else if (rx_list->mode == MODE_CW)
+                      sprintf(buff+strlen(buff), "\"mode\": \"CW\",\n");
+                  sprintf(buff+strlen(buff), "\"protection\": %s,\n", is_swr_protect_enabled?"true":"false");
+                  sprintf(buff+strlen(buff), "\"freq\": %ld}", get_freq());
                   mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
+                  send_ws_update = false;
               }
-
-              sprintf(buff, "freq %ld", get_freq());
-              mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-
-              if (rx_list->mode == MODE_USB)
-                  sprintf(buff, "mode USB");
-              else if (rx_list->mode == MODE_LSB)
-                  sprintf(buff, "mode LSB");
-              else if (rx_list->mode == MODE_CW)
-                  sprintf(buff, "mode CW");
-              mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-
-              if (is_swr_protect_enabled)
-                  sprintf(buff, "protection on");
-              else
-                  sprintf(buff, "protection off");
-              mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
 
           }
       }
