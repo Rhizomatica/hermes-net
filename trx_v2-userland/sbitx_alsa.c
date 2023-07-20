@@ -795,7 +795,7 @@ void *control_thread(void *device_ptr)
         write_buffer(dsp_to_speaker, (uint8_t *)output_speaker, hw_buffer_size);
 
         // should we decimate here?... we are using the mono to stereo trick as decimation
-        write_buffer(dsp_to_loopback, (uint8_t *)output_tx, hw_buffer_size);
+        write_buffer(dsp_to_loopback, (uint8_t *)output_speaker, hw_buffer_size);
     }
 }
 
