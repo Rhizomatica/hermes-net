@@ -776,7 +776,7 @@ void *control_thread_loopback(void *device_ptr)
     }
 }
 
-void *control_thread_sbitx(void *device_ptr)
+void *control_thread(void *device_ptr)
 {
     int i_need_1024_frames = 1024;
 
@@ -801,7 +801,10 @@ void *control_thread_sbitx(void *device_ptr)
     {
         read_buffer(radio_to_dsp, buffer_radio_to_dsp, hw_buffer_size);
         read_buffer(mic_to_dsp, buffer_mic_to_dsp, hw_buffer_size); // the samplerate is half
-        read_buffer(loopback_to_dsp, buffer_loop_to_dsp, loop_buffer_size);
+        if (use_loopback)
+            read_buffer(loopback_to_dsp, buffer_loop_to_dsp, loop_buffer_size);
+       else
+           clear_buffer(loopback_to_dsp);
 
         if (use_loopback)
         {
@@ -873,19 +876,20 @@ void sound_system_start()
     clear_buffer(loopback_to_dsp);
 #endif
 
-    //pthread_t control_tid;
-	//pthread_create( &control_tid, NULL, control_thread, NULL);
+    pthread_t control_tid;
+	pthread_create( &control_tid, NULL, control_thread, NULL);
 
-    //pthread_t control_tid;
-	//pthread_create( &control_tid, NULL, control_thread, NULL);
+
+#if 0
     pthread_t control_radio_tid;
 	pthread_create( &control_radio_tid, NULL, control_thread_radio, NULL);
     pthread_t control_loop_tid;
 	pthread_create( &control_loop_tid, NULL, control_thread_loopback, NULL);
-
+#endif
 
     pthread_create( &radio_capture, NULL, radio_capture_thread, (void*)radio_capture_dev);
 	pthread_create( &radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
+    // wait here for sound bringup
     pthread_create( &loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
 	pthread_create( &loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
 
