@@ -449,7 +449,7 @@ void *radio_playback_thread(void *device_ptr)
 
         if ((e = snd_pcm_mmap_writei(pcm_play_handle, buffer, hw_period_size)) != hw_period_size)
         {
-            fprintf (stderr, "read from audio interface %s failed (%s)\n", device, snd_strerror (e));
+            fprintf (stderr, "write to audio interface %s failed (%s)\n", device, snd_strerror (e));
             if (e == -EPIPE)
             {
                 fprintf(stdout, "overrun\n");
@@ -692,7 +692,7 @@ void *loop_playback_thread(void *device_ptr)
 
         if ((e = snd_pcm_mmap_writei(loopback_play_handle, buffer, loopback_period_size)) != loopback_period_size)
         {
-            fprintf (stderr, "read from audio interface %s failed (%s)\n", device, snd_strerror (e));
+            fprintf (stderr, "write to audio interface %s failed (%s)\n", device, snd_strerror (e));
             if (e == -EPIPE)
             {
                 fprintf(stdout, "overrun\n");
