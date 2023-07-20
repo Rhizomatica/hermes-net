@@ -452,10 +452,10 @@ void *radio_playback_thread(void *device_ptr)
         for (int j = 0; j < hw_period_size; j++)
         {
             memcpy(&buffer[j*sample_size*channels], &speaker[j*sample_size], sample_size);
-            // memcpy(&buffer[j*sample_size*channels + sample_size], &radio[j*sample_size], sample_size);
-            int32_t *sample = (int32_t *) &radio[j*sample_size];
-            *sample /= 1000; // 30db attenuator
-            memcpy(&buffer[j*sample_size*channels + sample_size], sample, sample_size);
+            memcpy(&buffer[j*sample_size*channels + sample_size], &radio[j*sample_size], sample_size);
+            //int32_t *sample = (int32_t *) &radio[j*sample_size];
+            //*sample /= 1000; // 30db attenuator
+            //memcpy(&buffer[j*sample_size*channels + sample_size], sample, sample_size);
         }
 
 
@@ -605,6 +605,15 @@ void *loop_capture_thread(void *device_ptr)
             snd_pcm_prepare (loopback_capture_handle);
             continue;
         }
+        // attenuate 20db
+        for (int i = 0; i < loopback_period_size; i++)
+        {
+            int32_t *sample1 = (int32_t *) &buffer[i * sample_size * channels];
+            int32_t *sample2 = (int32_t *) &buffer[i * sample_size * channels + sample_size];
+            *sample1 /= 100;
+            *sample2 /= 100;
+        }
+
         write_buffer(loopback_to_dsp, buffer, buffer_size);
     }
 
