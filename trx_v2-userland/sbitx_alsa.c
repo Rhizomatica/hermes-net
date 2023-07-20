@@ -299,6 +299,10 @@ void *radio_capture_thread(void *device_ptr)
     uint8_t *radio = (uint8_t *) malloc(buffer_size/2);
     uint8_t *mic = (uint8_t *) malloc(buffer_size/2);
 
+    snd_pcm_prepare(pcm_capture_handle);
+    snd_pcm_drop(pcm_capture_handle);
+    snd_pcm_prepare(pcm_capture_handle);
+
     while (sound_system_running)
     {
         if ((e = snd_pcm_mmap_readi(pcm_capture_handle, buffer, hw_period_size)) != hw_period_size)
@@ -436,6 +440,10 @@ void *radio_playback_thread(void *device_ptr)
     uint8_t *radio = (uint8_t *) malloc(buffer_size/2);
     uint8_t *speaker = (uint8_t *) malloc(buffer_size/2);
 
+    snd_pcm_prepare(pcm_play_handle);
+    snd_pcm_drop(pcm_play_handle);
+    snd_pcm_prepare(pcm_play_handle);
+
     while (sound_system_running)
     {
         read_buffer(dsp_to_radio, radio, buffer_size/2);
@@ -564,6 +572,10 @@ void *loop_capture_thread(void *device_ptr)
 
     uint8_t *buffer = malloc(buffer_size);
 
+    snd_pcm_prepare(loopback_capture_handle);
+    snd_pcm_drop(loopback_capture_handle);
+    snd_pcm_prepare(loopback_capture_handle);
+
     while (sound_system_running)
     {
         if ((e = snd_pcm_mmap_readi(loopback_capture_handle, buffer, loopback_period_size)) != loopback_period_size)
@@ -685,6 +697,10 @@ void *loop_playback_thread(void *device_ptr)
     uint32_t buffer_size = loopback_period_size * sample_size * channels;
 
     uint8_t *buffer = malloc(buffer_size);
+
+    snd_pcm_prepare(loopback_play_handle);
+    snd_pcm_drop(loopback_play_handle);
+    snd_pcm_prepare(loopback_play_handle);
 
     while (sound_system_running)
     {
