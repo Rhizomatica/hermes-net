@@ -538,7 +538,7 @@ void sound_loop(){
     // uint32_t buffer_size = hw_period_size * sample_size * channels;
     // frames = hw_period_size;
     frames = 1024;
-    uint32_t buffer_size = 1024 * sample_size * channels;
+    uint32_t buffer_size = frames * sample_size * channels;
 
 	//we allocate enough for two channels of int32_t sized samples	
     data_in = (int32_t *)malloc(buffer_size);
@@ -599,8 +599,8 @@ void sound_loop(){
 		}
 		else {
 			while (i < ret_card){
-				input_i[i] = data_in[j++]/2;
-				input_q[i] = data_in[j++]/2;
+				input_i[i] = data_in[j++]/2; // radio
+				input_q[i] = data_in[j++]/2; // mic
 				i++;
 			}
 		}

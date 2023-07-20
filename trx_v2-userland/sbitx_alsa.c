@@ -27,6 +27,7 @@
 #include <stdatomic.h>
 
 #include "sbitx_alsa.h"
+#include "buffer.h"
 
 char *radio_capture_dev = "hw:0,0";
 char *radio_playback_dev = "hw:0,0";
@@ -45,6 +46,14 @@ snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
 uint32_t channels = 2;
 
 atomic_bool sound_system_running;
+atomic_bool use_loopback;
+bool disable_alsa;
+
+extern void sound_process(
+    int32_t *input_rx, int32_t *input_mic,
+    int32_t *output_speaker, int32_t *output_tx,
+	int n_samples);
+
 
 void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 {
@@ -153,6 +162,50 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 
 }
 
+void sound_mixer(char *card_name, char *element, int make_on)
+{
+    if (disable_alsa)
+        return;
+
+    long min, max;
+    snd_mixer_t *handle;
+    snd_mixer_selem_id_t *sid;
+    char *card = card_name;
+
+    snd_mixer_open(&handle, 0);
+    snd_mixer_attach(handle, card);
+    snd_mixer_selem_register(handle, NULL, NULL);
+    snd_mixer_load(handle);
+
+    snd_mixer_selem_id_alloca(&sid);
+    snd_mixer_selem_id_set_index(sid, 0);
+    snd_mixer_selem_id_set_name(sid, element);
+    snd_mixer_elem_t* elem = snd_mixer_find_selem(handle, sid);
+
+    //find out if the his element is capture side or plaback
+    if(snd_mixer_selem_has_capture_switch(elem)){
+	  	snd_mixer_selem_set_capture_switch_all(elem, make_on);
+    }
+    else if (snd_mixer_selem_has_playback_switch(elem)){
+        snd_mixer_selem_set_playback_switch_all(elem, make_on);
+    }
+    else if (snd_mixer_selem_has_playback_volume(elem)){
+        long volume = make_on;
+    	snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+    	snd_mixer_selem_set_playback_volume_all(elem, volume * max / 100);
+    }
+    else if (snd_mixer_selem_has_capture_volume(elem)){
+        long volume = make_on;
+    	snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
+    	snd_mixer_selem_set_capture_volume_all(elem, volume * max / 100);
+    }
+    else if (snd_mixer_selem_is_enumerated(elem)){
+        snd_mixer_selem_set_enum_item(elem, 0, make_on);
+    }
+    snd_mixer_close(handle);
+}
+
+
 
 void *radio_capture_thread(void *device_ptr)
 {
@@ -243,8 +296,8 @@ void *radio_capture_thread(void *device_ptr)
     uint32_t buffer_size = hw_period_size * sample_size * channels;
 
     uint8_t *buffer = malloc(buffer_size);
-    uint8_t *left = (uint8_t *) malloc(buffer_size/2);
-    uint8_t *right = (uint8_t *) malloc(buffer_size/2);
+    uint8_t *radio = (uint8_t *) malloc(buffer_size/2);
+    uint8_t *mic = (uint8_t *) malloc(buffer_size/2);
 
     while (sound_system_running)
     {
@@ -271,17 +324,20 @@ void *radio_capture_thread(void *device_ptr)
 
         for (int j = 0; j < hw_period_size; j++)
         {
-            memcpy(&left[j*sample_size], &buffer[j * sample_size * channels], sample_size);
-            memcpy(&right[j*sample_size], &buffer[j * sample_size * channels + sample_size], sample_size);
+            memcpy(&radio[j*sample_size], &buffer[j * sample_size * channels], sample_size);
+            memcpy(&mic[j*sample_size], &buffer[j * sample_size * channels + sample_size], sample_size);
         }
 
-        // write to buffer
+        write_buffer(radio_to_dsp, radio, buffer_size/2);
+        write_buffer(mic_to_dsp, mic, buffer_size/2);
+
+        // write to buffers
     }
 
     snd_pcm_hw_params_free(hwparams);
     free(buffer);
-    free(left);
-    free(right);
+    free(radio);
+    free(mic);
 
     return NULL;
 }
@@ -378,11 +434,19 @@ void *radio_playback_thread(void *device_ptr)
     uint32_t buffer_size = hw_period_size * sample_size * channels;
 
     uint8_t *buffer = malloc(buffer_size);
+    uint8_t *radio = (uint8_t *) malloc(buffer_size/2);
+    uint8_t *speaker = (uint8_t *) malloc(buffer_size/2);
 
     while (sound_system_running)
     {
+        read_buffer(dsp_to_radio, radio, buffer_size/2);
+        read_buffer(dsp_to_speaker, speaker, buffer_size/2);
 
-        // read to buffer
+        for (int j = 0; j < hw_period_size; j++)
+        {
+            memcpy(&buffer[j*sample_size*channels], &radio[j*sample_size], sample_size);
+            memcpy(&buffer[j*sample_size*channels + sample_size], &speaker[j*sample_size], sample_size);
+        }
 
         if ((e = snd_pcm_mmap_writei(pcm_play_handle, buffer, hw_period_size)) != hw_period_size)
         {
@@ -498,7 +562,7 @@ void *loop_capture_thread(void *device_ptr)
     printf("==============================================================\n");
 
     int sample_size = snd_pcm_format_width(format) / 8;
-    uint32_t buffer_size = hw_period_size * sample_size * channels;
+    uint32_t buffer_size = loopback_period_size * sample_size * channels;
 
     uint8_t *buffer = malloc(buffer_size);
 
@@ -524,8 +588,7 @@ void *loop_capture_thread(void *device_ptr)
             snd_pcm_prepare (loopback_capture_handle);
             continue;
         }
-
-        // write to buffer
+        write_buffer(loopback_to_dsp, buffer, buffer_size);
     }
 
     snd_pcm_hw_params_free(hloop_params);
@@ -622,14 +685,13 @@ void *loop_playback_thread(void *device_ptr)
     printf("==============================================================\n");
 
     int sample_size = snd_pcm_format_width(format) / 8;
-    uint32_t buffer_size = hw_period_size * sample_size * channels;
+    uint32_t buffer_size = loopback_period_size * sample_size * channels;
 
     uint8_t *buffer = malloc(buffer_size);
 
     while (sound_system_running)
     {
-
-        // read to buffer
+        read_buffer(dsp_to_loopback, buffer, buffer_size);
 
         if ((e = snd_pcm_mmap_writei(loopback_play_handle, buffer, loopback_period_size)) != loopback_period_size)
         {
@@ -660,7 +722,72 @@ void *loop_playback_thread(void *device_ptr)
     return NULL;
 }
 
+void *control_thread(void *device_ptr)
+{
+    int i_need_1024_frames = 1024;
 
+    int sample_size = snd_pcm_format_width(format) / 8;
+    //uint32_t hw_buffer_size = hw_period_size * sample_size;
+    uint32_t hw_buffer_size = i_need_1024_frames * sample_size;
+    uint8_t *buffer_radio_to_dsp = malloc(hw_buffer_size);
+    uint8_t *buffer_mic_to_dsp = malloc(hw_buffer_size);
+
+    //uint32_t loop_buffer_size = loopback_period_size * sample_size;
+    uint32_t loop_buffer_size = (i_need_1024_frames / 2) * sample_size * channels; // the samplerate is half, 2 ch
+    uint8_t *buffer_loop_to_dsp = malloc(loop_buffer_size);
+    // uint8_t *buffer_loop_to_dsp_upsampled = malloc(hw_buffer_size);
+
+
+    int32_t *input_rx; int32_t *input_mic; int32_t *output_speaker; int32_t *output_tx;
+
+
+    while (1)
+    {
+        read_buffer(radio_to_dsp, buffer_radio_to_dsp, hw_buffer_size);
+        read_buffer(mic_to_dsp, buffer_mic_to_dsp, hw_buffer_size); // the samplerate is half
+        read_buffer(loopback_to_dsp, buffer_loop_to_dsp, loop_buffer_size);
+
+        if (use_loopback)
+        {
+#if 0 // aaaaah, we need to upsample this...
+            j = 0;
+            for (int i = 0; i < i_need_1024_frames; i = i + 2){
+                memcpy(buffer_loop_to_dsp_upsampled + i * sample_size, buffer_loop_to_dsp + j * sample_size, sample_size);
+                memcpy(buffer_loop_to_dsp_upsampled + i * sample_size + sample_size, buffer_loop_to_dsp + j * sample_size, sample_size);
+                j++;
+            }
+#endif
+            // this makes no sense... yes I know... just to test with reference implementation
+            // for now we just use the nasty trick... of using the stereo as mono (and doubling the rate)
+            input_rx = (int32_t *)buffer_loop_to_dsp;
+            input_mic = (int32_t *)buffer_loop_to_dsp;
+        }
+        else
+        {
+            input_rx = (int32_t *)buffer_radio_to_dsp;
+            input_mic = (int32_t *)buffer_mic_to_dsp;
+        }
+
+        output_tx = (int32_t *)malloc(hw_buffer_size);
+        output_speaker = (int32_t *)malloc(hw_buffer_size);
+
+
+        sound_process(input_rx, input_mic, output_tx, output_speaker, i_need_1024_frames);
+
+        write_buffer(dsp_to_radio, (uint8_t *)output_tx, hw_buffer_size);
+        write_buffer(dsp_to_speaker, (uint8_t *)output_speaker, hw_buffer_size);
+
+        // should we decimate here?... we are using the mono to stereo trick as decimation
+        write_buffer(dsp_to_loopback, (uint8_t *)output_tx, hw_buffer_size);
+    }
+}
+
+void sound_input(int loop){
+    if (loop)
+        use_loopback = true;
+    else
+        use_loopback = false;
+}
 
 
 // here we start the sound system and create all the threads
@@ -675,6 +802,18 @@ void sound_system_start()
 	pthread_create( &radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
     pthread_create( &loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
 	pthread_create( &loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
+
+	struct sched_param sch;
+	sch.sched_priority = sched_get_priority_max(SCHED_FIFO);
+	pthread_setschedparam(radio_capture, SCHED_FIFO, &sch);
+	pthread_setschedparam(radio_playback, SCHED_FIFO, &sch);
+	pthread_setschedparam(loop_capture, SCHED_FIFO, &sch);
+	pthread_setschedparam(loop_playback, SCHED_FIFO, &sch);
+
+    // now we start a thread just to call sound_process...
+    // TODO: split sound_process to consume the buffers directly
+    pthread_t control_tid;
+	pthread_create( &control_tid, NULL, control_thread, NULL);
 
 
 }

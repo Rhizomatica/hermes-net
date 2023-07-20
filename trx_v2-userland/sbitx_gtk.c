@@ -39,6 +39,8 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include "i2cbb.h"
 #include "webserver.h"
 #include "sbitx_controller.h"
+#include "buffer.h"
+#include "sbitx_alsa.h"
 #include "../include/radio_cmds.h"
 
 extern controller_conn *tmp_connector;
@@ -239,6 +241,7 @@ extern atomic_bool send_ws_update;
 extern void read_hw_ini();
 extern void save_hw_settings();
 extern void read_power();
+extern void setup_audio_codec();
 
 
 char settings_updated = 0;
@@ -1100,8 +1103,6 @@ void hw_init(){
 	enc_init(&enc_a, ENC_FAST, ENC1_B, ENC1_A);
 	enc_init(&enc_b, ENC_FAST, ENC2_A, ENC2_B);
 
-	g_timeout_add(10, ui_tick, NULL);
-
     wiringPiISR(ENC2_A, INT_EDGE_BOTH, tuning_isr_b);
     wiringPiISR(ENC2_B, INT_EDGE_BOTH, tuning_isr_b);
 
@@ -1941,9 +1942,11 @@ void cmd_exec(char *cmd){
 
 GMainLoop *loop_g;
 
-bool disable_alsa = false;
+extern bool disable_alsa;
 
-int main( int argc, char* argv[] ) {
+int main(int argc, char* argv[] )
+{
+    disable_alsa = false;
 
 	puts(VER_STR);
 
@@ -1974,15 +1977,18 @@ int main( int argc, char* argv[] ) {
 
     fprintf(stderr, "ALSA %s\n", disable_alsa?"DISABLED":"ENABLED");
 
+    hw_init();
+	setup();
+    initialize_buffers();
+    setup_audio_codec();
+    sound_system_start();
 
+    // to be removed at some point...
     active_layout = main_controls;
 
-    loop_g = g_main_loop_new(NULL, 0);
-
+    // the webserver / websocket
     webserver_start();
-	hw_init();
 
-	setup();
 
     // TODO split RTC code
 	// rtc_sync();
@@ -2000,11 +2006,9 @@ int main( int argc, char* argv[] ) {
 	set_volume(20000000);
 
     load_user_settings();
-
 	//now set the frequency of operation and more to vfo_a
     //sprintf(buff, "%d", vfo_a_freq);
     set_field("r1:freq", get_field("#vfo_a_freq")->value);
-
 	settings_updated = 0;
 
     // TODO split RTC code
@@ -2013,6 +2017,9 @@ int main( int argc, char* argv[] ) {
 	//printf("done!\n");
 
     sbitx_controller();
+
+    loop_g = g_main_loop_new(NULL, 0);
+    g_timeout_add(10, ui_tick, NULL);
     g_main_loop_run (loop_g);
 
     return 0;

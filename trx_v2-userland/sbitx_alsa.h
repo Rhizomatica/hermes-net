@@ -19,8 +19,21 @@
  *
  */
 
-#pragma once
+#ifndef SBITX_ALSA_H_
+#define SBITX_ALSA_H_
 
 #include <alsa/asoundlib.h>
+#include <stdbool.h>
+#include <stdatomic.h>
+
+extern bool disable_alsa;
+extern atomic_bool sound_system_running;
+extern atomic_bool use_loopback;
+
 
 void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params);
+void sound_mixer(char *card_name, char *element, int make_on);
+void sound_system_start();
+
+
+#endif

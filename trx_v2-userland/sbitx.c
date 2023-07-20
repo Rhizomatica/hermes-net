@@ -759,7 +759,8 @@ void set_rx_filter(){
 void signal_handler(int signum){
 	digitalWrite(TX_LINE, LOW);
 }
-void setup_audio_codec(){
+void setup_audio_codec()
+{
 	strcpy(audio_card, "hw:0");
 
 	//configure all the channels of the mixer
@@ -950,7 +951,8 @@ void tr_switch(int tx_on){
         //mute it all and hang on for a millisecond
         sound_mixer(audio_card, "Master", 0);
         sound_mixer(audio_card, "Capture", 0);
-        q_empty(&qloop);
+        // TODO: FREE TX BUFFERS HERE?
+        // q_empty(&qloop);
 
         tx_process_restart = 1;
         in_tx = 1;
@@ -968,7 +970,7 @@ void tr_switch(int tx_on){
         sound_mixer(audio_card, "Capture", 0);
         // delay(1);
         fft_reset_m_bins();
-        q_empty(&qloop);
+        // q_empty(&qloop);
         in_tx = 0;
 
   		digitalWrite(LPF_A, LOW);
@@ -1078,17 +1080,8 @@ void setup(){
     tx_list->tuned_bin = 512;
 	tx_init(7000000, MODE_LSB, -3000, -50);
 
-    if (disable_alsa == false)
-    {
-        setup_audio_codec();
-        sound_thread_start("hw:0,0");
-        sleep(1); //why? to allow the aloop to initialize?
-    }
-
 	vfo_start(&tone_a, 700, 0);
 	vfo_start(&tone_b, 1900, 0);
-
-	delay(2000);	
 
 }
 
