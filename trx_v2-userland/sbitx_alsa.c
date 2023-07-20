@@ -609,13 +609,13 @@ void *loop_capture_thread(void *device_ptr)
             snd_pcm_prepare (loopback_capture_handle);
             continue;
         }
-        // attenuate 20db
+        // attenuate 11db
         for (int i = 0; i < loopback_period_size; i++)
         {
             int32_t *sample1 = (int32_t *) &buffer[i * sample_size * channels];
             int32_t *sample2 = (int32_t *) &buffer[i * sample_size * channels + sample_size];
-            *sample1 /= 12;
-            *sample2 /= 12;
+            *sample1 /= 11;
+            *sample2 /= 11;
         }
 
         write_buffer(loopback_to_dsp, buffer, buffer_size);
