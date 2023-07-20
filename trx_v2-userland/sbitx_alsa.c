@@ -820,9 +820,7 @@ void *control_thread(void *device_ptr)
                 j++;
             }
 #endif
-            // this makes no sense... yes I know... just to test with reference implementation
-            // for now we just use the nasty trick... of using the stereo as mono (and doubling the rate)
-            input_rx = (int32_t *)buffer_loop_to_dsp;
+            input_rx = (int32_t *)buffer_radio_to_dsp;
             input_mic = (int32_t *)buffer_loop_to_dsp;
         }
         else
@@ -831,24 +829,11 @@ void *control_thread(void *device_ptr)
             input_mic = (int32_t *)buffer_mic_to_dsp;
         }
 
-
-
-//        sound_process(input_rx, input_mic, output_tx, output_speaker, i_need_1024_frames);
         sound_process(input_rx, input_mic, output_speaker, output_tx, i_need_1024_frames);
 
-        if (use_loopback)
-        {
-            write_buffer(dsp_to_loopback, (uint8_t *)output_speaker, hw_buffer_size);
-            write_buffer(dsp_to_radio, (uint8_t *)output_tx, hw_buffer_size);
-            write_buffer(dsp_to_speaker, (uint8_t *)output_speaker, hw_buffer_size);
-        }
-        else
-        {
-            write_buffer(dsp_to_loopback, (uint8_t *)output_speaker, hw_buffer_size);
-            write_buffer(dsp_to_radio, (uint8_t *)output_tx, hw_buffer_size);
-            write_buffer(dsp_to_speaker, (uint8_t *)output_speaker, hw_buffer_size);
-        }
-
+        write_buffer(dsp_to_loopback, (uint8_t *)output_speaker, hw_buffer_size);             // good ol' mono->stereo rate halving
+        write_buffer(dsp_to_radio, (uint8_t *)output_tx, hw_buffer_size);
+        write_buffer(dsp_to_speaker, (uint8_t *)output_speaker, hw_buffer_size);
     }
 }
 
