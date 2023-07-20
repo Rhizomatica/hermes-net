@@ -453,8 +453,9 @@ void *radio_playback_thread(void *device_ptr)
 
         for (int j = 0; j < hw_period_size; j++)
         {
-            memset(&buffer[j*sample_size], 0, sample_size);
-            //memcpy(&buffer[j*sample_size*channels], &radio[j*sample_size], sample_size);
+            //memset(&buffer[j*sample_size], 0, sample_size);
+//            memcpy(&buffer[j*sample_size*channels], &radio[j*sample_size], sample_size);
+            memcpy(&buffer[j*sample_size*channels], &speaker[j*sample_size], sample_size);
             memcpy(&buffer[j*sample_size*channels + sample_size], &speaker[j*sample_size], sample_size);
         }
         fwrite (buffer, buffer_size, 1, outbuf);
@@ -751,7 +752,7 @@ void *control_thread_radio(void *device_ptr)
     int sample_size = snd_pcm_format_width(format) / 8;
     uint32_t hw_buffer_size = hw_period_size * sample_size; // single channel
     uint8_t *buffer_radio_to_dsp = malloc(hw_buffer_size);
-    int32_t *buffer_mic_to_dsp = malloc(hw_buffer_size);
+    uint8_t *buffer_mic_to_dsp = malloc(hw_buffer_size);
 
 
     FILE *fradio = fopen("radio1.raw", "w");
@@ -763,8 +764,8 @@ void *control_thread_radio(void *device_ptr)
         read_buffer(mic_to_dsp, buffer_mic_to_dsp, hw_buffer_size); // the samplerate is half
 
 
-        for (int i = 0; i < hw_period_size; i++)
-            buffer_mic_to_dsp[i] /= 1000;
+//        for (int i = 0; i < hw_period_size; i++)
+//            buffer_mic_to_dsp[i] /= 1000;
 
         fwrite (buffer_radio_to_dsp, hw_buffer_size, 1, fradio);
         fwrite (buffer_mic_to_dsp, hw_buffer_size, 1, fspeaker);
