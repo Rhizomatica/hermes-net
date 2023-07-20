@@ -455,6 +455,7 @@ void *radio_playback_thread(void *device_ptr)
             memcpy(&buffer[j*sample_size*channels + sample_size], &speaker[j*sample_size], sample_size);
         }
 
+    try_again_radio_play:
         if ((e = snd_pcm_mmap_writei(pcm_play_handle, buffer, hw_period_size)) != hw_period_size)
         {
             fprintf (stderr, "write to audio interface %s failed (%s)\n", device, snd_strerror (e));
@@ -473,6 +474,7 @@ void *radio_playback_thread(void *device_ptr)
 
             }
             snd_pcm_prepare (pcm_play_handle);
+            goto try_again_radio_play;
         }
     }
 
@@ -706,6 +708,7 @@ void *loop_playback_thread(void *device_ptr)
     {
         read_buffer(dsp_to_loopback, buffer, buffer_size);
 
+    try_again_loop_play:
         if ((e = snd_pcm_mmap_writei(loopback_play_handle, buffer, loopback_period_size)) != loopback_period_size)
         {
             fprintf (stderr, "write to audio interface %s failed (%s)\n", device, snd_strerror (e));
@@ -724,6 +727,7 @@ void *loop_playback_thread(void *device_ptr)
 
             }
             snd_pcm_prepare (loopback_play_handle);
+            goto try_again_loop_play;
         }
     }
 
