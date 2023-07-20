@@ -79,6 +79,21 @@ void initialize_buffer(buffer *buf, int mag) // size is 2^mag
 
 void initialize_buffers()
 {
+    static buffer radio_to_dsp_int;
+    radio_to_dsp = &radio_to_dsp_int;
+    static buffer dsp_to_radio_int;
+    dsp_to_radio = &dsp_to_radio_int;
+
+    static buffer mic_to_dsp_int;
+    mic_to_dsp = &mic_to_dsp_int;
+    static buffer dsp_to_speaker_int;
+    dsp_to_speaker = &dsp_to_speaker_int;
+
+    static buffer dsp_to_loopback_int;
+    dsp_to_loopback = &dsp_to_loopback_int;
+    static buffer loopback_to_dsp_int;
+    loopback_to_dsp = &loopback_to_dsp_int;
+
     initialize_buffer(radio_to_dsp, 18);
     initialize_buffer(dsp_to_radio, 18);
 
