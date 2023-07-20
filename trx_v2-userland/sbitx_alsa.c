@@ -788,7 +788,8 @@ void *control_thread(void *device_ptr)
 
 
 
-        sound_process(input_rx, input_mic, output_tx, output_speaker, i_need_1024_frames);
+//        sound_process(input_rx, input_mic, output_tx, output_speaker, i_need_1024_frames);
+        sound_process(input_rx, input_mic, output_speaker, output_tx, i_need_1024_frames);
 
         write_buffer(dsp_to_radio, (uint8_t *)output_tx, hw_buffer_size);
         write_buffer(dsp_to_speaker, (uint8_t *)output_speaker, hw_buffer_size);
