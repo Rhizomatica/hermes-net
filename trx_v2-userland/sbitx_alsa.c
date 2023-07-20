@@ -35,8 +35,8 @@ char *loop_capture_dev = "hw:2,1";
 char *loop_playback_dev = "hw:1,0";
 
 unsigned int hw_rate = 96000; /* Sample rate */
-snd_pcm_uframes_t hw_period_size = 1024; // in frames
-uint64_t hw_n_periods = 2; // number of periods
+snd_pcm_uframes_t hw_period_size = 512; // in frames
+uint64_t hw_n_periods = 4; // number of periods
 
 unsigned int loopback_rate = 48000; /* Sample rate */
 snd_pcm_uframes_t loopback_period_size = 256; // in frames
@@ -747,6 +747,8 @@ void *control_thread_radio(void *device_ptr)
     uint32_t hw_buffer_size = hw_period_size * sample_size; // single channel
     uint8_t *buffer_radio_to_dsp = malloc(hw_buffer_size);
     uint8_t *buffer_mic_to_dsp = malloc(hw_buffer_size);
+
+
 
     while (1)
     {
