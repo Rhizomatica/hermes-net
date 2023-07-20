@@ -736,6 +736,8 @@ void *control_thread(void *device_ptr)
 
     int32_t *input_rx; int32_t *input_mic; int32_t *output_speaker; int32_t *output_tx;
 
+    output_tx = (int32_t *)malloc(hw_buffer_size);
+    output_speaker = (int32_t *)malloc(hw_buffer_size);
 
     while (1)
     {
@@ -764,8 +766,6 @@ void *control_thread(void *device_ptr)
             input_mic = (int32_t *)buffer_mic_to_dsp;
         }
 
-        output_tx = (int32_t *)malloc(hw_buffer_size);
-        output_speaker = (int32_t *)malloc(hw_buffer_size);
 
 
         sound_process(input_rx, input_mic, output_tx, output_speaker, i_need_1024_frames);
@@ -794,6 +794,21 @@ void sound_system_start()
 
     sound_system_running = true;
 
+#if 0
+    // now we start a thread just to call sound_process...
+    // TODO: split sound_process to consume the buffers directly
+    // TODO: zero buffers
+    clear_buffer(radio_to_dsp);
+    clear_buffer(dsp_to_radio);
+    clear_buffer(mic_to_dsp);
+    clear_buffer(dsp_to_speaker);
+    clear_buffer(dsp_to_loopback);
+    clear_buffer(loopback_to_dsp);
+#endif
+
+    pthread_t control_tid;
+	pthread_create( &control_tid, NULL, control_thread, NULL);
+
     pthread_create( &radio_capture, NULL, radio_capture_thread, (void*)radio_capture_dev);
 	pthread_create( &radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
     pthread_create( &loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
@@ -805,11 +820,6 @@ void sound_system_start()
 	pthread_setschedparam(radio_playback, SCHED_FIFO, &sch);
 	pthread_setschedparam(loop_capture, SCHED_FIFO, &sch);
 	pthread_setschedparam(loop_playback, SCHED_FIFO, &sch);
-
-    // now we start a thread just to call sound_process...
-    // TODO: split sound_process to consume the buffers directly
-    pthread_t control_tid;
-	pthread_create( &control_tid, NULL, control_thread, NULL);
 
 
 }

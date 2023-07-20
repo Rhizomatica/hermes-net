@@ -39,6 +39,7 @@ extern void read_buffer(buffer *buf_in, uint8_t *buffer_out, int size);
 extern void write_buffer(buffer *buf_out, uint8_t *buffer_in, int size);
 void initialize_buffer(buffer *buf, int mag);
 void initialize_buffers();
+void clear_buffer (buffer *buffer);
 
 extern buffer *radio_to_dsp;
 extern buffer *dsp_to_radio;

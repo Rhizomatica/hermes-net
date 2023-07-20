@@ -77,6 +77,11 @@ void initialize_buffer(buffer *buf, int mag) // size is 2^mag
     ring_buffer_create( &buf->buf, mag );
 }
 
+void clear_buffer (buffer *buffer)
+{
+    ring_buffer_clear(&buffer->buf);
+}
+
 void initialize_buffers()
 {
     static buffer radio_to_dsp_int;
