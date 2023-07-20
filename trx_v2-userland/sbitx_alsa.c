@@ -466,11 +466,11 @@ void *radio_playback_thread(void *device_ptr)
             }
             else if (e < 0) {
                 fprintf(stderr,
-                        "error from readi: %s\n",
+                        "error from writei: %s\n",
                         snd_strerror(e));
             }  else if (e != hw_period_size) {
                 fprintf(stderr,
-                        "short read, read %d frames\n", e);
+                        "short write, wrote %d frames\n", e);
 
             }
             snd_pcm_prepare (pcm_play_handle);
@@ -799,9 +799,9 @@ void *control_thread(void *device_ptr)
         }
         else
         {
-            write_buffer(dsp_to_loopback, (uint8_t *)output_tx, hw_buffer_size);
+            write_buffer(dsp_to_loopback, (uint8_t *)output_speaker, hw_buffer_size);
             write_buffer(dsp_to_radio, (uint8_t *)output_tx, hw_buffer_size);
-            write_buffer(dsp_to_speaker, (uint8_t *)output_tx, hw_buffer_size);
+            write_buffer(dsp_to_speaker, (uint8_t *)output_speaker, hw_buffer_size);
         }
 
     }
