@@ -607,13 +607,13 @@ void *loop_capture_thread(void *device_ptr)
             continue;
         }
 
-        // attenuate the loopback
+        // attenuate 30db the loopback
         for (int i = 0; i < loopback_period_size; i++)
         {
             int32_t *sample1 = (int32_t *) &buffer[i * sample_size * channels];
             int32_t *sample2 = (int32_t *) &buffer[i * sample_size * channels + sample_size];
-            *sample1 /= 300;
-            *sample2 /= 300;
+            *sample1 /= 1000;
+            *sample2 /= 1000;
         }
 
         write_buffer(loopback_to_dsp, buffer, buffer_size);
@@ -769,9 +769,6 @@ void *control_thread_radio(void *device_ptr)
         read_buffer(radio_to_dsp, buffer_radio_to_dsp, hw_buffer_size);
         read_buffer(mic_to_dsp, buffer_mic_to_dsp, hw_buffer_size); // the samplerate is half
 
-
-//        for (int i = 0; i < hw_period_size; i++)
-//            buffer_mic_to_dsp[i] /= 1000;
 
         write_buffer(dsp_to_radio, buffer_radio_to_dsp, hw_buffer_size);
         write_buffer(dsp_to_speaker, buffer_mic_to_dsp, hw_buffer_size);
