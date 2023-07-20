@@ -444,6 +444,8 @@ void *radio_playback_thread(void *device_ptr)
     snd_pcm_drop(pcm_play_handle);
     snd_pcm_prepare(pcm_play_handle);
 
+    FILE *outbuf = fopen("muxed.raw", "w");
+
     while (sound_system_running)
     {
         read_buffer(dsp_to_radio, radio, buffer_size/2);
@@ -451,9 +453,12 @@ void *radio_playback_thread(void *device_ptr)
 
         for (int j = 0; j < hw_period_size; j++)
         {
-            memcpy(&buffer[j*sample_size*channels], &radio[j*sample_size], sample_size);
+            memset(&buffer[j*sample_size], 0, sample_size);
+            //memcpy(&buffer[j*sample_size*channels], &radio[j*sample_size], sample_size);
             memcpy(&buffer[j*sample_size*channels + sample_size], &speaker[j*sample_size], sample_size);
         }
+        fwrite (buffer, buffer_size, 1, outbuf);
+
 
     try_again_radio_play:
         if ((e = snd_pcm_mmap_writei(pcm_play_handle, buffer, hw_period_size)) != hw_period_size)
@@ -758,11 +763,11 @@ void *control_thread_radio(void *device_ptr)
         read_buffer(mic_to_dsp, buffer_mic_to_dsp, hw_buffer_size); // the samplerate is half
 
 
+        for (int i = 0; i < hw_period_size; i++)
+            buffer_mic_to_dsp[i] /= 1000;
+
         fwrite (buffer_radio_to_dsp, hw_buffer_size, 1, fradio);
         fwrite (buffer_mic_to_dsp, hw_buffer_size, 1, fspeaker);
-        //for (int i = 0; i < hw_period_size; i++)
-        //    buffer_mic_to_dsp[i] *= 1000;
-
 
         write_buffer(dsp_to_radio, buffer_radio_to_dsp, hw_buffer_size);
         write_buffer(dsp_to_speaker, buffer_mic_to_dsp, hw_buffer_size);
@@ -885,11 +890,10 @@ void sound_system_start()
     clear_buffer(loopback_to_dsp);
 #endif
 
+#if 0
     pthread_t control_tid;
 	pthread_create( &control_tid, NULL, control_thread, NULL);
-
-
-#if 0
+#else
     pthread_t control_radio_tid;
 	pthread_create( &control_radio_tid, NULL, control_thread_radio, NULL);
     pthread_t control_loop_tid;
