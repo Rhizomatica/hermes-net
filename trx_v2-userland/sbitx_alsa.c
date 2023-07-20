@@ -97,7 +97,7 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
     printf("periods per buffer = %d frames\n", val);
 
     snd_pcm_hw_params_get_period_size(params,
-                                    &frames, &dir);
+                                      &frames, &dir);
     printf("period size = %d frames\n", (int)frames);
 
     snd_pcm_hw_params_get_buffer_size(params,
@@ -106,11 +106,11 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 
 
     snd_pcm_hw_params_get_period_time(params,
-                                    &val, &dir);
+                                      &val, &dir);
     printf("period time = %d us\n", val);
 
     snd_pcm_hw_params_get_buffer_time(params,
-                                    &val, &dir);
+                                      &val, &dir);
     printf("buffer time = %d us\n", val);
 
     snd_pcm_hw_params_get_rate_numden(params,
@@ -523,7 +523,7 @@ void *loop_capture_thread(void *device_ptr)
 		return NULL;
 	}
 
-  /* Set sample format */
+    /* Set sample format */
 	if ((e = snd_pcm_hw_params_set_format(loopback_capture_handle, hloop_params, format)) < 0)
     {
         fprintf(stderr, "Error setting loopback capture format.\n");
@@ -650,7 +650,7 @@ void *loop_playback_thread(void *device_ptr)
 		return NULL;
 	}
 
-  /* Set sample format */
+    /* Set sample format */
 	if ((e = snd_pcm_hw_params_set_format(loopback_play_handle, hloop_params, format)) < 0)
     {
 		fprintf(stderr, "Error setting loopback format.\n");
@@ -807,8 +807,8 @@ void *control_thread(void *device_ptr)
         read_buffer(mic_to_dsp, buffer_mic_to_dsp, hw_buffer_size); // the samplerate is half
         if (use_loopback)
             read_buffer(loopback_to_dsp, buffer_loop_to_dsp, loop_buffer_size);
-       else
-           clear_buffer(loopback_to_dsp);
+        else
+            clear_buffer(loopback_to_dsp);
 
         if (use_loopback)
         {
@@ -880,14 +880,14 @@ void sound_system_start()
     clear_buffer(loopback_to_dsp);
 #endif
 
-#if 0
+#if 1
     pthread_t control_tid;
-	pthread_create( &control_tid, NULL, control_thread, NULL);
+    pthread_create( &control_tid, NULL, control_thread, NULL);
 #else
     pthread_t control_radio_tid;
-	pthread_create( &control_radio_tid, NULL, control_thread_radio, NULL);
+    pthread_create( &control_radio_tid, NULL, control_thread_radio, NULL);
     pthread_t control_loop_tid;
-	pthread_create( &control_loop_tid, NULL, control_thread_loopback, NULL);
+    pthread_create( &control_loop_tid, NULL, control_thread_loopback, NULL);
 #endif
 
     pthread_create( &radio_capture, NULL, radio_capture_thread, (void*)radio_capture_dev);
