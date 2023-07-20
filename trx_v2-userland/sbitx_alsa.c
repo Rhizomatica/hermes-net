@@ -793,14 +793,15 @@ void *control_thread(void *device_ptr)
 
         if (use_loopback)
         {
+            write_buffer(dsp_to_loopback, (uint8_t *)output_speaker, hw_buffer_size);
             write_buffer(dsp_to_radio, (uint8_t *)output_tx, hw_buffer_size);
+            write_buffer(dsp_to_speaker, (uint8_t *)output_speaker, hw_buffer_size);
         }
         else
         {
-            // we need to decimate here... no?
-            write_buffer(dsp_to_speaker, (uint8_t *)output_speaker, hw_buffer_size / 2);
-            // should we decimate here?... we are using the mono to stereo trick as decimation
-            write_buffer(dsp_to_loopback, (uint8_t *)output_speaker, hw_buffer_size);
+            write_buffer(dsp_to_loopback, (uint8_t *)output_tx, hw_buffer_size);
+            write_buffer(dsp_to_radio, (uint8_t *)output_tx, hw_buffer_size);
+            write_buffer(dsp_to_speaker, (uint8_t *)output_tx, hw_buffer_size);
         }
 
     }
