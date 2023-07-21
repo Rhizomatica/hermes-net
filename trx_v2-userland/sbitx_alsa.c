@@ -874,6 +874,7 @@ void clear_buffers(){
     snd_pcm_drop(pcm_play_handle);
     snd_pcm_prepare(pcm_play_handle);
 
+#if 0
     snd_pcm_prepare(loopback_capture_handle);
     snd_pcm_drop(loopback_capture_handle);
     snd_pcm_prepare(loopback_capture_handle);
@@ -881,7 +882,7 @@ void clear_buffers(){
     snd_pcm_prepare(loopback_play_handle);
     snd_pcm_drop(loopback_play_handle);
     snd_pcm_prepare(loopback_play_handle);
-
+#endif
 
     clear_buffer(radio_to_dsp);
     clear_buffer(dsp_to_radio);
