@@ -620,8 +620,8 @@ void *loop_capture_thread(void *device_ptr)
         {
             int32_t *sample1 = (int32_t *) &buffer[i * sample_size * channels];
             int32_t *sample2 = (int32_t *) &buffer[i * sample_size * channels + sample_size];
-            *sample1 /= 90;
-            *sample2 /= 90;
+            *sample1 /= 40;
+            *sample2 /= 40;
         }
 
         write_buffer(loopback_to_dsp, buffer, buffer_size);
