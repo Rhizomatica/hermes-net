@@ -951,7 +951,7 @@ void tr_switch(int tx_on){
         digitalWrite(LPF_A, LOW);
         digitalWrite(LPF_B, LOW);
         digitalWrite(LPF_C, LOW);
-  		digitalWrite(LPF_D, LOW);
+        digitalWrite(LPF_D, LOW);
 
         tx_process_restart = 1;
         in_tx = 1;
@@ -966,30 +966,24 @@ void tr_switch(int tx_on){
     }
     else
     {
-        //mute it all and hang on
-        sound_mixer(audio_card, "Master", 0);
-        sound_mixer(audio_card, "Capture", 0);
-
-  		digitalWrite(LPF_A, LOW);
-  		digitalWrite(LPF_B, LOW);
+        digitalWrite(LPF_A, LOW);
+        digitalWrite(LPF_B, LOW);
         digitalWrite(LPF_C, LOW);
-  		digitalWrite(LPF_D, LOW);
+        digitalWrite(LPF_D, LOW);
+
 
         in_tx = 0;
         clear_buffers();
-        delay(1);
-
-        // empty ring buffers / drop frames?
-        //
         delay(10);
         //power down the PA chain to null any gain
         digitalWrite(TX_LINE, LOW);
         delay(5);
-		//audio codec is back on
-        sound_mixer(audio_card, "Master", rx_vol);
-        sound_mixer(audio_card, "Capture", rx_gain);
         prev_lpf = -1; //force the lpf to be re-energized
         set_lpf_40mhz(freq_hdr);
+		//audio codec is back on
+        sound_mixer(audio_card, "Capture", rx_gain);
+        sleep(10);
+        sound_mixer(audio_card, "Master", rx_vol);
     }
     send_ws_update = true;
 }
