@@ -34,6 +34,16 @@ char *radio_playback_dev = "hw:0,0";
 char *loop_capture_dev = "hw:2,1";
 char *loop_playback_dev = "hw:1,0";
 
+snd_pcm_t *pcm_capture_handle;
+snd_pcm_t *pcm_play_handle;
+snd_pcm_t *loopback_capture_handle;
+snd_pcm_t *loopback_play_handle;
+
+pthread_mutex_t radio_capture_mutex;
+pthread_mutex_t radio_play_mutex;
+pthread_mutex_t loop_capture_mutex;
+pthread_mutex_t loop_play_mutex;
+
 unsigned int hw_rate = 96000; /* Sample rate */
 snd_pcm_uframes_t hw_period_size = 512; // in frames
 uint64_t hw_n_periods = 4; // number of periods
@@ -48,6 +58,9 @@ uint32_t channels = 2;
 atomic_bool sound_system_running;
 atomic_bool use_loopback;
 bool disable_alsa;
+
+
+
 
 extern void sound_process(
     int32_t *input_rx, int32_t *input_mic,
@@ -210,7 +223,6 @@ void sound_mixer(char *card_name, char *element, int make_on)
 void *radio_capture_thread(void *device_ptr)
 {
     char *device = (char *) device_ptr;
-    snd_pcm_t *pcm_capture_handle;
     uint32_t exact_rate;
 
     int e;
@@ -305,6 +317,8 @@ void *radio_capture_thread(void *device_ptr)
 
     while (sound_system_running)
     {
+        pthread_mutex_lock(&radio_capture_mutex);
+
         if ((e = snd_pcm_mmap_readi(pcm_capture_handle, buffer, hw_period_size)) != hw_period_size)
         {
             fprintf (stderr, "read from audio interface %s failed (%s)\n", device, snd_strerror (e));
@@ -338,6 +352,7 @@ void *radio_capture_thread(void *device_ptr)
         write_buffer(radio_to_dsp, radio, buffer_size/2);
         write_buffer(mic_to_dsp, mic, buffer_size/2);
 
+        pthread_mutex_unlock(&radio_capture_mutex);
         // write to buffers
     }
 
@@ -353,7 +368,6 @@ void *radio_capture_thread(void *device_ptr)
 void *radio_playback_thread(void *device_ptr)
 {
     char *device = (char *) device_ptr;
-    snd_pcm_t *pcm_play_handle;
     uint32_t exact_rate;
 
     int e;
@@ -450,6 +464,8 @@ void *radio_playback_thread(void *device_ptr)
 
     while (sound_system_running)
     {
+        pthread_mutex_lock(&radio_play_mutex);
+
         read_buffer(dsp_to_radio, radio, buffer_size/2);
         read_buffer(dsp_to_speaker, speaker, buffer_size/2);
 
@@ -458,7 +474,6 @@ void *radio_playback_thread(void *device_ptr)
             memcpy(&buffer[j*sample_size*channels], &speaker[j*sample_size], sample_size);
             memcpy(&buffer[j*sample_size*channels + sample_size], &radio[j*sample_size], sample_size);
         }
-
 
     try_again_radio_play:
         if ((e = snd_pcm_mmap_writei(pcm_play_handle, buffer, hw_period_size)) != hw_period_size)
@@ -481,6 +496,7 @@ void *radio_playback_thread(void *device_ptr)
             snd_pcm_prepare (pcm_play_handle);
             goto try_again_radio_play;
         }
+        pthread_mutex_unlock(&radio_play_mutex);
     }
 
     snd_pcm_hw_params_free(hwparams);
@@ -492,7 +508,6 @@ void *radio_playback_thread(void *device_ptr)
 void *loop_capture_thread(void *device_ptr)
 {
     char *device = (char *) device_ptr;
-    snd_pcm_t *loopback_capture_handle;
     uint32_t exact_rate;
 
     int e;
@@ -587,8 +602,11 @@ void *loop_capture_thread(void *device_ptr)
 
     while (sound_system_running)
     {
+        pthread_mutex_lock(&loop_capture_mutex);
+
         if ((e = snd_pcm_mmap_readi(loopback_capture_handle, buffer, loopback_period_size)) != loopback_period_size)
         {
+
             fprintf (stderr, "read from audio interface %s failed (%s)\n", device, snd_strerror (e));
             if (e == -EPIPE)
             {
@@ -617,6 +635,8 @@ void *loop_capture_thread(void *device_ptr)
         }
 
         write_buffer(loopback_to_dsp, buffer, buffer_size);
+
+        pthread_mutex_lock(&loop_capture_mutex);
     }
 
     snd_pcm_hw_params_free(hloop_params);
@@ -628,7 +648,6 @@ void *loop_capture_thread(void *device_ptr)
 void *loop_playback_thread(void *device_ptr)
 {
     char *device = (char *) device_ptr;
-    snd_pcm_t *loopback_play_handle;
     uint32_t exact_rate;
 
     int e;
@@ -724,6 +743,8 @@ void *loop_playback_thread(void *device_ptr)
 
     while (sound_system_running)
     {
+        pthread_mutex_lock(&loop_play_mutex);
+
         read_buffer(dsp_to_loopback, buffer, buffer_size);
 
     try_again_loop_play:
@@ -747,6 +768,7 @@ void *loop_playback_thread(void *device_ptr)
             snd_pcm_prepare (loopback_play_handle);
             goto try_again_loop_play;
         }
+        pthread_mutex_lock(&loop_play_mutex);
     }
 
 
@@ -856,25 +878,64 @@ void sound_input(int loop){
 }
 
 
-// here we start the sound system and create all the threads
-void sound_system_start()
-{
-    pthread_t radio_capture, radio_playback;
-    pthread_t loop_capture, loop_playback;
+void clear_buffers(){
 
-    sound_system_running = true;
+    pthread_mutex_lock(&radio_capture_mutex);
+    pthread_mutex_lock(&radio_play_mutex);
+    pthread_mutex_lock(&loop_capture_mutex);
+    pthread_mutex_lock(&loop_play_mutex);
 
-#if 0
-    // now we start a thread just to call sound_process...
-    // TODO: split sound_process to consume the buffers directly
-    // TODO: zero buffers
+    snd_pcm_prepare(pcm_capture_handle);
+    snd_pcm_drop(pcm_capture_handle);
+    snd_pcm_prepare(pcm_capture_handle);
+
+    snd_pcm_prepare(pcm_play_handle);
+    snd_pcm_drop(pcm_play_handle);
+    snd_pcm_prepare(pcm_play_handle);
+
+    snd_pcm_prepare(loopback_capture_handle);
+    snd_pcm_drop(loopback_capture_handle);
+    snd_pcm_prepare(loopback_capture_handle);
+
+    snd_pcm_prepare(loopback_play_handle);
+    snd_pcm_drop(loopback_play_handle);
+    snd_pcm_prepare(loopback_play_handle);
+
+
     clear_buffer(radio_to_dsp);
     clear_buffer(dsp_to_radio);
     clear_buffer(mic_to_dsp);
     clear_buffer(dsp_to_speaker);
     clear_buffer(dsp_to_loopback);
     clear_buffer(loopback_to_dsp);
-#endif
+
+    pthread_mutex_unlock(&radio_capture_mutex);
+    pthread_mutex_unlock(&radio_play_mutex);
+    pthread_mutex_unlock(&loop_capture_mutex);
+    pthread_mutex_unlock(&loop_play_mutex);
+
+
+}
+
+// here we start the sound system and create all the threads
+void sound_system_start()
+{
+    pthread_t radio_capture, radio_playback;
+    pthread_t loop_capture, loop_playback;
+
+    int rc = 0;
+    rc |= pthread_mutex_init(&radio_capture_mutex, NULL);
+    rc |= pthread_mutex_init(&radio_play_mutex, NULL);
+    rc |= pthread_mutex_init(&loop_capture_mutex, NULL);
+    rc |= pthread_mutex_init(&loop_play_mutex, NULL);
+
+    if (rc != 0)
+    {
+        fprintf(stderr, "Error in mutex init\n");
+        return;
+    }
+
+    sound_system_running = true;
 
 #if 1
     pthread_t control_tid;

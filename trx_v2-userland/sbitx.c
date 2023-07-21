@@ -23,6 +23,8 @@
 #include "i2cbb.h"
 #include "si5351.h"
 #include "ini.h"
+#include "buffer.h"
+#include "sbitx_alsa.h"
 
 char audio_card[32];
 static int tx_shift = 512;
@@ -80,8 +82,6 @@ int32_t modulation_buff[MAX_BINS];
 extern uint16_t reflected_threshold; // vswr * 10
 extern bool is_swr_protect_enabled;
 extern bool disable_alsa;
-
-extern struct Queue qloop;
 
 
 /* the power gain of the tx varies widely from 
@@ -608,6 +608,7 @@ void tx_process(
 	//fix the burst at the start of transmission
 	if (tx_process_restart){
         fft_reset_m_bins();
+        clear_buffers();
 		tx_process_restart = 0;
 	}
 
@@ -942,25 +943,25 @@ void tx_cal(){
 void tr_switch(int tx_on){
     if (tx_on)
     {
+        //mute it all and hang on for a millisecond
+        sound_mixer(audio_card, "Master", 0);
+        sound_mixer(audio_card, "Capture", 0);
+
         //first turn off the LPFs, so PA doesnt connect
         digitalWrite(LPF_A, LOW);
         digitalWrite(LPF_B, LOW);
         digitalWrite(LPF_C, LOW);
   		digitalWrite(LPF_D, LOW);
 
-        //mute it all and hang on for a millisecond
-        sound_mixer(audio_card, "Master", 0);
-        sound_mixer(audio_card, "Capture", 0);
-        // TODO: FREE TX BUFFERS HERE?
-        // q_empty(&qloop);
-
         tx_process_restart = 1;
         in_tx = 1;
+        delay(2);
+
         digitalWrite(TX_LINE, HIGH);
-//        delay(3);
+        delay(20);
         set_tx_power_levels();
+
         prev_lpf = -1; //force this
-        delay(3);
         set_lpf_40mhz(freq_hdr);
     }
     else
@@ -968,25 +969,27 @@ void tr_switch(int tx_on){
         //mute it all and hang on
         sound_mixer(audio_card, "Master", 0);
         sound_mixer(audio_card, "Capture", 0);
-        // delay(1);
-        fft_reset_m_bins();
-        // q_empty(&qloop);
-        in_tx = 0;
 
   		digitalWrite(LPF_A, LOW);
   		digitalWrite(LPF_B, LOW);
         digitalWrite(LPF_C, LOW);
   		digitalWrite(LPF_D, LOW);
-        prev_lpf = -1; //force the lpf to be re-energized
-        // delay(10);
-			//power down the PA chain to null any gain
+
+        in_tx = 0;
+        delay(1);
+
+        // empty ring buffers / drop frames?
+        //
+        delay(10);
+        //power down the PA chain to null any gain
         digitalWrite(TX_LINE, LOW);
-        // delay(5);
-			//audio codec is back on
+        delay(5);
+		//audio codec is back on
         sound_mixer(audio_card, "Master", rx_vol);
         sound_mixer(audio_card, "Capture", rx_gain);
-			//rx_tx_ramp = 10;
-		}
+        prev_lpf = -1; //force the lpf to be re-energized
+        set_lpf_40mhz(freq_hdr);
+    }
     send_ws_update = true;
 }
 
