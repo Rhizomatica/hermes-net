@@ -635,7 +635,7 @@ void tx_process(
 			i_sample = (1.0 * (vfo_read(&tone_a))) / 25000000000.0;
 		else
 		  if (r->mode == MODE_CW || r->mode == MODE_CWR || r->mode == MODE_FT8)
-		    i_sample = (1.0 * (vfo_read(&tone_a))) / 25000000000.0;
+		    i_sample = (1.0 * (vfo_read(&tone_a))) / 100000000000.0;
 		  else
             i_sample = (1.0 * input_mic[j]) / 2000000000.0;
         //clip the overdrive to prevent damage up the processing chain, PA
@@ -655,7 +655,7 @@ void tx_process(
 
 		//don't echo the voice modes
 		if (r->mode == MODE_USB || r->mode == MODE_LSB || r->mode == MODE_AM 
-			|| r->mode == MODE_NBFM)
+			|| r->mode == MODE_NBFM || r->mode == MODE_CW)
 			output_speaker[j] = 0;
 		else
 			output_speaker[j] = i_sample * sidetone;
