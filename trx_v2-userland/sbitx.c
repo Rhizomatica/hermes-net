@@ -976,6 +976,7 @@ void tr_switch(int tx_on){
   		digitalWrite(LPF_D, LOW);
 
         in_tx = 0;
+        clear_buffers();
         delay(1);
 
         // empty ring buffers / drop frames?
