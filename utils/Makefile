@@ -24,7 +24,7 @@ CC=gcc
 CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector -Wno-deprecated-declarations
 LDFLAGS=-lm -lasound
 
-all: keyon keyoff alsa-capture alsa-show alsa-play
+all: keyon keyoff alsa-capture alsa-show alsa-play i2c_test
 
 %.o : %.c %.h
 	gcc -c $(CFLAGS) $< -o $@
@@ -44,6 +44,8 @@ alsa-show: alsa-show.o
 alsa-play: alsa-play.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+i2c_test: i2c_test.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -li2c
 
 .PHONY: clean
 
