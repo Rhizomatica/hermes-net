@@ -636,7 +636,7 @@ void *loop_capture_thread(void *device_ptr)
 
         write_buffer(loopback_to_dsp, buffer, buffer_size);
 
-        pthread_mutex_lock(&loop_capture_mutex);
+        pthread_mutex_unlock(&loop_capture_mutex);
     }
 
     snd_pcm_hw_params_free(hloop_params);
@@ -768,7 +768,7 @@ void *loop_playback_thread(void *device_ptr)
             snd_pcm_prepare (loopback_play_handle);
             goto try_again_loop_play;
         }
-        pthread_mutex_lock(&loop_play_mutex);
+        pthread_mutex_unlock(&loop_play_mutex);
     }
 
 
