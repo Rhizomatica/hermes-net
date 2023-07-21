@@ -866,6 +866,7 @@ void sound_input(int loop){
 
 void clear_buffers(){
 
+#if 0
     snd_pcm_prepare(pcm_capture_handle);
     snd_pcm_drop(pcm_capture_handle);
     snd_pcm_prepare(pcm_capture_handle);
@@ -874,7 +875,7 @@ void clear_buffers(){
     snd_pcm_drop(pcm_play_handle);
     snd_pcm_prepare(pcm_play_handle);
 
-#if 0
+
     snd_pcm_prepare(loopback_capture_handle);
     snd_pcm_drop(loopback_capture_handle);
     snd_pcm_prepare(loopback_capture_handle);
