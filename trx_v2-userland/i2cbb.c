@@ -17,6 +17,7 @@
 #include <linux/types.h>
 #include <stdint.h>
 #include <time.h>
+#include <pthread.h>
 #include "i2cbb.h"
 
 static uint8_t PIN_SDA;
@@ -25,6 +26,8 @@ static uint32_t sleepTimeNanos;
 static struct timespec nanoSleepTime;
 static uint32_t delayTicks;
 int i2c_started = 0;
+
+static pthread_mutex_t i2c_mutex;
 
 void i2cbb_init(uint8_t pin_number_sda, uint8_t pin_number_scl) 
 {
@@ -42,7 +45,7 @@ void i2cbb_init(uint8_t pin_number_sda, uint8_t pin_number_scl)
 
     nanoSleepTime.tv_sec = 0;
     nanoSleepTime.tv_nsec = 1;
-
+    pthread_mutex_init(&i2c_mutex, NULL);
 }
 
 // I2C implementation is copied and pasted from wikipedia:
@@ -217,12 +220,15 @@ int32_t i2cbb_write_byte_data(uint8_t i2c_address, uint8_t command, uint8_t valu
     // 7 bit address + 1 bit read/write
     // read = 1, write = 0
     // http://www.totalphase.com/support/articles/200349176-7-bit-8-bit-and-10-bit-I2C-Slave-Addressing
+    pthread_mutex_lock(&i2c_mutex);
+    int32_t ret_value = -1;
+
     uint8_t address = (i2c_address << 1) | 0;
 
     if (!i2c_write_byte(1, 0, address)) {
         if (!i2c_write_byte(0, 0, command)) {
             if (!i2c_write_byte(0, 1, value)) {
-                return 0;
+                ret_value = 0;
             }
         }
         else
@@ -231,11 +237,16 @@ int32_t i2cbb_write_byte_data(uint8_t i2c_address, uint8_t command, uint8_t valu
     else
         i2c_stop_cond();
 
-    return -1;
+    pthread_mutex_unlock(&i2c_mutex);
+
+    return ret_value;
 }
 
 // This executes the SMBus “read byte” protocol, returning negative errno else a data byte received from the device.
 int32_t i2cbb_read_byte_data(uint8_t i2c_address, uint8_t command) {
+
+    pthread_mutex_lock(&i2c_mutex);
+    int32_t ret_value = -1;
 
     uint8_t address = (i2c_address << 1) | 0;
     if (!i2c_write_byte(1, 0, address)) {
@@ -244,7 +255,7 @@ int32_t i2cbb_read_byte_data(uint8_t i2c_address, uint8_t command) {
 
             address = (i2c_address << 1) | 1;
             if (!i2c_write_byte(1, 0, address)) {
-                return i2c_read_byte(1, 1);
+                ret_value = i2c_read_byte(1, 1);
             }
             else
                 i2c_stop_cond();
@@ -255,7 +266,9 @@ int32_t i2cbb_read_byte_data(uint8_t i2c_address, uint8_t command) {
     else
         i2c_stop_cond();
 
-    return -1;
+    pthread_mutex_unlock(&i2c_mutex);
+
+    return ret_value;
 }
 
 // This executes the SMBus “block write” protocol, returning negative errno else zero on success.
@@ -264,6 +277,9 @@ int32_t i2cbb_write_i2c_block_data(uint8_t i2c_address, uint8_t command, uint8_t
     // 7 bit address + 1 bit read/write
     // read = 1, write = 0
     // http://www.totalphase.com/support/articles/200349176-7-bit-8-bit-and-10-bit-I2C-Slave-Addressing
+    pthread_mutex_lock(&i2c_mutex);
+    int32_t ret_value = -1;
+
     uint8_t address = (i2c_address << 1) | 0;
 
     if (!i2c_write_byte(1, 0, address)) {
@@ -279,8 +295,8 @@ int32_t i2cbb_write_i2c_block_data(uint8_t i2c_address, uint8_t command, uint8_t
             i2c_stop_cond();
 
             if (!errors)
-                return 0;
-						printf("i2cbb: write byte failed at index %lu\n", i);
+                ret_value = 0;
+            printf("i2cbb: write byte failed at index %lu\n", i);
         }
         else{
             i2c_stop_cond();
@@ -291,13 +307,18 @@ int32_t i2cbb_write_i2c_block_data(uint8_t i2c_address, uint8_t command, uint8_t
         i2c_stop_cond();
 				printf("i2cbb: address failed\n");
 		}
-    return -1;
+
+    pthread_mutex_unlock(&i2c_mutex);
+    return ret_value;
 }
 
 // This executes the SMBus “block read” protocol, returning negative errno else the number
 // of data bytes in the slave's response.
 int32_t i2cbb_read_i2c_block_data(uint8_t i2c_address, uint8_t command, uint8_t length,
         uint8_t* values) {
+    pthread_mutex_lock(&i2c_mutex);
+    int32_t ret_value = length;
+
 	uint8_t address = (i2c_address << 1) | 0;
 /*
 	//static int i2c_write_byte(int send_start, int send_stop, uint8_t byte) 
@@ -318,7 +339,8 @@ int32_t i2cbb_read_i2c_block_data(uint8_t i2c_address, uint8_t command, uint8_t 
 	if (i2c_write_byte(1, 0, address)){ 
 		i2c_stop_cond();
 		printf("i2cbb.c:writing address failed at %x\n", i2c_address);
-		return -1;
+        ret_value = -1;
+		goto bail;
 	}
 
 	//static uint8_t i2c_read_byte(int nack, int send_stop) 
@@ -329,6 +351,9 @@ int32_t i2cbb_read_i2c_block_data(uint8_t i2c_address, uint8_t command, uint8_t 
 
 	i2c_stop_cond();
 
-    return length;
+    bail:
+    pthread_mutex_unlock(&i2c_mutex);
+
+    return ret_value;
 }
 
