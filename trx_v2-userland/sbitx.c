@@ -966,24 +966,24 @@ void tr_switch(int tx_on){
     }
     else
     {
+
         digitalWrite(LPF_A, LOW);
         digitalWrite(LPF_B, LOW);
         digitalWrite(LPF_C, LOW);
         digitalWrite(LPF_D, LOW);
 
 
-        in_tx = 0;
-        clear_buffers();
         delay(10);
         //power down the PA chain to null any gain
         digitalWrite(TX_LINE, LOW);
         delay(5);
         prev_lpf = -1; //force the lpf to be re-energized
         set_lpf_40mhz(freq_hdr);
-		//audio codec is back on
+
         sound_mixer(audio_card, "Capture", rx_gain);
-        sleep(10);
         sound_mixer(audio_card, "Master", rx_vol);
+        in_tx = 0;
+        clear_buffers();
     }
     send_ws_update = true;
 }
