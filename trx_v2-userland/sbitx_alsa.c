@@ -464,11 +464,11 @@ void *radio_playback_thread(void *device_ptr)
 
     while (sound_system_running)
     {
-        pthread_mutex_lock(&radio_play_mutex);
 
         read_buffer(dsp_to_radio, radio, buffer_size/2);
         read_buffer(dsp_to_speaker, speaker, buffer_size/2);
 
+        pthread_mutex_lock(&radio_play_mutex);
         for (int j = 0; j < hw_period_size; j++)
         {
             memcpy(&buffer[j*sample_size*channels], &speaker[j*sample_size], sample_size);
@@ -743,10 +743,9 @@ void *loop_playback_thread(void *device_ptr)
 
     while (sound_system_running)
     {
-        pthread_mutex_lock(&loop_play_mutex);
-
         read_buffer(dsp_to_loopback, buffer, buffer_size);
 
+        pthread_mutex_lock(&loop_play_mutex);
     try_again_loop_play:
         if ((e = snd_pcm_mmap_writei(loopback_play_handle, buffer, loopback_period_size)) != loopback_period_size)
         {
