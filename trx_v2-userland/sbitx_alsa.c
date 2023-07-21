@@ -831,14 +831,6 @@ void *control_thread(void *device_ptr)
 
         if (use_loopback)
         {
-#if 0 // aaaaah, we need to upsample this...
-            j = 0;
-            for (int i = 0; i < i_need_1024_frames; i = i + 2){
-                memcpy(buffer_loop_to_dsp_upsampled + i * sample_size, buffer_loop_to_dsp + j * sample_size, sample_size);
-                memcpy(buffer_loop_to_dsp_upsampled + i * sample_size + sample_size, buffer_loop_to_dsp + j * sample_size, sample_size);
-                j++;
-            }
-#endif
             input_rx = (int32_t *)buffer_radio_to_dsp;
             input_mic = (int32_t *)buffer_loop_to_dsp;
         }
