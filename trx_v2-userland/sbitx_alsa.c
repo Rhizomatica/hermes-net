@@ -856,7 +856,8 @@ void sound_input(int loop){
 }
 
 
-void clear_buffers(){
+void clear_buffers()
+{
 
 #if 0
     snd_pcm_prepare(pcm_capture_handle);
@@ -883,8 +884,6 @@ void clear_buffers(){
     clear_buffer(dsp_to_speaker);
     clear_buffer(dsp_to_loopback);
     clear_buffer(loopback_to_dsp);
-
-
 }
 
 // here we start the sound system and create all the threads
