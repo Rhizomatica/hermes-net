@@ -23,6 +23,11 @@ int main(int argc, char *argv[])
     uint8_t response[32];
 
     int32_t count;
+
+    // count = i2c_smbus_read_word_data(bus, 0);
+    // printf("count = %d\n");
+    uint8_t values = 0;
+    count = i2c_smbus_write_block_data(bus, 0, 1, &values);
     count = i2c_smbus_read_i2c_block_data(bus, 0, 4, response);
 
     printf("count = %d, read = 0x%x 0x%x 0x%x 0x%x\n", count, response[0], response[1], response[2], response[3]);
