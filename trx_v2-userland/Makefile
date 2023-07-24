@@ -42,7 +42,7 @@ sbitx_client: sbitx_client.c shm.c sbitx_io.c sbitx_controller.h sbitx_io.h shm.
 
 .PHONY: clean install
 clean:
-	rm -f *.o sbitx_client sbitx_controller /home/pi/sbitx/data/user_settings.ini /home/pi/sbitx/data/sbitx.db
+	rm -f *.o sbitx_client sbitx_controller
 
 install: sbitx_controller sbitx_client
 	install -D sbitx_client $(DESTDIR)$(prefix)/bin/sbitx_client
