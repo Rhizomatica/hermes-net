@@ -1,7 +1,9 @@
 # Userland For HERMES Radio Transceiver Version 2
 
 This repository contains the userland utils for the sBitx v2
-radio for the HERMES system.
+radio for the HERMES system, which contains all the sBitx's control
+code, and also the audio I/O management, which address the radio I/O
+and loopback devices I/O.
 
 ## Compile And Install
 
@@ -23,6 +25,8 @@ Or alternativelly, in case the RTC is to be used as time reference to the Linux:
 ```
 dtoverlay=i2c-rtc-gpio,ds1307,i2c_gpio_delay_us=10,bus=2,i2c_gpio_sda=13,i2c_gpio_scl=6
 ```
+
+And remove all lines starting with "gpio=".
 
 And add i2c-dev module to be loaded at boot (as root):
 
