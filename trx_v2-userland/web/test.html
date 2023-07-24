@@ -2,7 +2,9 @@
 <html lang="en">
   <body>
     <h1>Websocket test client</h1>
-    <input id="url" type="text" placeholder="Type URL" value="wss://localhost:8080/websocket" style="width:20em;" />
+
+
+    <input id="url" type="text" placeholder="Type URL" />
     <button id="connect">connect</button>
     <div style="height: 0.3em;">&nbsp;</div>
     <input id="message" type="text" placeholder="Type message" style="width: 20em;" /> 
@@ -10,6 +12,12 @@
     <div style="margin-top: 1em;">Event log:</div>
     <div id="log" style="background: #eee; height: 10em; padding: 0.5em;"><div>
   </body>
+<script>
+    var host = self.location.hostname;
+    document.getElementById("url").value = "wss://"+host+":8080/websocket";
+</script>
+
+
   <script>
     var ws, E = function(id) { return document.getElementById(id); };
     var url = E('url'), connect = E('connect'), message = E('message'), send = E('send'), log = E('log');
