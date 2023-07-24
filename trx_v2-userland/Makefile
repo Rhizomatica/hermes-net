@@ -22,12 +22,12 @@ CC=gcc
 prefix=/usr
 # CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector
 CFLAGS=`pkg-config --cflags gtk+-3.0` -O3 -Wall -Wno-deprecated-declarations -std=gnu11 -pthread -fstack-protector -DMG_ENABLE_OPENSSL -DMG_ARCH=1
-LDFLAGS=`pkg-config --libs glib-2.0` -lwiringPi -lasound -lm -lfftw3 -lfftw3f -pthread -lncurses -lssl -lcrypto
+LDFLAGS=`pkg-config --libs glib-2.0` -lwiringPi -lasound -lm -lfftw3 -lfftw3f -pthread -lssl -lcrypto -li2c
 
 all: sbitx_controller sbitx_client
 
 # SOURCES=vfo.c sbitx_sound.c fft_filter.c sbitx_gtk.c i2cbb.c si5351v2.c ini.c queue.c mongoose.c webserver.c sbitx.c sbitx_alsa.c sbitx_controller.c shm.c
-SOURCES=vfo.c fft_filter.c sbitx_gtk.c i2cbb.c si5351v2.c ini.c queue.c mongoose.c webserver.c sbitx.c sbitx_alsa.c sbitx_controller.c shm.c buffer.c ring_buffer.c
+SOURCES=vfo.c fft_filter.c sbitx_gtk.c sbitx_i2c.c si5351v2.c ini.c queue.c mongoose.c webserver.c sbitx.c sbitx_alsa.c sbitx_controller.c shm.c buffer.c ring_buffer.c
 
 OBJ=$(SOURCES:.c=.o)
 

@@ -20,7 +20,7 @@
 #include "sdr.h"
 #include "sdr_ui.h"
 #include "sound.h"
-#include "i2cbb.h"
+#include "sbitx_i2c.h"
 #include "si5351.h"
 #include "ini.h"
 #include "buffer.h"
@@ -108,18 +108,11 @@ struct power_settings band_power[] ={
 
 #define CMD_TX (2)
 #define CMD_RX (3)
-#define TUNING_SHIFT (0)
 #define MDS_LEVEL (-135)
 
 void radio_tune_to(u_int32_t f){
-	if (rx_list->mode == MODE_CW)
-  	si5351bx_setfreq(2, f + bfo_freq - 24000 + TUNING_SHIFT - rx_pitch);
-	else if (rx_list->mode == MODE_CWR)
-  	si5351bx_setfreq(2, f + bfo_freq - 24000 + TUNING_SHIFT + rx_pitch);
-	else
-  	si5351bx_setfreq(2, f + bfo_freq - 24000 + TUNING_SHIFT);
-
-  //printf("Setting radio to %d\n", f);
+  	si5351bx_setfreq(2, f + bfo_freq - 24000 + frequency_offset);
+    //printf("Setting radio to %d\n", f);
 }
 
 void fft_init(){
@@ -542,7 +535,7 @@ void read_power(){
 
 	if (!in_tx)
 		return;
-	if(i2cbb_read_i2c_block_data(0x8, 0, 4, response) == -1)
+	if(read_pwr_levels(response) == -1)
 		return;
 
 	vfwd = vref = 0;

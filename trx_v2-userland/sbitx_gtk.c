@@ -36,7 +36,6 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include "sound.h"
 #include "sdr_ui.h"
 #include "ini.h"
-#include "i2cbb.h"
 #include "webserver.h"
 #include "sbitx_controller.h"
 #include "buffer.h"

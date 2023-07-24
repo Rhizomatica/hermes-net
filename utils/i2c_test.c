@@ -14,6 +14,8 @@
 #include <time.h>
 #include <unistd.h>
 
+
+
 uint8_t dec2bcd(uint8_t val){
 	return ((val/10 * 16) + (val %10));
 }

@@ -2,7 +2,7 @@
 #include <linux/types.h>
 #include <stdint.h>
 #include <wiringPi.h>
-#include "i2cbb.h"
+#include "sbitx_i2c.h"
 #include "si5351.h"
 
 #define SDA 23 
@@ -46,24 +46,6 @@
 int xtal_freq_calibrated = 25000000; // tcxo
 
 uint32_t plla_freq, pllb_freq;
-
-static int i2c_error_count = 0;       // counts I2C Errors
-
-#define SI5351_ADDR 0x60              // I2C address of Si5351   (typical)
-
-/*
-void i2cSendRegister(uint8_t reg, uint8_t* data, uint8_t n){
-  i2cbb_write_i2c_block_data (SI5351_ADDR, reg, n, data); 
-}
-*/
-
-void i2cSendRegister(uint8_t reg, uint8_t val){ 
-  while (i2cbb_write_byte_data(SI5351_ADDR, reg, val) < 0)
-  {
-    printf("Repeating I2C #%d\n",i2c_error_count++);  // reports number of I2C repeats caused by errors
-    delay(1);
-  }
-}
 
 void si5351_reset(){
   i2cSendRegister(SI_PLL_RESET, 0xA0);  
@@ -237,8 +219,6 @@ void si5351_set_calibration(int32_t cal){
 }
 
 void si5351bx_init(){ 
-  i2cbb_init(SDA, SCL);
-	delay(10);
   si5351_reset();
 	delay(10);
   si5351a_clkoff(SI_CLK0_CONTROL);
