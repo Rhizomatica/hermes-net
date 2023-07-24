@@ -113,7 +113,7 @@ const char format_str[] = "* ptt_on\n"
 
 "* gps_calibrate\n"
 "  * No Argument\n"
-"  * Resp: OK (start 10s GPS-based calibration procedure) | NO_GPS | ERROR\n\n"
+"  * Resp: NO_GPS | ERROR\n\n"
 
 "* set_radio_defaults\n"
 "  * No Argument\n"
@@ -126,10 +126,10 @@ const char format_str[] = "* ptt_on\n"
 "* get_status\n"
 "  * No Argument\n"
 "  * Resp: 3 lines output with a constant word and a response:\n"
-"  * PPS_STATUS OK | FAIL\n"
-"  * OFFSET_CAL_STATUS OK | FAIL\n"
+"  * PPS_STATUS FAIL\n"
+"  * OFFSET_CAL_STATUS FAIL\n"
 "  * LATEST_OFFSET_CAL Offset\n\n"
 
 "* radio_reset\n"
 "  * No Argument\n"
-"  * Resp: OK (and the ubitx_controller exits immediately)\n\n";
+"  * Resp: OK (and the sbitx_controller exits immediately)\n\n";

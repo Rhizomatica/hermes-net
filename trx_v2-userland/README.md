@@ -11,6 +11,31 @@ To compile the project, run "make", and to install, run "make install".
 ## Userland Details
 
 CW mode just generates a tone. GPS-based calibration is not supported by the radio (as it does not need).
+This code uses kernel I2C interface, so enable it using the appropriate sBitx pinout and place this to
+/boot/config.txt:
+
+'''
+dtoverlay=i2c-gpio,i2c_gpio_delay_us=10,bus=2,i2c_gpio_sda=13,i2c_gpio_scl=6
+'''
+
+Or alternativelly, in case the RTC is to be used as time reference to the Raspberry Pi:
+
+'''
+dtoverlay=i2c-rtc-gpio,ds1307,i2c_gpio_delay_us=10,bus=2,i2c_gpio_sda=13,i2c_gpio_scl=6
+'''
+
+And add i2c-dev module to be loaded at boot (as root):
+
+* echo i2c-dev >> /etc/modules
+
+It is also strongly recommended to use the loopback locked to the wm8781. Add the following
+parameter to snd-aloop module:
+
+'''
+timer_source=hw:0,0
+'''
+
+This code is designed to run on ARM64 (aarch64) Linux architecture.
 
 ## sbitx_client commands
 
