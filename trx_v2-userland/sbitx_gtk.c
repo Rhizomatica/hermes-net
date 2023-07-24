@@ -906,104 +906,6 @@ void init_gpio_pins(){
 	pullUpDnControl(DASH, PUD_UP);
 }
 
-uint8_t dec2bcd(uint8_t val){
-	return ((val/10 * 16) + (val %10));
-}
-
-uint8_t bcd2dec(uint8_t val){
-	return ((val/16 * 10) + (val %16));
-}
-
-void rtc_read(){
-	uint8_t rtc_time[10];
-
-	i2cbb_write_i2c_block_data(DS3231_I2C_ADD, 0, 0, NULL);
-
-	int e =  i2cbb_read_i2c_block_data(DS3231_I2C_ADD, 0, 8, rtc_time);
-	if (e <= 0){
-		printf("RTC not detected\n");
-		return;
-	}
-	for (int i = 0; i < 7; i++)
-		rtc_time[i] = bcd2dec(rtc_time[i]);
-
-	printf("RTC time is : year:%d month:%d day:%d hour:%d min:%d sec:%d\n",
-		rtc_time[6] + 2000, 
-		rtc_time[5], rtc_time[4], rtc_time[2] & 0x3f, rtc_time[1],
-		rtc_time[0] & 0x7f);
-
-	
-	//convert to julian
-	struct tm t;
-	time_t gm_now;
-
-	t.tm_year 	= rtc_time[6] + 2000 - 1900;
-	t.tm_mon 	= rtc_time[5] - 1;
-	t.tm_mday 	= rtc_time[4];
-	t.tm_hour 	= rtc_time[2];
-	t.tm_min		= rtc_time[1];
-	t.tm_sec		= rtc_time[0];		
-
-	time_t tjulian = mktime(&t);
-	
-	tzname[0] = tzname[1] = "GMT";
-	timezone = 0;
-	daylight = 0;
-	setenv("TZ", "UTC", 1);	
-	gm_now = mktime(&t);
-
-	printf("RTC detected\n");
-	time_delta =(long)gm_now -(long)(millis()/1000l);
-	printf("time_delta = %ld\n", time_delta);
-	printf("rtc julian: %ld %ld\n", tjulian, time(NULL) - tjulian);
-
-}
-
-
-void rtc_write(int year, int month, int day, int hours, int minutes, int seconds){
-	uint8_t rtc_time[10];
-
-	rtc_time[0] = dec2bcd(seconds);
-	rtc_time[1] = dec2bcd(minutes);
-	rtc_time[2] = dec2bcd(hours);
-	rtc_time[3] = 0;
-	rtc_time[4] = dec2bcd(day);
-	rtc_time[5] = dec2bcd(month);
-	rtc_time[6] = dec2bcd(year - 2000);
-
-	for (uint8_t i = 0; i < 7; i++){
-  	int e = i2cbb_write_byte_data(DS3231_I2C_ADD, i, rtc_time[i]);
-		if (e)
-			printf("rtc_write: error writing ds1307 register at %d index\n", i);
-	}
-
-/*	int e =  i2cbb_write_i2c_block_data(DS1307_I2C_ADD, 0, 7, rtc_time);
-	if (e < 0){
-		printf("RTC not written: %d\n", e);
-		return;
-	}
-*/
-}
-
-//this will copy the computer time
-//to the rtc
-void rtc_sync(){
-	time_t t = time(NULL);
-	struct tm *t_utc = gmtime(&t);
-
-	printf("Checking for valid NTP time ...");
-	if (system("ntpstat") != 0){
-		printf(".. not found.\n");
-		return;
-	}
-	printf("Syncing RTC to %04d-%02d-%02d %02d:%02d:%02d\n", 
-		t_utc->tm_year + 1900,  t_utc->tm_mon + 1, t_utc->tm_mday, 
-		t_utc->tm_hour, t_utc->tm_min, t_utc->tm_sec);
-
-	rtc_write( t_utc->tm_year + 1900,  t_utc->tm_mon + 1, t_utc->tm_mday, 
-		t_utc->tm_hour, t_utc->tm_min, t_utc->tm_sec);
-}
-
 int key_poll(){
 	int key = 0;
 	
@@ -1647,51 +1549,7 @@ void change_band(char *request){
 	abort_tx();
 }
 
-void utc_set(char *args, int update_rtc){
-	int n[7], i;
-	char *p;
-	struct tm t;
-	time_t gm_now;
-
-	i = 0;
-	p =  strtok(args, "-/;: ");
-	if (p){
-		n[0] = atoi(p);
-		for (i = 1; i < 7; i++){
-			p = strtok(NULL, "-/;: ");
-			if (!p)
-				break;
-			n[i] = atoi(p);
-		}
-	}	
-
-	if (i != 6 ){
-			return;
-	}
-
-	rtc_write(n[0], n[1], n[2], n[3], n[4], n[5]);
-
-	if (n[0] < 2000)
-		n[0] += 2000;
-	t.tm_year = n[0] - 1900;
-	t.tm_mon = n[1] - 1;
-	t.tm_mday = n[2]; 
-	t.tm_hour = n[3];
-	t.tm_min = n[4];
-	t.tm_sec = n[5];
-
-	tzname[0] = tzname[1] = "GMT";
-	timezone = 0;
-	daylight = 0;
-	setenv("TZ", "UTC", 1);	
-	gm_now = mktime(&t);
-
-    time_delta =(long)gm_now -(long)(millis()/1000l);
-	printf("time_delta = %ld\n", time_delta);
-}
-
-
-void do_cmd(char *cmd){	
+void do_cmd(char *cmd){
 	char request[1000], response[1000];
 	
 	strcpy(request, cmd);			//don't mangle the original, thank you
@@ -1828,8 +1686,6 @@ void cmd_exec(char *cmd){
 	}
 	else if (!strcmp(exec, "abort"))
 		abort_tx();
-	else if (!strcmp(exec, "rtc"))
-		rtc_read();
 	else if (!strcmp(exec, "txcal")){
 		char response[10];
 		sdr_request("txcal=", response);
@@ -1837,9 +1693,6 @@ void cmd_exec(char *cmd){
 	else if (!strcmp(exec, "grid")){	
 		set_field("#mygrid", args);
 		// sprintf(response, "\n[Your grid is set to %s]\n", get_field("#mygrid")->value);
-	}
-	else if (!strcmp(exec, "utc")){
-		utc_set(args, 1);
 	}
 	else if (!strcmp(exec, "exchange")){
 		set_field("#contest_serial", "0");
@@ -2010,11 +1863,6 @@ int main(int argc, char* argv[] )
     //sprintf(buff, "%d", vfo_a_freq);
     set_field("r1:freq", get_field("#vfo_a_freq")->value);
 	settings_updated = 0;
-
-    // TODO split RTC code
-	//printf("Reading rtc...");
-	//rtc_read();
-	//printf("done!\n");
 
     sbitx_controller();
 
