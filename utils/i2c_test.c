@@ -66,9 +66,9 @@ int main(int argc, char *argv[])
         printf("RTC read error detected\n");
 
     for (int i = 0; i < 7; i++)
-		rtc_time[i] = bcd2dec(rtc_time[i]);
+		rtc_time[i] = bcd2dec(response[i]);
 
-	printf("RTC time is : year:%d month:%d day:%d hour:%d min:%d sec:%d\n",
+	printf("RTC time is - year:%d month:%d day:%d hour:%d min:%d sec:%d\n",
            rtc_time[6] + 2000,
            rtc_time[5], rtc_time[4], rtc_time[2] & 0x3f, rtc_time[1],
            rtc_time[0] & 0x7f);
