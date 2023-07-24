@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
   <body>
-    <h1>HERMES Websocket test client</h1>
+    <h1>HERMES Websocket Test</h1>
 
 
+    <p>
     <input id="url" type="text" placeholder="Type URL" />
-    <button id="connect">Connect</button>
+    <button id="connect">Connect</button></p>
+    <p>
     <input id="message" type="text" placeholder="Type message" />
     <button id="send">Send Message</button>
-    <div>Event Log:</div>
-    <div id="log"><div>
+    </p>
+    <p>Event Log:</p>
+    <div id="log"></div>
   </body>
 
   <script>
@@ -20,7 +23,7 @@
   <script>
     var ws, E = function(id) { return document.getElementById(id); };
     var url = E('url'), connect = E('connect'), message = E('message'), send = E('send'), log = E('log');
-    var enable = function(en) { message.disabled = send.disabled = !en; url.disabled = en; connect.innerHTML = en ? 'disconnect' : 'connect'; };
+    var enable = function(en) { message.disabled = send.disabled = !en; url.disabled = en; connect.innerHTML = en ? 'Disconnect' : 'Connect'; };
     enable(false)
     connect.onclick = function() {
       if (ws) { ws.close(); return; }
