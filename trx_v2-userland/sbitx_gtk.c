@@ -454,35 +454,6 @@ int get_field_value_by_label(char *label, char *value){
 	return 0;
 }
 
-int remote_update_field(int i, char *text){
-	struct field * f = active_layout + i;
-
-	if (f->cmd[0] == 0)
-		return -1;
-	
-	//always send status afresh
-	if (!strcmp(f->label, "STATUS")){
-		//send time
-		time_t now = time_sbitx();
-		struct tm *tmp = gmtime(&now);
-		sprintf(text, "STATUS %04d/%02d/%02d %02d:%02d:%02dZ",  
-			tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday, tmp->tm_hour, tmp->tm_min, tmp->tm_sec); 
-		return 1;
-	}
-
-	strcpy(text, f->label);
-	strcat(text, " ");
-	strcat(text, f->value);
-	int update = f->update_remote;
-	f->update_remote = 0;
-
-	//debug on
-//	if (!strcmp(f->cmd, "#text_in") && strlen(f->value))
-//		printf("#text_in [%s] %d\n", f->value, update);
-	//debug off
-	return update;
-}
-
 //set the field directly to a particuarl value, programmatically
 int set_field(char *id, char *value){
 	struct field *f = get_field(id);

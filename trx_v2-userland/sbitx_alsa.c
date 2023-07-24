@@ -889,6 +889,9 @@ void clear_buffers()
 // here we start the sound system and create all the threads
 void sound_system_start()
 {
+    if (disable_alsa)
+        return;
+
     pthread_t radio_capture, radio_playback;
     pthread_t loop_capture, loop_playback;
 
