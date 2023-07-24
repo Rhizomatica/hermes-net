@@ -152,7 +152,7 @@ by the argument type and possible responses.
 
 * gps_calibrate
   * No Argument
-  * Resp: OK (start 10s GPS-based calibration procedure) | NO_GPS | ERROR
+  * Resp: NO_GPS | ERROR
 
 * restore_radio_defaults
   * No Argument
@@ -161,8 +161,8 @@ by the argument type and possible responses.
 * get_status
   * No Argument
   * Resp: 3 lines output with a constant word and a response:
-  * PPS_STATUS OK | FAIL
-  * OFFSET_CAL_STATUS OK | FAIL
+  * PPS_STATUS FAIL
+  * OFFSET_CAL_STATUS FAIL
   * LATEST_OFFSET_CAL Offset
 
 * radio_reset
