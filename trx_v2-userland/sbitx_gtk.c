@@ -40,14 +40,15 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include "sbitx_controller.h"
 #include "buffer.h"
 #include "sbitx_alsa.h"
+#include "sbitx_i2c.h"
 #include "../include/radio_cmds.h"
 
 extern controller_conn *tmp_connector;
 
 /* Front Panel controls */
-char pins[15] = {0, 2, 3, 6, 7, 
-								10, 11, 12, 13, 14, 
-								21, 22, 23, 25, 27};
+char pins[13] = {0, 2, 3, 6, 7,
+    10, 11, 12, 13, 14,
+    21, 25, 27};
 
 #define ENC1_A (13)
 #define ENC1_B (12)
@@ -64,9 +65,6 @@ char pins[15] = {0, 2, 3, 6, 7,
 #define ENC_FAST 1
 #define ENC_SLOW 5
 
-#define DS3231_I2C_ADD 0x68
-//time sync, when the NTP time is not synced, this tracks the number of seconds 
-//between the system cloc and the actual time set by \utc command
 static long time_delta = 0;
 
 //encoder state
@@ -894,7 +892,7 @@ void tx_off(){
 }
 
 void init_gpio_pins(){
-	for (int i = 0; i < 15; i++){
+	for (int i = 0; i < 13; i++){
 		pinMode(pins[i], INPUT);
 		pullUpDnControl(pins[i], PUD_UP);
 	}
@@ -997,7 +995,10 @@ void tuning_isr_b(void){
         first = false;
 }
 
-void hw_init(){
+void hw_init()
+{
+    open_i2c("/dev/i2c-22");
+
 	wiringPiSetup();
 	init_gpio_pins();
 
@@ -1009,7 +1010,6 @@ void hw_init(){
 
     wiringPiISR(ENC1_A, INT_EDGE_BOTH, tuning_isr_a);
     wiringPiISR(ENC1_B, INT_EDGE_BOTH, tuning_isr_a);
-
 }
 
 int get_cw_delay(){
@@ -1841,11 +1841,6 @@ int main(int argc, char* argv[] )
     // the webserver / websocket
     webserver_start();
 
-
-    // TODO split RTC code
-	// rtc_sync();
-
-	//initialize the modulation display
 
 	//set the radio to some decent defaults
 	do_cmd("r1:freq=7100000");
