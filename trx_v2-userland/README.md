@@ -32,7 +32,7 @@ And add i2c-dev module to be loaded at boot (as root):
 
 * echo i2c-dev >> /etc/modules
 
-It is also strongly recommended to use the loopback locked to the wm8781. Add the following
+It is also strongly recommended to use the loopback locked to the wm8731. Add the following
 parameter to snd-aloop module:
 
 ```
