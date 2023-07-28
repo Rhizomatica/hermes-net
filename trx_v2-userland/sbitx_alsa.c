@@ -27,6 +27,7 @@
 #include <stdatomic.h>
 
 #include "sbitx_alsa.h"
+#include "sbitx_dsp.h"
 #include "buffer.h"
 
 char *radio_capture_dev = "hw:0,0";
@@ -54,7 +55,7 @@ atomic_bool sound_system_running;
 atomic_bool use_loopback;
 bool disable_alsa;
 
-
+extern atomic_int in_tx;
 
 
 extern void sound_process(
@@ -764,41 +765,6 @@ void *loop_playback_thread(void *device_ptr)
     return NULL;
 }
 
-void *control_thread_radio(void *device_ptr)
-{
-    int sample_size = snd_pcm_format_width(format) / 8;
-    uint32_t hw_buffer_size = hw_period_size * sample_size; // single channel
-    uint8_t *buffer_radio_to_dsp = malloc(hw_buffer_size);
-    uint8_t *buffer_mic_to_dsp = malloc(hw_buffer_size);
-
-
-    while (1)
-    {
-        read_buffer(radio_to_dsp, buffer_radio_to_dsp, hw_buffer_size);
-        read_buffer(mic_to_dsp, buffer_mic_to_dsp, hw_buffer_size); // the samplerate is half
-
-
-        write_buffer(dsp_to_radio, buffer_radio_to_dsp, hw_buffer_size);
-        write_buffer(dsp_to_speaker, buffer_mic_to_dsp, hw_buffer_size);
-    }
-
-}
-
-void *control_thread_loopback(void *device_ptr)
-{
-    int sample_size = snd_pcm_format_width(format) / 8;
-
-    uint32_t loop_buffer_size = loopback_period_size * sample_size * channels;
-    uint8_t *buffer_loop_to_dsp = malloc(loop_buffer_size);
-
-    while (1)
-    {
-        read_buffer(loopback_to_dsp, buffer_loop_to_dsp, loop_buffer_size);
-
-        write_buffer(dsp_to_loopback, buffer_loop_to_dsp, loop_buffer_size);
-    }
-}
-
 void *control_thread(void *device_ptr)
 {
     int i_need_1024_frames = 1024;
@@ -848,6 +814,59 @@ void *control_thread(void *device_ptr)
     }
 }
 
+void *control_thread_sbitx(void *device_ptr)
+{
+    int sample_size = snd_pcm_format_width(format) / 8;
+
+    // we have 96 kHz in the radio soundcard, and 48 kHz in the loopback soundcard
+    // we define our block transfer size as the minimum of both, in order to try to reduce latency a bit
+    uint32_t block_size = hw_period_size;
+
+    if (hw_period_size != (loopback_period_size * 2))
+    {
+        fprintf(stderr, "Hardware 96 kHz sound period size != (Loopback 48 kHz period size * 2)\n");
+        block_size = hw_period_size;
+    }
+
+    uint32_t buffer_size = block_size * sample_size;
+
+
+    uint8_t *buffer_radio_to_dsp = malloc(buffer_size);
+    uint8_t *buffer_mic_to_dsp = malloc(buffer_size);
+
+    uint8_t *buffer_loop_to_dsp = malloc(buffer_size);
+
+
+    uint8_t *signal_to_tx;
+    uint8_t *output_speaker; uint8_t *output_loopback; uint8_t *output_tx;
+
+    output_tx = malloc(buffer_size);
+    output_speaker = malloc(buffer_size);
+    output_loopback = malloc(buffer_size);
+
+    while (1)
+    {
+        read_buffer(radio_to_dsp, buffer_radio_to_dsp, buffer_size); // mono
+        read_buffer(mic_to_dsp, buffer_mic_to_dsp, buffer_size); // mono
+        read_buffer(loopback_to_dsp, buffer_loop_to_dsp, buffer_size); // stereo interleaved
+
+
+        if (in_tx == 0)
+        {
+            dsp_process_rx(buffer_radio_to_dsp, output_speaker, output_loopback, output_tx, block_size);
+        }
+        else
+        {
+            signal_to_tx = (use_loopback)? buffer_loop_to_dsp: buffer_mic_to_dsp;
+            dsp_process_tx(signal_to_tx, output_speaker, output_loopback, output_tx, block_size, use_loopback);
+        }
+
+        write_buffer(dsp_to_loopback, output_loopback, buffer_size); // stereo 48 kHz interleaved
+        write_buffer(dsp_to_radio, output_tx, buffer_size); // mono 96 kHz
+        write_buffer(dsp_to_speaker, output_speaker, buffer_size); // mono 96 kHz
+    }
+}
+
 void sound_input(int loop){
     if (loop)
         use_loopback = true;
@@ -886,6 +905,8 @@ void clear_buffers()
     clear_buffer(loopback_to_dsp);
 }
 
+
+
 // here we start the sound system and create all the threads
 void sound_system_start()
 {
@@ -901,15 +922,12 @@ void sound_system_start()
     pthread_t control_tid;
     pthread_create( &control_tid, NULL, control_thread, NULL);
 #else
-    pthread_t control_radio_tid;
-    pthread_create( &control_radio_tid, NULL, control_thread_radio, NULL);
-    pthread_t control_loop_tid;
-    pthread_create( &control_loop_tid, NULL, control_thread_loopback, NULL);
+    pthread_create( &control_tid, NULL, control_thread_sbitx, NULL);
 #endif
 
     pthread_create( &radio_capture, NULL, radio_capture_thread, (void*)radio_capture_dev);
 	pthread_create( &radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
-    // wait here for sound bringup
+    // wait here for sound bringup?
     pthread_create( &loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
 	pthread_create( &loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
 

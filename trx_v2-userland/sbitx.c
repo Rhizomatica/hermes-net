@@ -60,7 +60,7 @@ static int rx_gain = 100;
 static int rx_vol = 100;
 static int tx_gain = 100;
 static int tx_compress = 0;
-static int in_tx = 0;
+static atomic_int in_tx = 0;
 static int sidetone = 2000000000;
 struct vfo tone_a, tone_b; //these are audio tone generators
 static int tx_use_line = 0;
@@ -111,7 +111,7 @@ struct power_settings band_power[] ={
 #define MDS_LEVEL (-135)
 
 void radio_tune_to(u_int32_t f){
-  	si5351bx_setfreq(2, f + bfo_freq - 24000 + frequency_offset);
+    si5351bx_setfreq(2, f + bfo_freq - 24000);
     //printf("Setting radio to %d\n", f);
 }
 
