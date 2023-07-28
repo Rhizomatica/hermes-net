@@ -44,13 +44,17 @@ static pthread_mutex_t i2c_mutex;
 
 int read_pwr_levels(uint8_t *response)
 {
+    int ret_value = -1;
+
     pthread_mutex_lock(&i2c_mutex);
 
-    int ret_value = -1;
     if (ioctl(bus, I2C_SLAVE, ATTINY85_I2C) == 0)
-        ret_value = i2c_smbus_read_i2c_block_data(bus, 0, 4, response);
+        ret_value = read(bus, response, 4);
 
     pthread_mutex_unlock(&i2c_mutex);
+
+    if (ret_value != 4)
+        ret_value = -1;
 
     return ret_value;
 }
