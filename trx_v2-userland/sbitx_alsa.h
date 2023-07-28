@@ -35,6 +35,6 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params);
 void sound_mixer(char *card_name, char *element, int make_on);
 void sound_system_start();
 void clear_buffers();
-
+void sound_input(int loop);
 
 #endif

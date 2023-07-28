@@ -33,7 +33,6 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include <wiringPi.h>
 #include <wiringSerial.h>
 #include "sdr.h"
-#include "sound.h"
 #include "sdr_ui.h"
 #include "ini.h"
 #include "webserver.h"

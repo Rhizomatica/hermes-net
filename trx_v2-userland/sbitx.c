@@ -19,7 +19,6 @@
 #include <stdatomic.h>
 #include "sdr.h"
 #include "sdr_ui.h"
-#include "sound.h"
 #include "sbitx_i2c.h"
 #include "si5351.h"
 #include "ini.h"
