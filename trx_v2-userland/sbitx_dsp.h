@@ -30,4 +30,6 @@ void dsp_process_rx(uint8_t *buffer_radio_to_dsp, uint8_t *output_speaker, uint8
 
 void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t *output_tx, uint32_t block_size, bool input_is_48k_stereo);
 
+void dsp_start();
+
 #endif // SBITX_DSP_H_

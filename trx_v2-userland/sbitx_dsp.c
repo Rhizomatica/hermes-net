@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <alsa/asoundlib.h>
 #include "sbitx_dsp.h"
+#include "fir_filter.h"
+#include "interpolation.h"
 
 // this is just for sdr.h declaration
 #include <fftw3.h>
@@ -32,6 +34,9 @@
 
 // we read the mode from here
 extern struct rx *rx_list;
+extern snd_pcm_format_t format;
+
+struct st_fir_filter_coefficients* FIR_filter;
 
 // - signal_input: 96 kHz mono from radio, get the "slice" between 24 kHz and 27 kHz (USB) or 21 kHz to 24 kHz (LSB), and bring this slice to 0 and 3 kHz
 // - out output_speaker: 96 kHz mono output for speaker
@@ -41,7 +46,17 @@ extern struct rx *rx_list;
 void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t *output_tx, uint32_t block_size)
 {
     int32_t *input_signal = (int32_t *) signal_input;
+    int32_t *output_loopback_int = (int32_t *) output_loopback;
+    int32_t *output_speaker_int = (int32_t *) output_speaker;
+
+
     double input_signal_f[block_size];
+	double _Complex c_baseband_data[block_size];
+	double _Complex c_baseband_data_filtered[block_size];
+
+	double c_intermediate_data[block_size];
+	double c_intermediate_data_decimated[block_size/2];
+//	int32_t c_intermediate_data_decimated_stereo[block_size];
 
 
     for (uint32_t i = 0; i < block_size; i++)
@@ -52,17 +67,52 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
     if (rx_list->mode == MODE_USB)
     {
+        double carrier_amplitude=sqrt(2);
+
+        double passband_samp_freq=96000;
+        double passband_start_freq=24000;
+        double passband_end_freq=27000;
+
+        double intermediate_samp_freq=48000;
+        double intermediate_carrier_frequency=(passband_end_freq-passband_start_freq)/2;
+
+        double passband_samp_interval=1.0/passband_samp_freq;
+        double passband_carrier_frequency=(passband_start_freq+passband_end_freq)/2.0;
+
+        for(uint32_t i=0;i < block_size;i++)
+        {
+            __real__ c_baseband_data[i] =input_signal_f[i]*carrier_amplitude*cos(2*M_PI*(passband_carrier_frequency)*(double)i * passband_samp_interval);
+            __imag__ c_baseband_data[i] =input_signal_f[i]*carrier_amplitude*sin(2*M_PI*(passband_carrier_frequency)*(double)i * passband_samp_interval);
+        }
+
+        fir_filter_apply(FIR_filter, c_baseband_data,c_baseband_data_filtered, block_size);
+
+        for(uint32_t i=0;i<block_size;i++)
+        {
+            c_intermediate_data[i] =creal(c_baseband_data_filtered[i])*carrier_amplitude*cos(2*M_PI*(intermediate_carrier_frequency)*(double)i * passband_samp_interval);
+            c_intermediate_data[i] +=cimag(c_baseband_data_filtered[i])*carrier_amplitude*sin(2*M_PI*(intermediate_carrier_frequency)*(double)i * passband_samp_interval);
+        }
+
+        rational_resampler(c_intermediate_data,block_size,c_intermediate_data_decimated,(int)(passband_samp_freq/intermediate_samp_freq),DECIMATION);
+
+        for(uint32_t i=0;i<block_size;i++)
+        {
+            output_speaker_int[i] = (int32_t) (c_intermediate_data[i] * 2147483647);
+        }
+
+        for(uint32_t i=0; i < (block_size / 2);i++)
+        {
+            output_loopback_int[i*2] = (int32_t) (c_intermediate_data_decimated[i] * 2147483647);
+            output_loopback_int[i*2 + 1] = output_loopback[i*2];
+        }
         // USB tuning and filtering
     }
     else if (rx_list->mode == MODE_LSB)
     {
-        // LSB tuning and filtering
+        // TODO: LSB tuning and filtering
     }
 
-
-    // output_tx: NULL
-    // output_loopback: 2 channels (equal) 2/1 downsampled
-    // output_speaker: 1 channel, no re-sampling
+    memset(output_tx, 0, block_size * (snd_pcm_format_width(format) / 8));
 }
 
 // - signal_input: 96 kHz mono input from mic or 48 kHz stereo input from loopback
@@ -74,34 +124,85 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t *output_tx, uint32_t block_size, bool input_is_48k_stereo)
 {
     int32_t *input_signal = (int32_t *) signal_input;
+    int32_t *output_tx_int = (int32_t *) output_tx;
+
+    double input_signal_f_48k[block_size/2];
     double input_signal_f[block_size];
 
+	double _Complex c_baseband_data[block_size];
+	double _Complex c_baseband_data_filtered[block_size];
+
+    double c_passband_data_tx[block_size];
+
+    double carrier_amplitude=sqrt(2);
+
+    double passband_samp_freq=96000;
+    double passband_start_freq=24000;
+    double passband_end_freq=27000;
+
+    double intermediate_samp_freq=48000;
+    double intermediate_carrier_frequency=(passband_end_freq-passband_start_freq)/2;
+
+    double passband_samp_interval=1.0/passband_samp_freq;
+    double passband_carrier_frequency=(passband_start_freq+passband_end_freq)/2.0;
 
     if (input_is_48k_stereo)
     {
         for (uint32_t i = 0; i < block_size; i += 2)
-            input_signal_f[i] = (double) input_signal[i] / (double) 2147483647.0;
-        for (uint32_t i = 0; i < (block_size-2); i++)
-            input_signal_f[i+1] = (input_signal_f[i] + input_signal_f[i+2]) / 2;
-        input_signal_f[block_size-1] = input_signal_f[block_size-2];
+            input_signal_f_48k[i/2] = (double) input_signal[i] / (double) 2147483647.0;
+
+        rational_resampler(input_signal_f_48k,(int)((double)(block_size)*intermediate_samp_freq/passband_samp_freq),input_signal_f,(int)(passband_samp_freq/intermediate_samp_freq),INTERPOLATION);
+//        rational_resampler(input_signal_f_48k, block_size / 2, input_signal_f, 2, INTERPOLATION);
     }
     else
     {
-        for (int i = 0; i < block_size; i++)
+        for (uint32_t i = 0; i < block_size; i++)
             input_signal_f[i] = (double) input_signal[i] / (double) 2147483647.0;
     }
 
+
+    // USB tuning and filtering
     if (rx_list->mode == MODE_USB)
     {
-        // USB tuning and filtering
+
+        for(uint32_t i=0;i < block_size;i++)
+        {
+            __real__ c_baseband_data[i] = input_signal_f[i]*carrier_amplitude*cos(2*M_PI*(intermediate_carrier_frequency)*(double)i * passband_samp_interval);
+            __imag__ c_baseband_data[i] = input_signal_f[i]*carrier_amplitude*sin(2*M_PI*(intermediate_carrier_frequency)*(double)i * passband_samp_interval);
+        }
+
+        fir_filter_apply(FIR_filter, c_baseband_data,c_baseband_data_filtered, block_size);
+
+        for(uint32_t i=0;i < block_size;i++)
+        {
+            c_passband_data_tx[i] =creal(input_signal_f[i])*carrier_amplitude*cos(2*M_PI*(passband_carrier_frequency)*(double)i * passband_samp_interval);
+            c_passband_data_tx[i] +=cimag(input_signal_f[i])*carrier_amplitude*sin(2*M_PI*(passband_carrier_frequency)*(double)i * passband_samp_interval);
+        }
+
+        for(uint32_t i=0;i < block_size;i++)
+        {
+            output_tx_int[i] = (int32_t) (c_passband_data_tx[i] * 2147483647);
+        }
+
     }
     else if (rx_list->mode == MODE_LSB)
     {
         // LSB tuning and filtering
     }
 
-    // output_loopback: NULL
-    // output_speaker: NILL
-    // output_tx: USB/LSB signal, no resampling
+    memset(output_loopback, 0, block_size * (snd_pcm_format_width(format) / 8));
+    memset(output_speaker, 0, block_size * (snd_pcm_format_width(format) / 8));
+
+}
+
+void dsp_start()
+{
+    double passband_samp_freq=96000;
+    double passband_start_freq=24000;
+    double passband_end_freq=27000;
+
+    double intermediate_carrier_frequency=(passband_end_freq-passband_start_freq)/2;
+
+    FIR_filter= fir_filter_design(LPF, BLACKMAN, 100, intermediate_carrier_frequency, passband_samp_freq);
 
 }

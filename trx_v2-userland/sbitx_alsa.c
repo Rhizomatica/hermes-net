@@ -916,6 +916,8 @@ void sound_system_start()
     pthread_t radio_capture, radio_playback;
     pthread_t loop_capture, loop_playback;
 
+    dsp_start();
+
     sound_system_running = true;
 
 #if 1

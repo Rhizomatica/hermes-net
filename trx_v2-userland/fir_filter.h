@@ -19,17 +19,34 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
-#ifndef INC_INTERPOLATION_H_
-#define INC_INTERPOLATION_H_
+#ifndef INC_FIR_FILTER_H_
+#define INC_FIR_FILTER_H_
 
-#define INTERPOLATION 0
-#define DECIMATION 1
+#include <math.h>
+#include <complex.h>
+#include <stdlib.h>
+
+#define RECTANGULAR 0
+#define HANNING 1
+#define HAMMING 2
+#define BLACKMAN 3
+
+#define LPF 0
+
+#define SPECTRAL_INVERSION 0
 
 
-//
-void rational_resampler(double * in, int in_size, double * out, int rate, int interpolation_decimation);
+struct st_fir_filter_coefficients
+{
+	double* filter_coefficients;
+	int filter_nTaps;
+};
 
 
-double interpolate_linear(double  a,double a_x,double b,double b_x,double x);
+
+struct st_fir_filter_coefficients* fir_filter_design(int type, int window, double transition_bandwidth, double lpf_cut_frequency, double sampling_frequency);
+void fir_filter_apply(struct st_fir_filter_coefficients* coefficients, double _Complex* in, double _Complex* out, int nItems);
+
+
 
 #endif

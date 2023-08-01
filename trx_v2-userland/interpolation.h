@@ -26,10 +26,7 @@
 #define DECIMATION 1
 
 
-//
 void rational_resampler(double * in, int in_size, double * out, int rate, int interpolation_decimation);
-
-
 double interpolate_linear(double  a,double a_x,double b,double b_x,double x);
 
 #endif
