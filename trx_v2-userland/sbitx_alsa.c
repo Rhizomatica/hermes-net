@@ -465,6 +465,9 @@ void *radio_playback_thread(void *device_ptr)
 
         for (int j = 0; j < hw_period_size; j++)
         {
+            // 20db of gain
+            int32_t *sample = (int32_t *) &speaker[j * sample_size];
+            *sample *= 100;
             memcpy(&buffer[j*sample_size*channels], &speaker[j*sample_size], sample_size);
             memcpy(&buffer[j*sample_size*channels + sample_size], &radio[j*sample_size], sample_size);
         }

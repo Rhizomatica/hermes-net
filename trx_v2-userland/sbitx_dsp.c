@@ -234,3 +234,17 @@ void dsp_start()
     FIR_filter= fir_filter_design(LPF, BLACKMAN, 200, intermediate_carrier_frequency, passband_samp_freq);
 
 }
+
+// create tones...
+#if 0
+double sampling_frequency=48000;
+double sampling_interval=1.0/(sampling_frequency);
+double carrier_amplitude=sqrt(2);
+
+double carrier_frequency=1500;
+
+for(int i=0;i<nPoints;i++)
+{
+	data[i]= carrier_amplitude*cos(2*M_PI*carrier_frequency*(double)i * sampling_interval);
+}
+#endif
