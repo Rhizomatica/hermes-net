@@ -42,6 +42,9 @@ struct st_fir_filter_coefficients *FIR_filter;
 
 static uint32_t cw_sample = 0;
 
+#define double2int(i, d) \
+    {double t = ((d) + 6755399441055744.0); i = *((int32_t *)(&t));}
+
 double measure_signal_stregth(double *in, int nItems)
 {
 	double signal_stregth=0;
@@ -79,12 +82,6 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 //	int32_t c_intermediate_data_decimated_stereo[block_size];
 
 
-    for (uint32_t i = 0; i < block_size; i++)
-    {
-        input_signal_f[i] = (double) input_signal[i] / (double) 2147483647.0; // 2^31 - 1
-        // input_signal_f[i] = (double) input_signal[i] / (double) 200000000.0; // this is what reference sofftware does....
-    }
-
 //    if (rx_list->mode == MODE_USB)
     if (rx_list->mode == MODE_USB || rx_list->mode == MODE_LSB || rx_list->mode == MODE_CW)
     {
@@ -100,28 +97,29 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         double passband_samp_interval=1.0/passband_samp_freq;
         double passband_carrier_frequency=(passband_start_freq+passband_end_freq)/2.0;
 
-        for(uint32_t i=0;i < block_size;i++)
+        for(uint32_t i = 0; i < block_size; i++)
         {
+            input_signal_f[i] = (double) input_signal[i] / (double) 2147483647.0; // 2^31 - 1
             __real__ c_baseband_data[i] =input_signal_f[i]*carrier_amplitude*cos(2*M_PI*(passband_carrier_frequency)*(double)i * passband_samp_interval);
             __imag__ c_baseband_data[i] =input_signal_f[i]*carrier_amplitude*sin(2*M_PI*(passband_carrier_frequency)*(double)i * passband_samp_interval);
         }
 
         fir_filter_apply(FIR_filter, c_baseband_data,c_baseband_data_filtered, block_size);
 
-        for(uint32_t i=0;i<block_size;i++)
+        for(uint32_t i = 0; i < block_size; i++)
         {
-            c_intermediate_data[i] =creal(c_baseband_data_filtered[i])*carrier_amplitude*cos(2*M_PI*(intermediate_carrier_frequency)*(double)i * passband_samp_interval);
-            c_intermediate_data[i] +=cimag(c_baseband_data_filtered[i])*carrier_amplitude*sin(2*M_PI*(intermediate_carrier_frequency)*(double)i * passband_samp_interval);
+            c_intermediate_data[i] = creal(c_baseband_data_filtered[i])*carrier_amplitude*cos(2*M_PI*(intermediate_carrier_frequency)*(double)i * passband_samp_interval);
+            c_intermediate_data[i] += cimag(c_baseband_data_filtered[i])*carrier_amplitude*sin(2*M_PI*(intermediate_carrier_frequency)*(double)i * passband_samp_interval);
         }
 
 //        printf("%f dbm\n", measure_signal_stregth (c_intermediate_data, block_size));
 
-        rational_resampler(c_intermediate_data,block_size,c_intermediate_data_decimated,(int)(passband_samp_freq/intermediate_samp_freq),DECIMATION);
-
-        for(uint32_t i=0;i<block_size;i++)
+        for(uint32_t i=0; i < block_size; i++)
         {
             output_speaker_int[i] = (int32_t) (c_intermediate_data[i] * 2147483647);
         }
+
+        rational_resampler(c_intermediate_data,block_size,c_intermediate_data_decimated,(int)(passband_samp_freq/intermediate_samp_freq),DECIMATION);
 
         for(uint32_t i=0; i < (block_size / 2);i++)
         {
