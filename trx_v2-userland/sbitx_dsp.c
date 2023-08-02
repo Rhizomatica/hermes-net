@@ -166,7 +166,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     double passband_start_freq=24000;
     double passband_end_freq=27000;
 
-    double intermediate_samp_freq=48000;
+    double intermediate_samp_freq __attribute__((unused)) = 48000;
     double intermediate_carrier_frequency=(passband_end_freq-passband_start_freq)/2;
 
     double passband_samp_interval=1.0/passband_samp_freq;
@@ -177,8 +177,8 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         for (uint32_t i = 0; i < block_size; i += 2)
             input_signal_f_48k[i/2] = (double) input_signal[i] / (double) 2147483647.0;
 
-        rational_resampler(input_signal_f_48k,(int)((double)(block_size)*intermediate_samp_freq/passband_samp_freq),input_signal_f,(int)(passband_samp_freq/intermediate_samp_freq),INTERPOLATION);
-//        rational_resampler(input_signal_f_48k, block_size / 2, input_signal_f, 2, INTERPOLATION);
+        // rational_resampler(input_signal_f_48k,(int)((double)(block_size)*intermediate_samp_freq/passband_samp_freq),input_signal_f,(int)(passband_samp_freq/intermediate_samp_freq),INTERPOLATION);
+        rational_resampler(input_signal_f_48k, block_size / 2, input_signal_f, 2, INTERPOLATION);
     }
     else
     {
