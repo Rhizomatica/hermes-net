@@ -193,7 +193,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     {
         double sampling_frequency=96000;
         double sampling_interval= 1.0 / sampling_frequency;
-        double carrier_amplitude=sqrt(2);
+        double carrier_amplitude=0.15; //sqrt(2);
 
         double carrier_frequency=1500;
 
