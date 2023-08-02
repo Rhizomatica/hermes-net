@@ -337,9 +337,9 @@ void *radio_capture_thread(void *device_ptr)
         for (int j = 0; j < hw_period_size; j++)
         {
             memcpy(&radio[j*sample_size], &buffer[j * sample_size * channels], sample_size);
-            // attenuate 10db of the mic
+            // attenuate 6db of the mic
             int32_t *sample = (int32_t *) &buffer[j * sample_size * channels + sample_size];
-            *sample /= 10;
+            *sample /= 4;
             memcpy(&mic[j*sample_size], sample, sample_size);
 //            memcpy(&mic[j*sample_size], &buffer[j * sample_size * channels + sample_size], sample_size);
 
