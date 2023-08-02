@@ -848,6 +848,7 @@ void *control_thread_sbitx(void *device_ptr)
     {
         read_buffer(radio_to_dsp, buffer_radio_to_dsp, buffer_size); // mono
         read_buffer(mic_to_dsp, buffer_mic_to_dsp, buffer_size); // mono
+
         if (use_loopback)
             read_buffer(loopback_to_dsp, buffer_loop_to_dsp, buffer_size); // stereo interleaved
         else

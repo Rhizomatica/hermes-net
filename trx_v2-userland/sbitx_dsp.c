@@ -231,6 +231,6 @@ void dsp_start()
 
     double intermediate_carrier_frequency=(passband_end_freq-passband_start_freq)/2;
 
-    FIR_filter= fir_filter_design(LPF, BLACKMAN, 100, intermediate_carrier_frequency, passband_samp_freq);
+    FIR_filter= fir_filter_design(LPF, BLACKMAN, 200, intermediate_carrier_frequency, passband_samp_freq);
 
 }
