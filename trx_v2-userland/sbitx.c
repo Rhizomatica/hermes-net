@@ -66,7 +66,7 @@ static int tx_use_line = 0;
 struct rx *rx_list = NULL;
 struct rx *tx_list = NULL;
 struct filter *tx_filter;	//convolution filter
-static double tx_amp = 0.0;
+double tx_amp = 0.0;
 static double alc_level = 1.0;
 static int rx_pitch = 700; //used only to offset the lo for CW,CWR
 static int bridge_compensation = 100;

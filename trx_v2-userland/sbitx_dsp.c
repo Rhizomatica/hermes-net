@@ -35,6 +35,8 @@
 // we read the mode from here
 extern struct rx *rx_list;
 extern snd_pcm_format_t format;
+extern double tx_amp;
+
 
 struct st_fir_filter_coefficients* FIR_filter;
 
@@ -61,8 +63,8 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
     for (uint32_t i = 0; i < block_size; i++)
     {
-        input_signal_f[i] = (double) input_signal[i] / (double) 2147483647.0; // 2^31 - 1
-        // input_signal_f[i] = (double) input_signal[i] / (double) 200000000.0; // this is what reference sofftware does....
+        // input_signal_f[i] = (double) input_signal[i] / (double) 2147483647.0; // 2^31 - 1
+        input_signal_f[i] = (double) input_signal[i] / (double) 200000000.0; // this is what reference sofftware does....
     }
 
     if (rx_list->mode == MODE_USB)
@@ -179,9 +181,9 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
             c_passband_data_tx[i] +=cimag(input_signal_f[i])*carrier_amplitude*sin(2*M_PI*(passband_carrier_frequency)*(double)i * passband_samp_interval);
         }
 
-        for(uint32_t i=0;i < block_size;i++)
+        for(uint32_t i = 0;i < block_size;i++)
         {
-            output_tx_int[i] = (int32_t) (c_passband_data_tx[i] * 2147483647);
+            output_tx_int[i] = (int32_t) (c_passband_data_tx[i] * 2147483647) * tx_amp;
         }
 
     }
@@ -197,6 +199,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
 void dsp_start()
 {
+    // just USB for now
     double passband_samp_freq=96000;
     double passband_start_freq=24000;
     double passband_end_freq=27000;

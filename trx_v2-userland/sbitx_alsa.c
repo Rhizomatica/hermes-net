@@ -337,11 +337,14 @@ void *radio_capture_thread(void *device_ptr)
         for (int j = 0; j < hw_period_size; j++)
         {
             memcpy(&radio[j*sample_size], &buffer[j * sample_size * channels], sample_size);
-
+#if 0
             // attenuate 25x of the mic
             int32_t *sample = (int32_t *) &buffer[j * sample_size * channels + sample_size];
             *sample /= 25;
             memcpy(&mic[j*sample_size], sample, sample_size);
+#endif
+            memcpy(&mic[j*sample_size], &buffer[j * sample_size * channels + sample_size], sample_size);
+
         }
 
         write_buffer(radio_to_dsp, radio, buffer_size/2);
@@ -616,6 +619,7 @@ void *loop_capture_thread(void *device_ptr)
             continue;
         }
 
+#if 0
         // attenuate 30db the loopback
         for (int i = 0; i < loopback_period_size; i++)
         {
@@ -624,7 +628,7 @@ void *loop_capture_thread(void *device_ptr)
             *sample1 /= 40;
             *sample2 /= 40;
         }
-
+#endif
         write_buffer(loopback_to_dsp, buffer, buffer_size);
 
     }
@@ -742,22 +746,18 @@ void *loop_playback_thread(void *device_ptr)
             if (e == -EPIPE)
             {
                 fprintf(stdout, "overrun\n");
-
             }
-            else if (e < 0) {
-                fprintf(stderr,
-                        "error from readi: %s\n",
-                        snd_strerror(e));
+            else if (e < 0)
+            {
+                fprintf(stderr, "error from readi: %s\n", snd_strerror(e));
             }  else if (e != loopback_period_size) {
-                fprintf(stderr,
-                        "short read, read %d frames\n", e);
-
+                fprintf(stderr, "short read, read %d frames\n", e);
             }
+
             snd_pcm_prepare (loopback_play_handle);
             goto try_again_loop_play;
         }
     }
-
 
     snd_pcm_hw_params_free(hloop_params);
     free(buffer);
@@ -920,8 +920,8 @@ void sound_system_start()
 
     sound_system_running = true;
 
-#if 1
     pthread_t control_tid;
+#if 0
     pthread_create( &control_tid, NULL, control_thread, NULL);
 #else
     pthread_create( &control_tid, NULL, control_thread_sbitx, NULL);
