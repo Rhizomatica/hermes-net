@@ -231,7 +231,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
        for(uint32_t i = cw_sample; i < (block_size + cw_sample); i++)
        {
-           output_tx_int[i-cw_sample]= (int32_t) (carrier_amplitude*cos(2*M_PI*carrier_frequency*(double)i * sampling_interval)) * 2147483647;
+           output_tx_int[i-cw_sample]= (int32_t) (carrier_amplitude*cos(2*M_PI*carrier_frequency*(double)i * sampling_interval)) * 400000000; // around 20W out
        }
        cw_sample += block_size;
    }
