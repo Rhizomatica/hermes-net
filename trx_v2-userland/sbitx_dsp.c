@@ -63,11 +63,12 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
     for (uint32_t i = 0; i < block_size; i++)
     {
-        // input_signal_f[i] = (double) input_signal[i] / (double) 2147483647.0; // 2^31 - 1
-        input_signal_f[i] = (double) input_signal[i] / (double) 200000000.0; // this is what reference sofftware does....
+        input_signal_f[i] = (double) input_signal[i] / (double) 2147483647.0; // 2^31 - 1
+        // input_signal_f[i] = (double) input_signal[i] / (double) 200000000.0; // this is what reference sofftware does....
     }
 
-    if (rx_list->mode == MODE_USB)
+//    if (rx_list->mode == MODE_USB)
+    if (rx_list->mode == MODE_USB || rx_list->mode == MODE_LSB)
     {
         double carrier_amplitude=sqrt(2);
 
@@ -109,10 +110,13 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         }
         // USB tuning and filtering
     }
+
+#if 0
     else if (rx_list->mode == MODE_LSB)
     {
         // TODO: LSB tuning and filtering
     }
+#endif
 
     memset(output_tx, 0, block_size * (snd_pcm_format_width(format) / 8));
 }
@@ -164,7 +168,8 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
 
     // USB tuning and filtering
-    if (rx_list->mode == MODE_USB)
+//    if (rx_list->mode == MODE_USB)
+    if (rx_list->mode == MODE_USB || rx_list->mode == MODE_LSB)
     {
 
         for(uint32_t i=0;i < block_size;i++)
@@ -187,10 +192,12 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         }
 
     }
+#if 0
     else if (rx_list->mode == MODE_LSB)
     {
         // LSB tuning and filtering
     }
+#endif
 
     memset(output_loopback, 0, block_size * (snd_pcm_format_width(format) / 8));
     memset(output_speaker, 0, block_size * (snd_pcm_format_width(format) / 8));
