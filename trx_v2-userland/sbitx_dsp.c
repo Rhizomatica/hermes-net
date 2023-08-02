@@ -40,6 +40,8 @@ extern double tx_amp;
 
 struct st_fir_filter_coefficients *FIR_filter;
 
+static uint32_t cw_sample = 0;
+
 double measure_signal_stregth(double *in, int nItems)
 {
 	double signal_stregth=0;
@@ -84,7 +86,7 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     }
 
 //    if (rx_list->mode == MODE_USB)
-    if (rx_list->mode == MODE_USB || rx_list->mode == MODE_LSB)
+    if (rx_list->mode == MODE_USB || rx_list->mode == MODE_LSB || rx_list->mode == MODE_CW)
     {
         double carrier_amplitude=sqrt(2);
 
@@ -135,6 +137,8 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         // TODO: LSB tuning and filtering
     }
 #endif
+    if (rx_list->mode == MODE_CW)
+        cw_sample = 0;
 
     memset(output_tx, 0, block_size * (snd_pcm_format_width(format) / 8));
 }
@@ -216,6 +220,22 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         // LSB tuning and filtering
     }
 #endif
+
+   if (rx_list->mode == MODE_CW)
+   {
+       double sampling_frequency=96000;
+       double sampling_interval= 1.0 / sampling_frequency;
+       double carrier_amplitude=sqrt(2);
+
+       double carrier_frequency=1500;
+
+       for(uint32_t i = cw_sample; i < (block_size + cw_sample); i++)
+       {
+           output_tx_int[i-cw_sample]= (int32_t) (carrier_amplitude*cos(2*M_PI*carrier_frequency*(double)i * sampling_interval)) * 2147483647;
+       }
+       cw_sample += block_size;
+   }
+
 
     memset(output_loopback, 0, block_size * (snd_pcm_format_width(format) / 8));
     memset(output_speaker, 0, block_size * (snd_pcm_format_width(format) / 8));
