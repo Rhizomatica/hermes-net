@@ -585,7 +585,7 @@ void *loop_capture_thread(void *device_ptr)
     show_alsa(loopback_capture_handle, hloop_params);
     printf("==============================================================\n");
 
-    // apply sw parameters...
+    // apply sw parameters... ?
 
     int sample_size = snd_pcm_format_width(format) / 8;
     uint32_t buffer_size = loopback_period_size * sample_size * channels;
@@ -620,16 +620,15 @@ void *loop_capture_thread(void *device_ptr)
             continue;
         }
 
-#if 0
-        // attenuate 30db the loopback
+        // attenuate 10db the loopback
         for (int i = 0; i < loopback_period_size; i++)
         {
             int32_t *sample1 = (int32_t *) &buffer[i * sample_size * channels];
             int32_t *sample2 = (int32_t *) &buffer[i * sample_size * channels + sample_size];
-            *sample1 /= 40;
-            *sample2 /= 40;
+            *sample1 /= 10;
+            *sample2 /= 10;
         }
-#endif
+
         write_buffer(loopback_to_dsp, buffer, buffer_size);
 
     }
