@@ -38,7 +38,23 @@ extern snd_pcm_format_t format;
 extern double tx_amp;
 
 
-struct st_fir_filter_coefficients* FIR_filter;
+struct st_fir_filter_coefficients *FIR_filter;
+
+double measure_signal_stregth(double *in, int nItems)
+{
+	double signal_stregth=0;
+	double signal_stregth_dbm=0;
+
+	for(int i=0;i<nItems;i++)
+	{
+		signal_stregth+=pow(*(in+i),2);
+	}
+	signal_stregth/=nItems;
+
+	signal_stregth_dbm=10.0*log10((signal_stregth)/0.001);
+
+	return signal_stregth_dbm;
+}
 
 // - signal_input: 96 kHz mono from radio, get the "slice" between 24 kHz and 27 kHz (USB) or 21 kHz to 24 kHz (LSB), and bring this slice to 0 and 3 kHz
 // - out output_speaker: 96 kHz mono output for speaker
@@ -95,6 +111,8 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
             c_intermediate_data[i] =creal(c_baseband_data_filtered[i])*carrier_amplitude*cos(2*M_PI*(intermediate_carrier_frequency)*(double)i * passband_samp_interval);
             c_intermediate_data[i] +=cimag(c_baseband_data_filtered[i])*carrier_amplitude*sin(2*M_PI*(intermediate_carrier_frequency)*(double)i * passband_samp_interval);
         }
+
+//        printf("%f dbm\n", measure_signal_stregth (c_intermediate_data, block_size));
 
         rational_resampler(c_intermediate_data,block_size,c_intermediate_data_decimated,(int)(passband_samp_freq/intermediate_samp_freq),DECIMATION);
 
