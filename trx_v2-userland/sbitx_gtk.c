@@ -1,6 +1,7 @@
 /*
 The initial sync between the gui values, the core radio values, settings, et al are manually set.
 */
+#define _GNU_SOURCE
 
 #include <unistd.h>
 #include <stdio.h>
@@ -30,6 +31,7 @@ The initial sync between the gui values, the core radio values, settings, et al 
 #include <errno.h>
 #include <sys/file.h>
 #include <errno.h>
+#include <sched.h>
 #include <wiringPi.h>
 #include <wiringSerial.h>
 #include "sdr.h"
@@ -1796,6 +1798,12 @@ int main(int argc, char* argv[] )
             goto manual;
         }
     }
+
+    cpu_set_t  mask;
+    CPU_ZERO(&mask);
+    CPU_SET(3, &mask); // use just core 3 for sbitx
+    sched_setaffinity(0, sizeof(mask), &mask);
+    printf("RUNNING ON CPU Nr %d\n", sched_getcpu());
 
     fprintf(stderr, "ALSA %s\n", disable_alsa?"DISABLED":"ENABLED");
 
