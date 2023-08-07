@@ -337,9 +337,9 @@ void *radio_capture_thread(void *device_ptr)
         for (int j = 0; j < hw_period_size; j++)
         {
             memcpy(&radio[j*sample_size], &buffer[j * sample_size * channels], sample_size);
-            // attenuate 6db of the mic
+            // attenuate the mic
             int32_t *sample = (int32_t *) &buffer[j * sample_size * channels + sample_size];
-            *sample /= 4;
+            *sample /= 30;
             memcpy(&mic[j*sample_size], sample, sample_size);
 //            memcpy(&mic[j*sample_size], &buffer[j * sample_size * channels + sample_size], sample_size);
 
@@ -917,14 +917,14 @@ void sound_system_start()
     pthread_t radio_capture, radio_playback;
     pthread_t loop_capture, loop_playback;
 
-    dsp_start();
 
     sound_system_running = true;
 
     pthread_t control_tid;
-#if 0
+#if 1
     pthread_create( &control_tid, NULL, control_thread, NULL);
 #else
+    dsp_start();
     pthread_create( &control_tid, NULL, control_thread_sbitx, NULL);
 #endif
 
