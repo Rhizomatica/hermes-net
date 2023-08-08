@@ -1064,11 +1064,11 @@ void setup(){
 	vfo_init_phase_table();
     setup_oscillators();
 
-	add_rx(7000000, MODE_LSB, -3000, -50);
-	add_tx(7000000, MODE_LSB, -3000, -50);
+	add_rx(7000000, MODE_LSB, -3000, -100);
+	add_tx(7000000, MODE_LSB, -3000, -100);
 	rx_list->tuned_bin = 512;
     tx_list->tuned_bin = 512;
-	tx_init(7000000, MODE_LSB, -3000, -50);
+	tx_init(7000000, MODE_LSB, -3000, -100);
 
 	vfo_start(&tone_a, 700, 0);
 	vfo_start(&tone_b, 1900, 0);
@@ -1131,31 +1131,31 @@ void sdr_request(char *request, char *response){
 
 		if (rx_list->mode == MODE_LSB || rx_list->mode == MODE_CWR){
 			filter_tune(rx_list->filter, 
-				(1.0 * -3200)/96000.0,
-				(1.0 * -50)/96000.0 ,
+				(1.0 * -3000)/96000.0,
+				(1.0 * -100)/96000.0 ,
 				5);
 			//puts("\n\n\ntx filter ");
 			filter_tune(tx_list->filter, 
-				(1.0 * -3200)/96000.0,
-				(1.0 * -50)/96000.0 ,
+				(1.0 * -3000)/96000.0,
+				(1.0 * -100)/96000.0 ,
 				5);
 			filter_tune(tx_filter, 
-				(1.0 * -3200)/96000.0,
-				(1.0 * -50)/96000.0 ,
+				(1.0 * -3000)/96000.0,
+				(1.0 * -100)/96000.0 ,
 				5);
 		}
 		else { 
 			filter_tune(rx_list->filter, 
-				(1.0 * 50)/96000.0,
-				(1.0 * 3200)/96000.0 ,
+				(1.0 * 100)/96000.0,
+				(1.0 * 3000)/96000.0 ,
 				5);
 			filter_tune(tx_list->filter, 
-				(1.0 * 50)/96000.0,
-				(1.0 * 3200)/96000.0 ,
+				(1.0 * 100)/96000.0,
+				(1.0 * 3000)/96000.0 ,
 				5);
 			filter_tune(tx_filter, 
-				(1.0 * 50)/96000.0,
-				(1.0 * 3200)/96000.0 ,
+				(1.0 * 100)/96000.0,
+				(1.0 * 3000)/96000.0 ,
 				5);
 		}
 		
@@ -1165,9 +1165,9 @@ void sdr_request(char *request, char *response){
 	else if (!strcmp(cmd, "txmode")){
 		puts("\n\n\n\n###### tx filter #######");
 		if (!strcmp(value, "LSB") || !strcmp(value, "CWR"))
-			filter_tune(tx_filter, (1.0*-3200)/96000.0, (1.0 * -50)/96000.0, 5);
+			filter_tune(tx_filter, (1.0*-3000)/96000.0, (1.0 * -100)/96000.0, 5);
 		else
-			filter_tune(tx_filter, (1.0*50)/96000.0, (1.0*3200)/96000.0, 5);
+			filter_tune(tx_filter, (1.0*100)/96000.0, (1.0*3000)/96000.0, 5);
 	}
 	else if(!strcmp(cmd, "record")){
 		if (!strcmp(value, "off")){

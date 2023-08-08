@@ -1037,7 +1037,7 @@ void set_bandwidth(int hz){
 			break;
 		case MODE_LSB:
 		case MODE_USB:
-			low = 0;
+			low = 100;
 			high = low + hz;
 			sprintf(bw_str, "%d", high - low);
 			set_field("#bw_voice", bw_str);
@@ -1053,7 +1053,7 @@ void set_bandwidth(int hz){
 			high = 4000;
 			break;
 		default:
-			low = 0;
+			low = 100;
 			high = 3000;
 	}
 
