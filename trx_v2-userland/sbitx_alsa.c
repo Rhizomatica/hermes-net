@@ -319,7 +319,7 @@ void *radio_capture_thread(void *device_ptr)
             fprintf (stderr, "read from audio interface %s failed (%s)\n", device, snd_strerror (e));
             if (e == -EPIPE)
             {
-                fprintf(stdout, "overrun\n");
+                fprintf(stderr, "overrun\n");
             }
             else if (e < 0) {
                 fprintf(stderr,
@@ -476,7 +476,7 @@ void *radio_playback_thread(void *device_ptr)
             fprintf (stderr, "write to audio interface %s failed (%s)\n", device, snd_strerror (e));
             if (e == -EPIPE)
             {
-                fprintf(stdout, "overrun\n");
+                fprintf(stderr, "overrun\n");
 
             }
             else if (e < 0) {
@@ -603,7 +603,7 @@ void *loop_capture_thread(void *device_ptr)
             fprintf (stderr, "read from audio interface %s failed (%s)\n", device, snd_strerror (e));
             if (e == -EPIPE)
             {
-                fprintf(stdout, "overrun\n");
+                fprintf(stderr, "overrun\n");
             }
             else if (e < 0) {
                 fprintf(stderr,
@@ -743,13 +743,13 @@ void *loop_playback_thread(void *device_ptr)
             fprintf (stderr, "write to audio interface %s failed (%s)\n", device, snd_strerror (e));
             if (e == -EPIPE)
             {
-                fprintf(stdout, "overrun\n");
+                fprintf(stderr, "overrun\n");
             }
             else if (e < 0)
             {
-                fprintf(stderr, "error from readi: %s\n", snd_strerror(e));
+                fprintf(stderr, "error from writei: %s\n", snd_strerror(e));
             }  else if (e != loopback_period_size) {
-                fprintf(stderr, "short read, read %d frames\n", e);
+                fprintf(stderr, "short write, wrote %d frames\n", e);
             }
 
             snd_pcm_prepare (loopback_play_handle);
