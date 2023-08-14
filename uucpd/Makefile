@@ -21,7 +21,8 @@
 
 prefix=/usr
 CC=gcc
-CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector
+# CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector -moutline-atomics -march=native
+CFLAGS=-O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -moutline-atomics -march=native
 
 ifeq ($(IS_SBITX), 1)
 EXTRA_OBJ=../trx_v2-userland/sbitx_io.o
