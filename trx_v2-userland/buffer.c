@@ -27,6 +27,10 @@ buffer *dsp_to_speaker;
 buffer *dsp_to_loopback;
 buffer *loopback_to_dsp;
 
+inline unsigned long size_buffer(buffer *buffer)
+{
+    return ring_buffer_count_bytes(&buffer->buf);
+}
 
 inline void read_buffer(buffer *buf_in, uint8_t *buffer_out, int size) {
     void *addr;

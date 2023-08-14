@@ -776,7 +776,11 @@ void *control_thread(void *device_ptr)
     //uint32_t loop_buffer_size = loopback_period_size * sample_size;
     uint32_t loop_buffer_size = (i_need_1024_frames / 2) * sample_size * channels; // the samplerate is half, 2 ch
     uint8_t *buffer_loop_to_dsp = malloc(loop_buffer_size);
+    uint8_t *buffer_null = malloc(loop_buffer_size);
+
     // uint8_t *buffer_loop_to_dsp_upsampled = malloc(hw_buffer_size);
+
+    memset(buffer_null, 0, loop_buffer_size);
 
 
     int32_t *input_rx; int32_t *input_mic; int32_t *output_speaker; int32_t *output_tx;
@@ -788,21 +792,27 @@ void *control_thread(void *device_ptr)
     {
         read_buffer(radio_to_dsp, buffer_radio_to_dsp, hw_buffer_size);
         read_buffer(mic_to_dsp, buffer_mic_to_dsp, hw_buffer_size); // the samplerate is half
-        if (use_loopback)
-            read_buffer(loopback_to_dsp, buffer_loop_to_dsp, loop_buffer_size);
-        else
-            clear_buffer(loopback_to_dsp);
 
         if (use_loopback)
         {
-            input_rx = (int32_t *)buffer_radio_to_dsp;
-            input_mic = (int32_t *)buffer_loop_to_dsp;
+            if (size_buffer(loopback_to_dsp) >= loop_buffer_size)
+            {
+                read_buffer(loopback_to_dsp, buffer_loop_to_dsp, loop_buffer_size);
+                input_mic = (int32_t *)buffer_loop_to_dsp;
+            }
+            else
+            {
+                fprintf(stderr, "Skipping transmission frame from loopback!\n");
+                input_mic = (int32_t *)buffer_null;
+            }
         }
         else
         {
-            input_rx = (int32_t *)buffer_radio_to_dsp;
             input_mic = (int32_t *)buffer_mic_to_dsp;
+            clear_buffer(loopback_to_dsp);
         }
+
+        input_rx = (int32_t *)buffer_radio_to_dsp;
 
         sound_process(input_rx, input_mic, output_speaker, output_tx, i_need_1024_frames);
 
