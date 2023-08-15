@@ -330,19 +330,7 @@ void *radio_capture_thread(void *device_ptr)
                         "short read, read %d frames\n", e);
 
             }
-
-            if (e < 0)
-            {
-                fprintf(stderr, "calling snd_pcm_recover() on %s\n", device);
-                snd_pcm_recover(pcm_capture_handle, e, 0);
-
-            }
-            else
-            {
-                fprintf(stderr, "calling snd_pcm_prepare() on %s\n", device);
-                snd_pcm_prepare (pcm_capture_handle);
-            }
-
+            snd_pcm_prepare (pcm_capture_handle);
             continue;
         }
 
@@ -482,6 +470,7 @@ void *radio_playback_thread(void *device_ptr)
             memcpy(&buffer[j*sample_size*channels + sample_size], &radio[j*sample_size], sample_size);
         }
 
+    try_again_radio_play:
         if ((e = snd_pcm_mmap_writei(pcm_play_handle, buffer, hw_period_size)) != hw_period_size)
         {
             fprintf (stderr, "write to audio interface %s failed (%s)\n", device, snd_strerror (e));
@@ -499,20 +488,8 @@ void *radio_playback_thread(void *device_ptr)
                         "short write, wrote %d frames\n", e);
 
             }
-
-            if (e < 0)
-            {
-                fprintf(stderr, "calling snd_pcm_recover() on %s\n", device);
-                snd_pcm_recover(pcm_play_handle, e, 0);
-
-            }
-            else
-            {
-                fprintf(stderr, "calling snd_pcm_prepare() on %s\n", device);
-                snd_pcm_prepare (pcm_play_handle);
-            }
-
-            continue;
+            snd_pcm_prepare (pcm_play_handle);
+            goto try_again_radio_play;
         }
     }
 
@@ -628,25 +605,16 @@ void *loop_capture_thread(void *device_ptr)
             {
                 fprintf(stderr, "overrun\n");
             }
-            else if (e < 0)
-            {
-                fprintf(stderr, "error from readi: %s\n", snd_strerror(e));
-            }  else if (e != loopback_period_size)
-            {
-                fprintf(stderr, "short read, read %d frames\n", e);
-            }
-
-            if (e < 0)
-            {
-                fprintf(stderr, "calling snd_pcm_recover() on %s\n", device);
-                snd_pcm_recover(loopback_capture_handle, e, 0);
+            else if (e < 0) {
+                fprintf(stderr,
+                        "error from readi: %s\n",
+                        snd_strerror(e));
+            }  else if (e != loopback_period_size) {
+                fprintf(stderr,
+                        "short read, read %d frames\n", e);
 
             }
-            else
-            {
-                fprintf(stderr, "calling snd_pcm_prepare() on %s\n", device);
-                snd_pcm_prepare (loopback_capture_handle);
-            }
+            snd_pcm_prepare (loopback_capture_handle);
             continue;
         }
 
@@ -784,18 +752,7 @@ void *loop_playback_thread(void *device_ptr)
                 fprintf(stderr, "short write, wrote %d frames\n", e);
             }
 
-            if (e < 0)
-            {
-                fprintf(stderr, "calling snd_pcm_recover() on %s\n", device);
-                snd_pcm_recover(loopback_play_handle, e, 0);
-
-            }
-            else
-            {
-                fprintf(stderr, "calling snd_pcm_prepare() on %s\n", device);
-                snd_pcm_prepare (loopback_play_handle);
-            }
-
+            snd_pcm_prepare (loopback_play_handle);
             goto try_again_loop_play;
         }
     }
