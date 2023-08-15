@@ -24,6 +24,7 @@
 #include "ini.h"
 #include "buffer.h"
 #include "sbitx_alsa.h"
+#include "interpolation.h"
 
 char audio_card[32];
 static int tx_shift = 512;
@@ -594,6 +595,14 @@ void tx_process(
 {
 	int i;
 	double i_sample, q_sample;
+    static double loopback_in[512]; // n_samples / 2
+    static double input_mic_f[1024]; // n_samples
+
+    if (n_samples != 1024)
+    {
+        fprintf(stderr, "Exploding... n_samples != 1024 in tx_process\n");
+        exit(EXIT_FAILURE);
+    }
 
 	struct rx *r = tx_list;
 
@@ -617,26 +626,51 @@ void tx_process(
 	int m = 0;
 	int j = 0;
 
+    // prepare data from loopback... 48kHz stereo to 96 kHz mono
+    if (use_loopback)
+    {
+        for (i = 0; i < n_samples; i = i + 2)
+        {
+            // just left channel
+            loopback_in[i/2] = (1.0 * input_mic[i]) / 2000000000.0;
+        }
+        rational_resampler(loopback_in, n_samples / 2, input_mic_f, 2, INTERPOLATION);
+    }
+
 	//gather the samples into a time domain array
-	for (i= MAX_BINS/2; i < MAX_BINS; i++){
+	for (i = MAX_BINS/2; i < MAX_BINS; i++){
 
 		if (r->mode == MODE_2TONE)
-			i_sample = (1.0 * (vfo_read(&tone_a) 
-										+ vfo_read(&tone_b))) / 50000000000.0;
+			i_sample = (1.0 * (vfo_read(&tone_a) + vfo_read(&tone_b))) / 50000000000.0;
 		else if (r->mode == MODE_CALIBRATE)
 			i_sample = (1.0 * (vfo_read(&tone_a))) / 25000000000.0;
-		else
-		  if (r->mode == MODE_CW || r->mode == MODE_CWR || r->mode == MODE_FT8)
+		else if (r->mode == MODE_CW || r->mode == MODE_CWR || r->mode == MODE_FT8)
 		    i_sample = (1.0 * (vfo_read(&tone_a))) / 100000000000.0;
-		  else
-            i_sample = (1.0 * input_mic[j]) / 2000000000.0;
+        else
+        {
+            // for loopback we get just the left side and resample down in the code
+            if (use_loopback)
+                i_sample = input_mic_f[j];
+            else
+                i_sample = (1.0 * input_mic[j]) / 2000000000.0;
+
+        }
         //clip the overdrive to prevent damage up the processing chain, PA
 		if (r->mode == MODE_USB || r->mode == MODE_LSB){
 			if (i_sample < (-1.0 * voice_clip_level))
+            {
+                fprintf(stderr, "Clipping tx sample %f to", i_sample);
 				i_sample = -1.0 * voice_clip_level;
+                fprintf(stderr, "%f\n", i_sample);
+            }
 			else if (i_sample > voice_clip_level)
+            {
+                fprintf(stderr, "Clipping tx sample %f to ", i_sample);
 				i_sample = voice_clip_level;
+                fprintf(stderr, "%f\n", i_sample);
+            }
 		}
+
 /*
 		//to measure the voice peaks, used to measure voice_clip_level
 		if (max < i_sample)

@@ -330,7 +330,19 @@ void *radio_capture_thread(void *device_ptr)
                         "short read, read %d frames\n", e);
 
             }
-            snd_pcm_prepare (pcm_capture_handle);
+
+            if (e < 0)
+            {
+                fprintf(stderr, "calling snd_pcm_recover() on %s\n", device);
+                snd_pcm_recover(pcm_capture_handle, e, 0);
+
+            }
+            else
+            {
+                fprintf(stderr, "calling snd_pcm_prepare() on %s\n", device);
+                snd_pcm_prepare (pcm_capture_handle);
+            }
+
             continue;
         }
 
@@ -470,7 +482,6 @@ void *radio_playback_thread(void *device_ptr)
             memcpy(&buffer[j*sample_size*channels + sample_size], &radio[j*sample_size], sample_size);
         }
 
-    try_again_radio_play:
         if ((e = snd_pcm_mmap_writei(pcm_play_handle, buffer, hw_period_size)) != hw_period_size)
         {
             fprintf (stderr, "write to audio interface %s failed (%s)\n", device, snd_strerror (e));
@@ -488,8 +499,20 @@ void *radio_playback_thread(void *device_ptr)
                         "short write, wrote %d frames\n", e);
 
             }
-            snd_pcm_prepare (pcm_play_handle);
-            goto try_again_radio_play;
+
+            if (e < 0)
+            {
+                fprintf(stderr, "calling snd_pcm_recover() on %s\n", device);
+                snd_pcm_recover(pcm_play_handle, e, 0);
+
+            }
+            else
+            {
+                fprintf(stderr, "calling snd_pcm_prepare() on %s\n", device);
+                snd_pcm_prepare (pcm_play_handle);
+            }
+
+            continue;
         }
     }
 
@@ -605,16 +628,25 @@ void *loop_capture_thread(void *device_ptr)
             {
                 fprintf(stderr, "overrun\n");
             }
-            else if (e < 0) {
-                fprintf(stderr,
-                        "error from readi: %s\n",
-                        snd_strerror(e));
-            }  else if (e != loopback_period_size) {
-                fprintf(stderr,
-                        "short read, read %d frames\n", e);
+            else if (e < 0)
+            {
+                fprintf(stderr, "error from readi: %s\n", snd_strerror(e));
+            }  else if (e != loopback_period_size)
+            {
+                fprintf(stderr, "short read, read %d frames\n", e);
+            }
+
+            if (e < 0)
+            {
+                fprintf(stderr, "calling snd_pcm_recover() on %s\n", device);
+                snd_pcm_recover(loopback_capture_handle, e, 0);
 
             }
-            snd_pcm_prepare (loopback_capture_handle);
+            else
+            {
+                fprintf(stderr, "calling snd_pcm_prepare() on %s\n", device);
+                snd_pcm_prepare (loopback_capture_handle);
+            }
             continue;
         }
 
@@ -752,7 +784,18 @@ void *loop_playback_thread(void *device_ptr)
                 fprintf(stderr, "short write, wrote %d frames\n", e);
             }
 
-            snd_pcm_prepare (loopback_play_handle);
+            if (e < 0)
+            {
+                fprintf(stderr, "calling snd_pcm_recover() on %s\n", device);
+                snd_pcm_recover(loopback_play_handle, e, 0);
+
+            }
+            else
+            {
+                fprintf(stderr, "calling snd_pcm_prepare() on %s\n", device);
+                snd_pcm_prepare (loopback_play_handle);
+            }
+
             goto try_again_loop_play;
         }
     }
@@ -797,6 +840,7 @@ void *control_thread(void *device_ptr)
         {
             if (size_buffer(loopback_to_dsp) >= loop_buffer_size)
             {
+                // this 48kHz 2ch to 96kHz 1ch conversion is done in tx_process
                 read_buffer(loopback_to_dsp, buffer_loop_to_dsp, loop_buffer_size);
                 input_mic = (int32_t *)buffer_loop_to_dsp;
             }
@@ -816,9 +860,13 @@ void *control_thread(void *device_ptr)
 
         sound_process(input_rx, input_mic, output_speaker, output_tx, i_need_1024_frames);
 
-        write_buffer(dsp_to_loopback, (uint8_t *)output_speaker, hw_buffer_size);             // good ol' mono->stereo rate halving
         write_buffer(dsp_to_radio, (uint8_t *)output_tx, hw_buffer_size);
         write_buffer(dsp_to_speaker, (uint8_t *)output_speaker, hw_buffer_size);
+
+        // convert 96 kHz mono to 48 kHz stereo
+        for (int i = 0; i < i_need_1024_frames; i = i + 2)
+            output_speaker[i+1] = output_speaker[i];
+        write_buffer(dsp_to_loopback, (uint8_t *)output_speaker, hw_buffer_size);             // good ol' mono->stereo rate halving
     }
 }
 
