@@ -177,7 +177,7 @@ char*mode_name[MAX_MODES] = {
 	"DIGITAL", "2TONE" 
 };
 
-static long int tuning_step = 1000;
+static atomic_int tuning_step = 1000;
 static atomic_int tx_mode = MODE_USB;
 
 #define BAND80M	0
@@ -1303,6 +1303,17 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
     case CMD_SET_SERIAL: // SET SERIAL NUMBER
         memcpy(&serial_number, cmd, 4);
         response[0] = CMD_RESP_SET_SERIAL_ACK;
+        save_user_settings(1);
+        break;
+
+    case CMD_GET_STEPHZ: // CMD_GET_STEPHZ
+        response[0] = CMD_RESP_GET_SERIAL_ACK;
+        memcpy(response+1, &tuning_step, 4);
+      break;
+
+    case CMD_SET_STEPHZ: // CMD_SET_STEPHZ
+        memcpy(&tuning_step, cmd, 4);
+        response[0] = CMD_RESP_SET_STEPHZ_ACK;
         save_user_settings(1);
         break;
 

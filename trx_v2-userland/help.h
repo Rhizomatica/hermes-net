@@ -99,6 +99,14 @@ const char format_str[] = "* ptt_on\n"
 "  * Serial Number\n"
 "  * Resp: OK | ERROR\n\n"
 
+"* get_freqstep\n"
+"  * No Argument\n"
+"  * Resp: Frequency Step (Hz) | ERROR\n\n"
+
+"* set_freqstep\n"
+"  * Frequency Step (Hz)\n"
+"  * Resp: OK | ERROR\n\n"
+
 "* reset_protection\n"
 "  * No Argument\n"
 "  * Resp: OK | ERROR\n\n"

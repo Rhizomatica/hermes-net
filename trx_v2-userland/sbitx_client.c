@@ -252,6 +252,19 @@ int main(int argc, char *argv[])
     {
         srv_cmd[4] = CMD_GET_REF_THRESHOLD;
     }
+    else if (!strcmp(command, "get_freqstep"))
+    {
+        srv_cmd[4] = CMD_GET_STEPHZ;
+    }
+    else if (!strcmp(command, "set_freqstep"))
+    {
+        if (argument_set == false)
+            goto manual;
+
+        uint32_t stephz = (uint32_t) atoi(command_argument);
+        memcpy(srv_cmd, &stephz, 4);
+        srv_cmd[4] = CMD_SET_STEPHZ;
+    }
     else if (!strcmp(command, "set_radio_defaults"))
     {
         srv_cmd[4] = CMD_SET_RADIO_DEFAULTS;
@@ -305,6 +318,7 @@ int main(int argc, char *argv[])
     {
         uint32_t status;
         uint32_t freq;
+        uint32_t freqstep;
         uint32_t serial;
         uint16_t measure;
 
@@ -323,6 +337,7 @@ int main(int argc, char *argv[])
         case CMD_RESP_RESET_PROTECTION_ACK:
         case CMD_RESP_SET_REF_THRESHOLD_ACK:
         case CMD_RESP_SET_RADIO_DEFAULTS_ACK:
+        case CMD_RESP_SET_STEPHZ_ACK:
         case CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK:
         case CMD_RESP_GPS_CALIBRATE_ACK:
             printf("OK\n");
@@ -381,6 +396,10 @@ int main(int argc, char *argv[])
         case CMD_RESP_GET_SERIAL_ACK:
             memcpy (&serial, connector->response_service+1, 4);
             printf("%u\n", serial);
+            break;
+        case CMD_RESP_GET_STEPHZ_ACK:
+            memcpy (&freqstep, connector->response_service+1, 4);
+            printf("%u\n", freqstep);
             break;
         case CMD_RESP_GET_BFO_ACK:
             memcpy (&freq, connector->response_service+1, 4);

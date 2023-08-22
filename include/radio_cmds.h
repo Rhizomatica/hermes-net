@@ -78,8 +78,8 @@
 
 #define CMD_GET_STATUS 0xd3
 
-#define CMD_SET_FREQSTEP 0x70
-#define CMD_GET_FREQSTEP 0x71
+#define CMD_SET_STEPHZ 0x70
+#define CMD_GET_STEPHZ 0x71
 
 // radio responses
 // 5 bytes responses
@@ -96,7 +96,7 @@
 
 #define CMD_RESP_GET_STATUS_ACK 0xd4
 
-#define CMD_RESP_GET_FREQSTEP_ACK 0x72
+#define CMD_RESP_GET_STEPHZ_ACK 0x72
 
 // 1 byte responses
 #define CMD_RESP_PTT_ON_ACK 0xa9
@@ -141,7 +141,7 @@
 
 #define CMD_RESP_SET_RADIO_DEFAULTS_ACK 0xec
 
-#define CMD_RESP_SET_FREQSTEP_ACK 0x73
+#define CMD_RESP_SET_STEPHZ_ACK 0x73
 
 #define CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK 0xed
 
