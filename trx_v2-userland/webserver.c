@@ -121,6 +121,7 @@ void *webserver_thread_function(void *server){
   mg_mgr_init(&mgr);  // Initialise event manager
   mg_http_listen(&mgr, s_listen_on, fn, NULL);  // Create HTTP listener
   uint64_t counter = 0;
+  uint64_t pwr_counter = 1;
 
   for (;;)
   {
@@ -138,14 +139,14 @@ void *webserver_thread_function(void *server){
 //  .swr: Number,
 
               char buff[4096];
-              if (in_tx)
+              if (in_tx && !(pwr_counter % 2))
               {
                   sprintf(buff, "{\"type\": 0,\n");
                   sprintf(buff+strlen(buff), "\"fwd_watts\": %d,\n", fwdpower);
                   sprintf(buff+strlen(buff), "\"swr\": %d}", vswr);
                   mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT);
               }
-
+              else
 // B: caso geral
 //  .type: Number , // 1
 //  .tx: Boolean,
@@ -156,7 +157,7 @@ void *webserver_thread_function(void *server){
 //  .protection: Boolean,
 //  .freq: Number
 
-              if ((!(counter++ % 4)) || send_ws_update) // each 300 ms...
+              if ((!(counter % 4)) || send_ws_update) // each 300 ms...
               {
                   sprintf(buff, "{\"type\": 1,\n");
                   sprintf(buff+strlen(buff), "\"rx\": %s,\n", in_tx?"false":"true");
@@ -172,11 +173,14 @@ void *webserver_thread_function(void *server){
                   sprintf(buff+strlen(buff), "\"protection\": %s,\n", is_swr_protect_enabled?"true":"false");
                   sprintf(buff+strlen(buff), "\"freq\": %ld}", get_freq());
                   mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-                  send_ws_update = false;
               }
 
           }
       }
+      counter++;
+      pwr_counter++;
+      if (send_ws_update)
+          send_ws_update = false;
   }
 
 	printf("exiting webserver thread\n");
