@@ -42,8 +42,6 @@ FILE *pf_debug = NULL;
 atomic_ushort fwdpower, vswr;
 int frequency_offset = 0;
 float fft_bins[MAX_BINS]; // spectrum ampltiudes  
-int spectrum_plot[MAX_BINS];
-fftw_complex *fft_spectrum;
 void set_rx1(int frequency);
 void tr_switch(int tx_on);
 
@@ -52,7 +50,8 @@ fftw_complex *fft_in;			// holds the incoming samples in time domain (for rx as 
 fftw_complex *fft_m;			// holds previous samples for overlap and discard convolution 
 fftw_plan plan_fwd, plan_tx;
 int bfo_freq = 40035000;
-int freq_hdr = -1;
+int freq_hdr = -1; // this is the operating frequency
+int freq_hdr_phone = -1; // this is the operating frequency for phone
 
 static double volume 	= 100.0;
 static int tx_drive = 40;
@@ -123,9 +122,7 @@ void fft_init(){
 	fft_m = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS/2);
 	fft_in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
 	fft_out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
-	fft_spectrum = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
 
-	memset(fft_spectrum, 0, sizeof(fftw_complex) * MAX_BINS);
 	memset(fft_in, 0, sizeof(fftw_complex) * MAX_BINS);
 	memset(fft_out, 0, sizeof(fftw_complex) * MAX_BINS);
 	memset(fft_m, 0, sizeof(fftw_complex) * MAX_BINS/2);
@@ -139,7 +136,6 @@ void fft_reset_m_bins(){
 	memset(fft_in, 0, sizeof(fftw_complex) * MAX_BINS);
 	memset(fft_out, 0, sizeof(fftw_complex) * MAX_BINS);
 	memset(fft_m, 0, sizeof(fftw_complex) * MAX_BINS/2);
-	memset(fft_spectrum, 0, sizeof(fftw_complex) * MAX_BINS);
 	memset(tx_list->fft_time, 0, sizeof(fftw_complex) * MAX_BINS);
 	memset(tx_list->fft_freq, 0, sizeof(fftw_complex) * MAX_BINS);
 }
@@ -189,12 +185,14 @@ void set_lpf_40mhz(int frequency){
 }
 
 
+// we need two set frequencies?
 void set_rx1(int frequency){
 	if (frequency == freq_hdr)
 		return;
 
+    freq_hdr = frequency;
+
 	radio_tune_to(frequency + frequency_offset);
-	freq_hdr = frequency;
 	set_lpf_40mhz(frequency + frequency_offset);
 }
 

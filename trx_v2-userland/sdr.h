@@ -157,6 +157,10 @@ static inline double const cnrm(const complex double x){
 #define MODE_2TONE 10 
 #define MODE_CALIBRATE 11 
 
+// Operating modes...
+#define OPERATING_MODE_ANALOG 0
+#define OPERATING_MODE_DIGITAL 1
+
 struct rx {
 	long tuned_bin;					//tuned bin (this should translate to freq) 
 	short mode;							//USB/LSB/AM/FM (cw is narrow SSB, so not listed)

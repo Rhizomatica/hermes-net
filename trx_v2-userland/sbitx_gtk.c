@@ -179,6 +179,7 @@ char*mode_name[MAX_MODES] = {
 
 static atomic_int tuning_step = 1000;
 static atomic_int tx_mode = MODE_USB;
+static _Atomic uint16_t operating_mode = OPERATING_MODE_DIGITAL;
 
 #define BAND80M	0
 #define BAND40M	1
@@ -1231,7 +1232,6 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         send_ws_update = true;
         break;
 
-
     case CMD_GET_PROTECTION_STATUS: // GET PROTECTION STATUS
         if (is_swr_protect_enabled)
             response[0] = CMD_RESP_GET_PROTECTION_ON;
@@ -1317,16 +1317,76 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         save_user_settings(1);
         break;
 
-    case CMD_SET_REF_THRESHOLD: // SET REF THRESHOLD
+    case CMD_SET_REF_THRESHOLD: // CMD_SET_REF_THRESHOLD
         memcpy(&reflected_threshold, cmd, 2);
         response[0] = CMD_RESP_SET_REF_THRESHOLD_ACK;
         save_user_settings(1);
         break;
 
-    case CMD_GET_REF_THRESHOLD: // GET REF THRESHOLD
+    case CMD_GET_REF_THRESHOLD: // CMD_GET_REF_THRESHOLD
         response[0] = CMD_RESP_GET_REF_THRESHOLD_ACK;
         memcpy(response+1, &reflected_threshold, 2);
         break;
+
+#if 0
+    case CMD_GET_OPERATING_MODE: // GET_OPERATING_MODE
+        response[0] = CMD_RESP_GET_OPERATING_MODE_ACK;
+        memcpy(response+1, &operating_mode, 2);
+        break;
+
+    case CMD_SET_OPERATING_MODE: // SET_OPERATING_MODE
+        memcpy(&operating_mode, cmd, 2);
+        response[0] = CMD_RESP_SET_OPERATING_MODE_ACK;
+        save_user_settings(1);
+        break;
+
+    case CMD_GET_VOLUME: // GET_VOLUME
+        response[0] = CMD_RESP_GET_VOLUME_ACK;
+        memcpy(response+1, &rx_vol, 4);
+        break;
+
+    case CMD_SET_VOLUME: // SET_VOLUME
+        memcpy(&rx_vol, cmd, 2);
+        if (rx_vol < 0) rx_vol = 0; if (rx_vol > 100) rx_vol = 100;
+        sprintf(command, "%d", rx_vol);
+        set_field("r1:volume", command);
+        response[0] = CMD_RESP_SET_VOLUME_ACK;
+        save_user_settings(1);
+        break;
+
+    case CMD_GET_FREQ_PHONE: // GET FREQUENCY
+        response[0] = CMD_RESP_GET_FREQ_PHONE_ACK;
+        memcpy(response+1, &freq_hdr_phone, 4);
+        break;
+
+    case CMD_SET_FREQ_PHONE: // SET FREQUENCY
+//        memcpy(&frequency, cmd, 4);
+
+//        sprintf(command, "r1:freq=%u", frequency);
+//        do_cmd(command);
+
+//        sprintf(command, "%u", frequency);
+//        set_field("r1:freq", command);
+
+        response[0] = CMD_RESP_SET_FREQ_PHONE_ACK;
+        save_user_settings(1);
+        break;
+
+
+#endif
+
+        // tx_drive (a multiplier of the samples)
+        // tx_gain: "Capture" alsa for tx
+        // rx_vol:  "Master" alsa
+        // rx_gain: Capture alsa for rx
+
+        // volume stuff, 0 to 100 (alsa level)
+// GET_VOLUME // r1:volume // rx_vol
+// SET_VOLUME // r1:volume //
+
+        // 2 operating modes: Analog (phone) / Digital (data)
+// GET_OPERATING_MODE
+// SET_OPERATION_MODE
 
     case CMD_GPS_CALIBRATE: // CMD_GPS_CALIBRATE
         response[0] = CMD_RESP_GPS_NOT_PRESENT;
@@ -1675,17 +1735,6 @@ void cmd_exec(char *cmd){
 	else if (!strcmp(exec, "grid")){	
 		set_field("#mygrid", args);
 		// sprintf(response, "\n[Your grid is set to %s]\n", get_field("#mygrid")->value);
-	}
-	else if (!strcmp(exec, "exchange")){
-		set_field("#contest_serial", "0");
-		set_field("#sent_exchange", "");
-
-		if (strlen(args)){
-			set_field("#sent_exchange", args);
-			if (atoi(args))
-				set_field("#contest_serial", args);
-		}
-
 	}
 	else if(!strcmp(exec, "freq") || !strcmp(exec, "f")){
 		long freq = atol(args);
