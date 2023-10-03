@@ -430,6 +430,10 @@ int main(int argc, char *argv[])
             memcpy (&freqstep, connector->response_service+1, 4);
             printf("%u\n", freqstep);
             break;
+        case CMD_RESP_GET_VOLUME_ACK:
+            memcpy (&status, connector->response_service+1, 4);
+            printf("%u\n", status);
+            break;
         case CMD_RESP_GET_TONE_ACK:
             memcpy (&tone, connector->response_service+1, 1);
             printf("%hhu\n", tone);
