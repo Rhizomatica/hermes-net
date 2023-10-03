@@ -21,7 +21,7 @@
 CC=gcc
 prefix=/usr
 # CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector
-CFLAGS=`pkg-config --cflags gtk+-3.0` -O3 -funroll-loops -march=native -Wall -Wno-deprecated-declarations -std=gnu11 -pthread -DMG_ENABLE_OPENSSL -DMG_ARCH=1
+CFLAGS=`pkg-config --cflags gtk+-3.0` -O3 -funroll-loops -march=native -moutline-atomics -Wall -Wno-deprecated-declarations -std=gnu11 -pthread -DMG_ENABLE_OPENSSL -DMG_ARCH=1
 LDFLAGS=`pkg-config --libs glib-2.0` -lwiringPi -lasound -lm -lfftw3 -lfftw3f -pthread -lssl -lcrypto -li2c
 
 all: sbitx_controller sbitx_client
