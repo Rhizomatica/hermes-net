@@ -177,6 +177,7 @@ char*mode_name[MAX_MODES] = {
 	"DIGITAL", "2TONE" 
 };
 
+_Atomic uint8_t tone_generation = 0;
 static atomic_int tuning_step = 1000;
 static atomic_int tx_mode = MODE_USB;
 static _Atomic uint16_t operating_mode = OPERATING_MODE_DIGITAL;
@@ -236,6 +237,8 @@ extern atomic_ushort fwdpower, vswr;
 extern int bfo_freq;
 extern int frequency_offset;
 extern atomic_bool send_ws_update;
+
+extern int rx_vol;
 
 extern void read_hw_ini();
 extern void save_hw_settings();
@@ -1328,6 +1331,30 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         memcpy(response+1, &reflected_threshold, 2);
         break;
 
+    case CMD_GET_VOLUME: // GET_VOLUME
+        response[0] = CMD_RESP_GET_VOLUME_ACK;
+        memcpy(response+1, &rx_vol, 4);
+        break;
+
+    case CMD_SET_VOLUME: // SET_VOLUME
+        memcpy(&rx_vol, cmd, 4);
+        if (rx_vol < 0) rx_vol = 0; if (rx_vol > 100) rx_vol = 100;
+        sprintf(command, "%d", rx_vol);
+        set_field("r1:volume", command);
+        response[0] = CMD_RESP_SET_VOLUME_ACK;
+        save_user_settings(1);
+        break;
+
+    case CMD_GET_TONE: // GET_TONE
+        response[0] = CMD_RESP_GET_TONE_ACK;
+        memcpy(response+1, &tone_generation, 1);
+        break;
+
+    case CMD_SET_TONE: // SET_TONE
+        memcpy(&tone_generation, cmd, 1);
+        response[0] = CMD_RESP_SET_TONE_ACK;
+        break;
+
 #if 0
     case CMD_GET_OPERATING_MODE: // GET_OPERATING_MODE
         response[0] = CMD_RESP_GET_OPERATING_MODE_ACK;
@@ -1337,20 +1364,6 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
     case CMD_SET_OPERATING_MODE: // SET_OPERATING_MODE
         memcpy(&operating_mode, cmd, 2);
         response[0] = CMD_RESP_SET_OPERATING_MODE_ACK;
-        save_user_settings(1);
-        break;
-
-    case CMD_GET_VOLUME: // GET_VOLUME
-        response[0] = CMD_RESP_GET_VOLUME_ACK;
-        memcpy(response+1, &rx_vol, 4);
-        break;
-
-    case CMD_SET_VOLUME: // SET_VOLUME
-        memcpy(&rx_vol, cmd, 2);
-        if (rx_vol < 0) rx_vol = 0; if (rx_vol > 100) rx_vol = 100;
-        sprintf(command, "%d", rx_vol);
-        set_field("r1:volume", command);
-        response[0] = CMD_RESP_SET_VOLUME_ACK;
         save_user_settings(1);
         break;
 

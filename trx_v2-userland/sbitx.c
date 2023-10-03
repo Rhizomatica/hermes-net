@@ -56,7 +56,7 @@ int freq_hdr_phone = -1; // this is the operating frequency for phone
 static double volume 	= 100.0;
 static int tx_drive = 40;
 static int rx_gain = 100;
-static int rx_vol = 100;
+int rx_vol = 100;
 static int tx_gain = 100;
 static int tx_compress = 0;
 static atomic_int in_tx = 0;
@@ -81,7 +81,7 @@ int32_t modulation_buff[MAX_BINS];
 extern uint16_t reflected_threshold; // vswr * 10
 extern bool is_swr_protect_enabled;
 extern bool disable_alsa;
-
+extern uint8_t tone_generation;
 
 /* the power gain of the tx varies widely from 
 band to band. these data structures help in flattening 
@@ -642,7 +642,7 @@ void tx_process(
 			i_sample = (1.0 * (vfo_read(&tone_a) + vfo_read(&tone_b))) / 50000000000.0;
 		else if (r->mode == MODE_CALIBRATE)
 			i_sample = (1.0 * (vfo_read(&tone_a))) / 25000000000.0;
-		else if (r->mode == MODE_CW || r->mode == MODE_CWR || r->mode == MODE_FT8)
+		else if (r->mode == MODE_CW || r->mode == MODE_CWR || r->mode == MODE_FT8 || tone_generation)
 		    i_sample = (1.0 * (vfo_read(&tone_a))) / 100000000000.0;
         else
         {

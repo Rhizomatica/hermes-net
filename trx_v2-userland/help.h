@@ -107,6 +107,23 @@ const char format_str[] = "* ptt_on\n"
 "  * Frequency Step (Hz)\n"
 "  * Resp: OK | ERROR\n\n"
 
+"* get_volume\n"
+"  * No Argument\n"
+"  * Resp: Volume (0-100) | ERROR\n\n"
+
+"* set_volume\n"
+"  * Volume (0-100)\n"
+"  * Resp: OK | ERROR\n\n"
+
+"* get_tone\n"
+"  * No Argument\n"
+"  * Resp: 0 (disabled) | 1 (enabled) | ERROR\n\n"
+
+"* set_tone\n"
+"  * Set transmit tone (0 to disable, 1 to enable)\n"
+"  * Resp: OK | ERROR\n\n"
+
+
 "* reset_protection\n"
 "  * No Argument\n"
 "  * Resp: OK | ERROR\n\n"

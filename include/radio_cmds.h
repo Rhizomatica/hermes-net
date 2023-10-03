@@ -81,6 +81,12 @@
 #define CMD_SET_STEPHZ 0x70
 #define CMD_GET_STEPHZ 0x71
 
+#define CMD_SET_VOLUME 0x60
+#define CMD_GET_VOLUME 0x61
+
+#define CMD_SET_TONE 0x64
+#define CMD_GET_TONE 0x65
+
 // radio responses
 // 5 bytes responses
 #define CMD_RESP_GET_FREQ_ACK 0xa3
@@ -97,6 +103,10 @@
 #define CMD_RESP_GET_STATUS_ACK 0xd4
 
 #define CMD_RESP_GET_STEPHZ_ACK 0x72
+
+#define CMD_RESP_GET_VOLUME_ACK 0x62
+
+#define CMD_RESP_GET_TONE_ACK 0x66
 
 // 1 byte responses
 #define CMD_RESP_PTT_ON_ACK 0xa9
@@ -142,6 +152,10 @@
 #define CMD_RESP_SET_RADIO_DEFAULTS_ACK 0xec
 
 #define CMD_RESP_SET_STEPHZ_ACK 0x73
+
+#define CMD_RESP_SET_VOLUME_ACK 0x63
+
+#define CMD_RESP_SET_TONE_ACK 0x67
 
 #define CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK 0xed
 
