@@ -16,7 +16,7 @@ static char s_web_root[1000];
 static char session_cookie[100];
 struct mg_mgr mgr;  // Event manager
 
-
+extern int rx_vol;
 extern atomic_int in_tx;
 extern atomic_ushort fwdpower, vswr;
 extern atomic_bool is_swr_protect_enabled;
@@ -171,7 +171,9 @@ void *webserver_thread_function(void *server){
                   else if (rx_list->mode == MODE_CW)
                       sprintf(buff+strlen(buff), "\"mode\": \"CW\",\n");
                   sprintf(buff+strlen(buff), "\"protection\": %s,\n", is_swr_protect_enabled?"true":"false");
+                  sprintf(buff+strlen(buff), "\"volume\": %d,\n", rx_vol);
                   sprintf(buff+strlen(buff), "\"freq\": %ld}", get_freq());
+
                   mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
               }
 
