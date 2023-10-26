@@ -1187,6 +1187,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
 
         sprintf(command, "%u", frequency);
         set_field("r1:freq", command);
+        set_field("#vfo_a_freq", command);
 
         response[0] = CMD_RESP_SET_FREQ_ACK;
         save_user_settings(1);
@@ -1464,6 +1465,7 @@ gboolean ui_tick(gpointer gook)
         freq -= tuning_step;
         sprintf(command, "%u", freq);
         set_field("r1:freq", command);
+        set_field("#vfo_a_freq", command);
         dirty = true;
 	}
 	while (tuning_ticks < 0){
@@ -1471,6 +1473,7 @@ gboolean ui_tick(gpointer gook)
         freq += tuning_step;
         sprintf(command, "%u", freq);
         set_field("r1:freq", command);
+        set_field("#vfo_a_freq", command);
         dirty = true;
 	}
     // check the volume knob
@@ -1892,22 +1895,17 @@ int main(int argc, char* argv[] )
     // the webserver / websocket
     webserver_start();
 
-
-	//set the radio to some decent defaults
-	do_cmd("r1:freq=7100000");
-	do_cmd("r1:mode=LSB");	
-	do_cmd("#step=1000");	
-	strcpy(vfo_a_mode, "USB");
-	strcpy(vfo_b_mode, "LSB");
-
     // this is a constant multiplier to the tx level
 	set_volume(20000000);
 
     load_user_settings();
-	//now set the frequency of operation and more to vfo_a
-    //sprintf(buff, "%d", vfo_a_freq);
+
     set_field("r1:freq", get_field("#vfo_a_freq")->value);
-	settings_updated = 0;
+    char cmd[512];
+    sprintf(cmd, "r1:freq=%u", get_field("#vfo_a_freq")->value);
+    do_cmd(cmd);
+
+    settings_updated = 0;
 
     sbitx_controller();
 
