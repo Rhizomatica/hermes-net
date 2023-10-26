@@ -84,11 +84,11 @@ fi
 if [ $lang = "fr" ] && [ $type = "gui" ]; then
   message="Votre email avec destination(s) : ${to} envoyé à ${local_time} a été annulé par \n\nl'administrateur.Ceci est un message automatique du système HERMES !"
   subject="Email annulé par l'utilisateur administrateur"
-elif [ $lang = "pt" ] && [ $type = "size_limit" ]; then
+elif [ $lang = "fr" ] && [ $type = "size_limit" ]; then
   message="Votre email avec destination(s) : ${to} envoyé à ${local_time} a été annulé parce qu'il dépasse la taille limite par email. Ceci est un message automatique du système HERMES !"
   subject="Email annulé par le système"
-elif [ $lang = "pt" ] && [ $type = "queue_full" ]; then
-  message="Votre email avec destination(s) : ${to} envoyé à ${heure_locale} a été annulé parce que la liste de transmission dépasse la taille limite. Ceci est un message automatique du système HERMES !"
+elif [ $lang = "fr" ] && [ $type = "queue_full" ]; then
+  message="Votre email avec destination(s) : ${to} envoyé à ${local_time} a été annulé parce que la liste de transmission dépasse la taille limite. Ceci est un message automatique du système HERMES !"
   subject="Email annulé par le système"
 fi
 
