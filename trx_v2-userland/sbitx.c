@@ -653,6 +653,9 @@ void tx_process(
                 i_sample = (1.0 * input_mic[j]) / 2000000000.0;
 
         }
+
+// is that the fprintf destroing it all?
+#if 0
         //clip the overdrive to prevent damage up the processing chain, PA
 		if (r->mode == MODE_USB || r->mode == MODE_LSB){
 			if (i_sample < (-1.0 * voice_clip_level))
@@ -668,7 +671,7 @@ void tx_process(
                 fprintf(stderr, "%f\n", i_sample);
             }
 		}
-
+#endif
 /*
 		//to measure the voice peaks, used to measure voice_clip_level
 		if (max < i_sample)
