@@ -1902,7 +1902,7 @@ int main(int argc, char* argv[] )
 
     set_field("r1:freq", get_field("#vfo_a_freq")->value);
     char cmd[512];
-    sprintf(cmd, "r1:freq=%u", get_field("#vfo_a_freq")->value);
+    sprintf(cmd, "r1:freq=%s", get_field("#vfo_a_freq")->value);
     do_cmd(cmd);
 
     settings_updated = 0;
