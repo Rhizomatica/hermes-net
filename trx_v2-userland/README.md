@@ -3,7 +3,14 @@
 This repository contains the userland utils for the sBitx v2
 radio for the HERMES system, which contains all the sBitx's control
 code, and also the audio I/O management, which address the radio I/O
-and loopback devices I/O.
+and loopback devices I/O. Code compiles and provides two executables: sbitx_controller, 
+a daemon which talks to the radio I/O and does the audio DSP, and sbitx_client, which
+provides radio control over the command line. A shared memory interface is also provided,
+and a WebSocket streaming with radio parameters is also included (ps: edit webserver.c and 
+add the appropriate TLS certificate and paths to mg_tls_opts struct) are also included.
+
+Configuration files are installed in "/etc/sbitx", and follow Ashhar's original format, named
+user_settings.ini and hw_settings.ini.
 
 ## Compile And Install
 
@@ -12,7 +19,7 @@ To compile the project, run "make", and to install, run "make install".
 
 ## Userland Details
 
-CW mode just generates a tone. GPS-based calibration is not supported by the radio (as it does not need).
+CW mode just generates a tone. GPS-based calibration is not supported by the radio (as it does not need for PLL stability).
 This code uses kernel I2C interface, so enable it using the appropriate sBitx pinout and place this to
 /boot/config.txt:
 
@@ -179,6 +186,7 @@ by the argument type and possible responses.
 
 ## sbitx_controller commands
 
+Sbitx_controller should be run as a daemon.
 The "-a" parameter disables all ALSA code, and "-h" shows the help.
 
 Example:
