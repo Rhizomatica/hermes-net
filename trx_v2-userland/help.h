@@ -69,11 +69,11 @@ const char format_str[] = "* ptt_on\n"
 
 "* get_fwd\n"
 "  * No Argument\n"
-"  * Resp: Power | ERROR\n\n"
+"  * Resp: Power (* 10 W) | ERROR\n\n"
 
 "* get_ref\n"
 "  * No Argument\n"
-"  * Resp: Power | ERROR\n\n"
+"  * Resp: SWR (* 10) | ERROR\n\n"
 
 "* get_led_status\n"
 "  * No Argument\n"

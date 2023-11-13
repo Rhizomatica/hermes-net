@@ -104,11 +104,11 @@ by the argument type and possible responses.
 
 * get_fwd
   * No Argument
-  * Resp: Power (* 10) | ERROR
+  * Resp: Power (* 10 W) | ERROR
 
 * get_ref
-  * No Argument (swr * 10)
-  * Resp: Power | ERROR
+  * No Argument
+  * Resp: SWR (* 10) | ERROR
 
 * set_tone
   * Set transmit tone (0 to disable, 1 to enable)
