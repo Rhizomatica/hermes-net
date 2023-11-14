@@ -1,0 +1,27 @@
+#!/bin/sh
+echo -n "freq "
+sbitx_client -c get_frequency
+echo -n "mode "
+sbitx_client -c get_mode
+echo -n "txrx "
+sbitx_client -c get_txrx_status
+echo -n "protection "
+sbitx_client -c get_protection_status
+echo -n "swr_threshold "
+sbitx_client -c get_ref_threshold
+echo -n "forward "
+sbitx_client -c get_fwd
+echo -n "reflected "
+sbitx_client -c get_ref
+echo -n "sys_led "
+sbitx_client -c get_led_status
+echo -n "connected_status "
+sbitx_client -c get_connected_status
+echo -n "tone "
+sbitx_client -c get_tone
+echo -n "volume "
+sbitx_client -c get_volume
+echo -n "frequency_step"
+sbitx_client -c get_freqstep
+echo -n "serial "
+sbitx_client -c get_serial
