@@ -21,7 +21,7 @@ echo -n "tone "
 sbitx_client -c get_tone
 echo -n "volume "
 sbitx_client -c get_volume
-echo -n "frequency_step"
+echo -n "frequency_step "
 sbitx_client -c get_freqstep
 echo -n "serial "
 sbitx_client -c get_serial
