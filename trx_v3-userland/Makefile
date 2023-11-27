@@ -1,17 +1,20 @@
 CC=gcc
-CFLAGS=-g -Wall -std=gnu11
-LDFLAGS=-lwiringPi -li2c
+CFLAGS=-g -Wall -std=gnu11 -I/usr/include/iniparser
+LDFLAGS=-lwiringPi -li2c -liniparser
 
 .PHONY: clean
 
 all: sbitx_controller
 
-sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o radio.o
-	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o radio.o $(LDFLAGS)
+sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o cfg_utils.o radio.o
+	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o cfg_utils.o radio.o $(LDFLAGS)
 
 radio.o: radio.c
 	$(CC) -c $(CFLAGS) radio.c -o radio.o
 
+
+cfg_utils.o: cfg_utils.c cfg_utils.h
+	$(CC) -c $(CFLAGS) cfg_utils.c -o cfg_utils.o
 
 sbitx_gpio.o: sbitx_gpio.c sbitx_gpio.h
 	$(CC) -c $(CFLAGS) sbitx_gpio.c -o sbitx_gpio.o

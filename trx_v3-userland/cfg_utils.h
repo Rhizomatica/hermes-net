@@ -28,7 +28,7 @@
 #include "sbitx_core.h"
 
 // returns true if read successful
-bool read_config(radio *radio_h, radio_profile *radio_profiles);
+bool read_config(radio *radio_h, radio_profile *radio_profiles, char *ini_name);
 
 //
 bool write_config(radio *radio_h, radio_profile *radio_profiles);
