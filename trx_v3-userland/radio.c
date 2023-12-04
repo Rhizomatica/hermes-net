@@ -27,6 +27,7 @@
 #include <signal.h>
 
 #include "sbitx_core.h"
+#include "cfg_utils.h"
 
 _Atomic bool shutdown = false;
 
@@ -50,7 +51,9 @@ int main(int argc, char* argv[])
 
 
     memset(&radio_h, 0, sizeof(radio));
-    // read the config file
+    // read_config(&radio_h, "conf/hw_settings_v3.ini");
+    read_config_core(&radio_h, "teste.ini");
+
 
 // //    strcpy(radio_h->i2c_device, "/dev/i2c-22");
 // //    radio_h->bfo_frequency = 40035000;
@@ -62,10 +65,9 @@ int main(int argc, char* argv[])
 
 
     // set rt_prio here?
-    while(1)
+    while(!shutdown)
     {
-
-
+        sleep(1);
     }
     
     hw_shutdown(&radio_h);

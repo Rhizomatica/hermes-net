@@ -73,6 +73,9 @@
 /* Maximum number of radio profiles */
 #define MAX_RADIO_PROFILES 4
 
+/* Maximum number of calibration bands */
+#define MAX_CAL_BANDS 16
+
 //encoder state variables
 typedef struct
 {
@@ -81,6 +84,12 @@ typedef struct
 	int prev_state;
 	int history;
 } encoder;
+
+typedef struct {
+	int f_start;
+	int f_stop;
+	double scale;
+} power_settings;
 
 typedef struct {
 
@@ -124,42 +133,45 @@ typedef struct
     pthread_mutex_t i2c_mutex;
 
     // Radio status
-    uint32_t bfo_frequency;
-    bool txrx_state; // IN_RX or IN_TX
+    _Atomic uint32_t bfo_frequency;
+    _Atomic bool txrx_state; // IN_RX or IN_TX
 
     // front panel controls and status
     encoder enc_a;
     encoder enc_b;
 
-    int32_t volume_ticks;
-    int32_t tuning_ticks;
+    _Atomic int32_t volume_ticks;
+    _Atomic int32_t tuning_ticks;
 
-    uint32_t knob_a_pressed;
-    uint32_t knob_b_pressed;
+    _Atomic uint32_t knob_a_pressed;
+    _Atomic uint32_t knob_b_pressed;
 
-    bool key_down; // this is the ptt button
-    bool dash_down;
+    _Atomic bool key_down; // this is the ptt button
+    _Atomic bool dash_down;
 
     // raw values from read from the ATTiny 10bit ADC over I2C
-    uint32_t fwd_power;
-    uint32_t ref_power;
+    _Atomic uint32_t fwd_power;
+    _Atomic uint32_t ref_power;
 
-    uint32_t bridge_compensation;
+    _Atomic uint32_t bridge_compensation;
 
+    // "used once" variables... dont need to be atomic
     bool enable_websocket;
     bool enable_shm_control; // this is needed for sbitx_client
 
     // some informational fields
     uint32_t serial_number;
-    bool system_is_connected;  // VARA connection status
-    bool system_is_ok;  // means uucp is up and running
+    _Atomic bool system_is_connected;  // VARA connection status
+    _Atomic bool system_is_ok;  // means uucp is up and running
+
+    power_settings band_power[MAX_CAL_BANDS];
 
     // profile variables
-    uint32_t profile_active_idx;
-    uint32_t profile_timeout; // set to 0 to disable return to "default" profile timeout, or set to the number of seconds for going to the default in case of idle (or what?)
-    uint32_t profile_default_idx;
+    _Atomic uint32_t profile_active_idx;
+    _Atomic uint32_t profile_timeout; // set to 0 to disable return to "default" profile timeout, or set to the number of seconds for going to the default in case of idle (or what?)
+    _Atomic uint32_t profile_default_idx;
     // last profile index
-    uint32_t profiles_last_idx;
+    _Atomic uint32_t profiles_last_idx;
     radio_profile profiles[MAX_RADIO_PROFILES];
 } radio;
 
@@ -169,6 +181,7 @@ void hw_init(radio *radio_h);
 void hw_shutdown(radio *radio_h);
 
 void set_frequency(radio *radio_h, uint32_t frequency);
+void set_bfo(radio *radio_h, uint32_t frequency);
 void tr_switch(radio *radio_h, bool txrx_state);
 
 // disconnect all LPFs

@@ -114,6 +114,13 @@ void set_frequency(radio *radio_h, uint32_t frequency)
     si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency);
 }
 
+void set_bfo(radio *radio_h, uint32_t frequency)
+{
+    radio_h->bfo_frequency = frequency;
+    si5351bx_setfreq(1, radio_h->bfo_frequency);
+}
+
+
 void lpf_off(radio *radio_h)
 {
     digitalWrite(LPF_A, LOW);

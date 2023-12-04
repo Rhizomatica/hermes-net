@@ -26,7 +26,7 @@
 
 
 // returns true if read successful
-bool read_config(radio *radio_h, radio_profile *radio_profiles, char *ini_name)
+bool read_config_core(radio *radio_h, char *ini_name)
 {
     dictionary  *   ini ;
 
@@ -39,43 +39,57 @@ bool read_config(radio *radio_h, radio_profile *radio_profiles, char *ini_name)
     ini = iniparser_load(ini_name);
     if (ini==NULL) {
         fprintf(stderr, "cannot parse file: %s\n", ini_name);
-        return -1 ;
+        return false;
     }
     iniparser_dump(ini, stderr);
 
-    /* Get pizza attributes */
-    printf("Pizza:\n");
 
-    b = iniparser_getboolean(ini, "pizza:ham", -1);
-    printf("Ham:       [%d]\n", b);
-    b = iniparser_getboolean(ini, "pizza:mushrooms", -1);
-    printf("Mushrooms: [%d]\n", b);
-    b = iniparser_getboolean(ini, "pizza:capres", -1);
-    printf("Capres:    [%d]\n", b);
-    b = iniparser_getboolean(ini, "pizza:cheese", -1);
-    printf("Cheese:    [%d]\n", b);
+    i = iniparser_getint(ini, ":bfo", 40035000);
+    printf("BFO:      [%d]\n", i);
+    radio_h->bfo_frequency = (uint32_t) i;
 
-    /* Get wine attributes */
-    printf("Wine:\n");
-    s = iniparser_getstring(ini, "wine:grape", NULL);
-    printf("Grape:     [%s]\n", s ? s : "UNDEF");
+    i = iniparser_getint(ini, ":bridge_compensation", 100);
+    printf("Bridge Compensation:      [%d]\n", i);
+    radio_h->bridge_compensation = (uint32_t) i;
 
-    i = iniparser_getint(ini, "wine:year", -1);
-    printf("Year:      [%d]\n", i);
+    i = iniparser_getint(ini, ":serial_number", -1);
+    printf("Serial Number:      [%d]\n", i);
+    radio_h->serial_number = (uint32_t) i;
 
-    s = iniparser_getstring(ini, "wine:country", NULL);
-    printf("Country:   [%s]\n", s ? s : "UNDEF");
+    b = iniparser_getboolean(ini, ":enable_websocket", 0);
+    printf("Enable Websocket:       [%d]\n", b);
+    radio_h->enable_websocket = (bool) b;
 
-    d = iniparser_getdouble(ini, "wine:alcohol", -1.0);
-    printf("Alcohol:   [%g]\n", d);
+    b = iniparser_getboolean(ini, ":enable_shm_control", 0);
+    printf("Enable Shared Memory Control Interface:       [%d]\n", b);
+    radio_h->enable_shm_control = (bool) b;
+
+    s = iniparser_getstring(ini, ":i2c_dev", NULL);
+    printf("I2C device:     [%s]\n", s ? s : "UNDEF");
+    if (s)
+        strcpy(radio_h->i2c_device, s);
+
+    i = iniparser_getnsec(ini);
+    printf("Number of Sections:     [%d]\n", i);
+
+    for (int k = 0; k < i; k++)
+    {
+        char band_name[16];
+        sprintf(band_name, "tx_band%d", k);
+        if (iniparser_find_entry(ini, band_name))
+            printf("Section exists:     [%s]\n", band_name);
+    }
 
     iniparser_freedict(ini);
 
+    return true;
+
 }
 //
-bool write_config(radio *radio_h, radio_profile *radio_profiles)
+bool write_config(radio *radio_h, char *ini_name)
 {
 
 
+    return true;
 
 }
