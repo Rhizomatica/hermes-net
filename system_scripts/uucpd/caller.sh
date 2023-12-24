@@ -9,7 +9,10 @@ DELAY_MAINLOOP=60
 # central station email server uucp address
 EMAIL_SERVER="gw"
 
-#LATEST_SERVER_CALL_TIME=$(date -u +%s)
+# email server delay between calls
+EMAIL_SERVER_DELAY=315
+TIME_TO_RUN=$(date -u +%s)
+LATEST_SERVER_CALL_TIME=0
 #TIME_TO_RUN=$(( ${LATEST_SERVER_CALL_TIME} + ${DELAY_MAINLOOP} ))
 
 while true
@@ -17,13 +20,13 @@ do
     timers_start=($(curl -s https://localhost/api/caller -k | jq --raw-output '.[] | select( .enable | contains(1)) | .starttime ' 2> /dev/null))
     timers_stop=($(curl -s https://localhost/api/caller -k | jq --raw-output '.[] | select( .enable | contains(1)) | .stoptime ' 2> /dev/null))
 
-    #    TIME_NOW=$(date -u +%s)
-    #    if [ "${TIME_NOW}" -gt "${TIME_TO_RUN}" ]
-    #    then
-    #      uucico -D -S ${EMAIL_SERVER}
-    #      LATEST_SERVER_CALL_TIME=$(date -u +%s)
-    #      TIME_TO_RUN=$(( ${LATEST_SERVER_CALL_TIME} + ${DELAY_MAINLOOP} ))
-    #    fi
+    TIME_NOW=$(date -u +%s)
+    if [ ${TIME_NOW} -gt ${TIME_TO_RUN} ]
+    then
+      uucico -S ${EMAIL_SERVER}
+      LATEST_SERVER_CALL_TIME=$(date -u +%s)
+      TIME_TO_RUN=$(( ${LATEST_SERVER_CALL_TIME} + ${EMAIL_SERVER_DELAY} ))
+    fi
 
     if [[ -z ${timers_start} ]] || [[ -z ${timers_stop} ]]
     then
@@ -89,7 +92,7 @@ do
 
             done
             echo "Calling gateway ${EMAIL_SERVER}."
-            uucico -D -S ${EMAIL_SERVER}
+            uucico -S ${EMAIL_SERVER}
         else
             echo "Schedule ${c} will not run now."
         fi
