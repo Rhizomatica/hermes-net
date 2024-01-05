@@ -1,5 +1,6 @@
-/* sBitx core
- * Copyright (C) 2023 Rhizomatica
+/* sBitx control daemon - HERMES
+ *
+ * Copyright (C) 2023-2024 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
@@ -26,24 +27,26 @@
 #include <stdint.h>
 #include <pthread.h>
 
-/* Pin definitions following WirinpiPi numbering // BCM numbering commented */
-#define ENC1_A  13  // BCM  9
-#define ENC1_B  12  // BCM 10
-#define ENC1_SW 14  // BCM 11
+#include <iniparser.h>
 
-#define ENC2_A   0  // BCM 17
-#define ENC2_B   2  // BCM 27
-#define ENC2_SW  3  // BCM 22
+/* Pin definitions following WirinpiPi numbering // GPIO numbering commented */
+#define ENC1_A  13  // GPIO 17 // Pin 11
+#define ENC1_B  12  // GPIO 27 // Pin 13
+#define ENC1_SW 14  // GPIO 22 // Pin 15
 
-#define PTT      7  // BCM  4
-#define DASH    21  // BCM  5
+#define ENC2_A   0  // GPIO 10 // Pin 19
+#define ENC2_B   2  // GPIO 9  // Pin 21
+#define ENC2_SW  3  // GPIO 11 // Pin 23
 
-#define TX_LINE 4   // BCM 23
-#define TX_POWER 27 // BCM 16
-#define LPF_A 5     // BCM 24
-#define LPF_B 6     // BCM 25
-#define LPF_C 10    // BCM  8
-#define LPF_D 11    // BCM  7
+#define PTT      7  // GPIO  4 // Pin 7
+#define DASH    21  // GPIO  5 // Pin 29
+
+#define TX_LINE 4   // GPIO 23 // Pin 16
+#define TX_POWER 27 // GPIO 16 // Pin 36
+#define LPF_A 5     // GPIO 24 // Pin 18
+#define LPF_B 6     // GPIO 25 // Pin 22
+#define LPF_C 10    // GPIO  8 // Pin 24
+#define LPF_D 11    // GPIO  7 // Pin 26
 
 /* Internal software modes listing */
 #define OPERATING_MODE_FULL_VOICE 0 // DSP + IO, radio tx comes from MIC
@@ -55,12 +58,12 @@
 #define MODE_USB 1
 
 #define AGC_OFF 0
-#define AGC_SLOW 0
-#define AGC_MED 0
-#define AGC_FAST 0
+#define AGC_SLOW 1
+#define AGC_MEDIUM 2
+#define AGC_FAST 3
 
-#define COMPRESSION_OFF 0
-#define COMPRESSION_ON 1
+#define COMPRESSOR_OFF 0
+#define COMPRESSOR_ON 1
 
 /* tx/rx states */
 #define IN_RX 0
@@ -93,13 +96,13 @@ typedef struct {
 
 typedef struct {
 
-    uint32_t frequency;
+    uint32_t freq;
     uint16_t operating_mode; // FULL or CONTROLS_ONLY
 
     // In OPERATING_MODE_CONTROLS_ONLY, most of these will just be ignored...
     uint16_t mode; // MODE_*
     uint16_t agc; // AGC_*
-    uint16_t compression; // COMPRESSION_*
+    uint16_t compressor; // COMPRESSOR_*
 
     // Alsa levels
     uint16_t mic_level; // 0 - 100
@@ -115,7 +118,8 @@ typedef struct {
     uint32_t step_size;
 
     // These are switche that can enable/disable interaction with the devices
-    bool enable_knobs;
+    bool enable_knob_volume;
+    bool enable_knob_frequency;
     bool enable_ptt;
 
     // do we need this?
@@ -135,6 +139,8 @@ typedef struct
     // Radio status
     _Atomic uint32_t bfo_frequency;
     _Atomic bool txrx_state; // IN_RX or IN_TX
+    uint16_t reflected_threshold; // vswr * 10
+    bool swr_protection_enabled;
 
     // front panel controls and status
     encoder enc_a;
@@ -165,14 +171,18 @@ typedef struct
     _Atomic bool system_is_ok;  // means uucp is up and running
 
     power_settings band_power[MAX_CAL_BANDS];
+    uint32_t band_power_count;
 
     // profile variables
     _Atomic uint32_t profile_active_idx;
-    _Atomic uint32_t profile_timeout; // set to 0 to disable return to "default" profile timeout, or set to the number of seconds for going to the default in case of idle (or what?)
+    _Atomic int32_t profile_timeout; // set to -1 to disable return to "default" profile timeout, or set to the number of seconds for going to the default in case of idle (or what?)
     _Atomic uint32_t profile_default_idx;
-    // last profile index
-    _Atomic uint32_t profiles_last_idx;
+    _Atomic uint32_t profiles_count;
     radio_profile profiles[MAX_RADIO_PROFILES];
+
+    dictionary *cfg_core;
+    dictionary *cfg_user;
+
 } radio;
 
 

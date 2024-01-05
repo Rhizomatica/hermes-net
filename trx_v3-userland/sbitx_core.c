@@ -106,7 +106,7 @@ uint32_t get_swr(radio *radio_h)
 
 void set_frequency(radio *radio_h, uint32_t frequency)
 {
-    uint32_t *radio_freq = &radio_h->profiles[radio_h->profile_active_idx].frequency;
+    uint32_t *radio_freq = &radio_h->profiles[radio_h->profile_active_idx].freq;
 
     *radio_freq = frequency;
      // Were we are setting the real frequency of the radio (in USB, which is the current setup), without
@@ -132,7 +132,7 @@ void lpf_off(radio *radio_h)
 
 void lpf_set(radio *radio_h)
 {
-    uint32_t *radio_freq = &radio_h->profiles[radio_h->profile_active_idx].frequency;
+    uint32_t *radio_freq = &radio_h->profiles[radio_h->profile_active_idx].freq;
 
     int lpf = 0;
 
@@ -149,8 +149,8 @@ void lpf_set(radio *radio_h)
 }
 
 
-void tr_switch(radio *radio_h, bool txrx_state){
-
+void tr_switch(radio *radio_h, bool txrx_state)
+{
     if (txrx_state == radio_h->txrx_state)
         return;
 

@@ -27,12 +27,18 @@
 
 #include "sbitx_core.h"
 
-// reads the static setup, including calibration setup and
-// static settings
-// returns true if read successful
-bool read_config_core(radio *radio_h, char *ini_name);
+// returns true if successful
+bool init_config_core(radio *radio_h, char *ini_name);
+bool init_config_user(radio *radio_h, char *ini_name);
 
-//
-bool write_config(radio *radio_h, char *ini_name);
+bool write_config_core(radio *radio_h, char *ini_name);
+bool write_config_user(radio *radio_h, char *ini_name);
+
+bool close_config_core(radio *radio_h);
+bool close_config_user(radio *radio_h);
+
+// thread to write the configuration when dirty bit is set
+void *config_thread(void *radio_h_v);
+
 
 #endif // CFG_UTILS_H_

@@ -34,8 +34,8 @@ _Atomic bool shutdown = false;
 void exit_radio(int sig)
 {
     shutdown = true;
-}
 
+}
 
 int main(int argc, char* argv[])
 {
@@ -51,25 +51,32 @@ int main(int argc, char* argv[])
 
 
     memset(&radio_h, 0, sizeof(radio));
-    // read_config(&radio_h, "conf/hw_settings_v3.ini");
-    read_config_core(&radio_h, "teste.ini");
+    init_config_core(&radio_h, "config/test-core.ini");
+    init_config_user(&radio_h, "config/test-user.ini");
 
+    int rc = iniparser_set(radio_h.cfg_core, "main:serial_number", "666");
+    if (rc != 0)
+        printf("Error modifying config file\n");
 
-// //    strcpy(radio_h->i2c_device, "/dev/i2c-22");
-// //    radio_h->bfo_frequency = 40035000;
-// //    radio_h->bridge_compensation = 100;
+    // start config file writer thread
+    pthread_t config_tid;
+    pthread_create( &config_tid, NULL, config_thread, (void *) &radio_h);
 
     hw_init(&radio_h);
-
-    // set_frequency(&radio_h, frequency);
-
 
     // set rt_prio here?
     while(!shutdown)
     {
         sleep(1);
     }
-    
+
+    pthread_join(config_tid, NULL);
+
     hw_shutdown(&radio_h);
+
+    close_config_core(&radio_h);
+    close_config_user(&radio_h);
+
+    return EXIT_SUCCESS;
 
 }

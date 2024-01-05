@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-g -Wall -std=gnu11 -I/usr/include/iniparser
+CFLAGS=-g -Wall -std=gnu11 -pthread -I/usr/include/iniparser
 LDFLAGS=-lwiringPi -li2c -liniparser
 
 .PHONY: clean
