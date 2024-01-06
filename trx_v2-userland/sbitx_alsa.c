@@ -61,7 +61,7 @@ extern atomic_int in_tx;
 extern void sound_process(
     int32_t *input_rx, int32_t *input_mic,
     int32_t *output_speaker, int32_t *output_tx,
-	int n_samples);
+    int n_samples);
 
 
 void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
@@ -72,16 +72,12 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 
     /* Display information about the PCM interface */
 
-    printf("PCM handle name = '%s'\n",
-           snd_pcm_name(handle));
+    printf("PCM handle name = '%s'\n", snd_pcm_name(handle));
 
-    printf("PCM state = %s\n",
-           snd_pcm_state_name(snd_pcm_state(handle)));
+    printf("PCM state = %s\n", snd_pcm_state_name(snd_pcm_state(handle)));
 
-    snd_pcm_hw_params_get_access(params,
-                                 (snd_pcm_access_t *) &val);
-    printf("access type = %s\n",
-           snd_pcm_access_name((snd_pcm_access_t)val));
+    snd_pcm_hw_params_get_access(params, (snd_pcm_access_t *) &val);
+    printf("access type = %s\n",snd_pcm_access_name((snd_pcm_access_t)val));
 
     snd_pcm_hw_params_get_format(params, (snd_pcm_format_t *)&val);
     printf("format = '%s' (%s)\n",
@@ -89,8 +85,7 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
            snd_pcm_format_description(
                (snd_pcm_format_t)val));
 
-    snd_pcm_hw_params_get_subformat(params,
-                                    (snd_pcm_subformat_t *)&val);
+    snd_pcm_hw_params_get_subformat(params, (snd_pcm_subformat_t *)&val);
     printf("subformat = '%s' (%s)\n",
            snd_pcm_subformat_name((snd_pcm_subformat_t)val),
            snd_pcm_subformat_description(
@@ -105,32 +100,26 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
     snd_pcm_hw_params_get_periods(params, &val, &dir);
     printf("periods per buffer = %d frames\n", val);
 
-    snd_pcm_hw_params_get_period_size(params,
-                                      &frames, &dir);
+    snd_pcm_hw_params_get_period_size(params, &frames, &dir);
     printf("period size = %d frames\n", (int)frames);
 
-    snd_pcm_hw_params_get_buffer_size(params,
-                                      (snd_pcm_uframes_t *) &val);
+    snd_pcm_hw_params_get_buffer_size(params, (snd_pcm_uframes_t *) &val);
     printf("buffer size = %d frames\n", val);
 
 
-    snd_pcm_hw_params_get_period_time(params,
-                                      &val, &dir);
+    snd_pcm_hw_params_get_period_time(params, &val, &dir);
     printf("period time = %d us\n", val);
 
-    snd_pcm_hw_params_get_buffer_time(params,
-                                      &val, &dir);
+    snd_pcm_hw_params_get_buffer_time(params, &val, &dir);
     printf("buffer time = %d us\n", val);
 
-    snd_pcm_hw_params_get_rate_numden(params,
-                                      &val, &val2);
+    snd_pcm_hw_params_get_rate_numden(params, &val, &val2);
     printf("exact rate = %d/%d bps\n", val, val2);
 
     val = snd_pcm_hw_params_get_sbits(params);
     printf("significant bits = %d\n", val);
 
-    snd_pcm_hw_params_get_tick_time(params,
-                                    &val, &dir);
+    snd_pcm_hw_params_get_tick_time(params, &val, &dir);
     printf("tick time = %d us\n", val);
 
     val = snd_pcm_hw_params_is_batch(params);
@@ -192,23 +181,28 @@ void sound_mixer(char *card_name, char *element, int make_on)
     snd_mixer_elem_t* elem = snd_mixer_find_selem(handle, sid);
 
     //find out if the his element is capture side or plaback
-    if(snd_mixer_selem_has_capture_switch(elem)){
-	  	snd_mixer_selem_set_capture_switch_all(elem, make_on);
+    if(snd_mixer_selem_has_capture_switch(elem))
+    {
+                snd_mixer_selem_set_capture_switch_all(elem, make_on);
     }
-    else if (snd_mixer_selem_has_playback_switch(elem)){
+    else if (snd_mixer_selem_has_playback_switch(elem))
+    {
         snd_mixer_selem_set_playback_switch_all(elem, make_on);
     }
-    else if (snd_mixer_selem_has_playback_volume(elem)){
+    else if (snd_mixer_selem_has_playback_volume(elem))
+    {
         long volume = make_on;
-    	snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
-    	snd_mixer_selem_set_playback_volume_all(elem, volume * max / 100);
+        snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+        snd_mixer_selem_set_playback_volume_all(elem, volume * max / 100);
     }
-    else if (snd_mixer_selem_has_capture_volume(elem)){
+    else if (snd_mixer_selem_has_capture_volume(elem))
+    {
         long volume = make_on;
-    	snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
-    	snd_mixer_selem_set_capture_volume_all(elem, volume * max / 100);
+        snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
+        snd_mixer_selem_set_capture_volume_all(elem, volume * max / 100);
     }
-    else if (snd_mixer_selem_is_enumerated(elem)){
+    else if (snd_mixer_selem_is_enumerated(elem))
+    {
         snd_mixer_selem_set_enum_item(elem, 0, make_on);
     }
     snd_mixer_close(handle);
@@ -241,42 +235,42 @@ void *radio_capture_thread(void *device_ptr)
 
     fprintf(stderr, "ALSA Capture device is: %s\n", device);
 
-	if ((e = snd_pcm_hw_params_any(pcm_capture_handle, hwparams)) < 0)
+    if ((e = snd_pcm_hw_params_any(pcm_capture_handle, hwparams)) < 0)
     {
-		fprintf(stderr, "Error setting capture access (%d)\n", e);
-		return NULL;
-	}
+        fprintf(stderr, "Error setting capture access (%d)\n", e);
+        return NULL;
+    }
 
-	if ((e = snd_pcm_hw_params_set_access(pcm_capture_handle, hwparams, SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0)
+    if ((e = snd_pcm_hw_params_set_access(pcm_capture_handle, hwparams, SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0)
     {
-		fprintf(stderr, "Error setting capture access.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting capture access.\n");
+        return NULL;
+    }
 
-	e = snd_pcm_hw_params_set_format(pcm_capture_handle, hwparams, format);
-	if (e < 0)
+    e = snd_pcm_hw_params_set_format(pcm_capture_handle, hwparams, format);
+    if (e < 0)
     {
-		fprintf(stderr, "Error setting capture format.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting capture format.\n");
+        return NULL;
+    }
 
 
-	exact_rate = hw_rate;
-	e = snd_pcm_hw_params_set_rate_near(pcm_capture_handle, hwparams, &exact_rate, 0);
-	if ( e < 0)
+    exact_rate = hw_rate;
+    e = snd_pcm_hw_params_set_rate_near(pcm_capture_handle, hwparams, &exact_rate, 0);
+    if ( e < 0)
     {
-		fprintf(stderr, "Error setting capture rate.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting capture rate.\n");
+        return NULL;
+    }
 
-	if (hw_rate != exact_rate)
-		fprintf(stderr, "Capture rate %d changed to %d Hz\n", hw_rate, exact_rate);
+    if (hw_rate != exact_rate)
+        fprintf(stderr, "Capture rate %d changed to %d Hz\n", hw_rate, exact_rate);
 
-	if ((e = snd_pcm_hw_params_set_channels(pcm_capture_handle, hwparams, channels)) < 0)
+    if ((e = snd_pcm_hw_params_set_channels(pcm_capture_handle, hwparams, channels)) < 0)
     {
-		fprintf(stderr, "Error setting capture channels.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting capture channels.\n");
+        return NULL;
+    }
 
     if ((e = snd_pcm_hw_params_set_period_size_near(pcm_capture_handle,hwparams, &hw_period_size, 0)) < 0)
     {
@@ -284,17 +278,17 @@ void *radio_capture_thread(void *device_ptr)
         return NULL;
     }
 
-	if ((e = snd_pcm_hw_params_set_periods(pcm_capture_handle, hwparams, hw_n_periods, 0)) < 0)
+    if ((e = snd_pcm_hw_params_set_periods(pcm_capture_handle, hwparams, hw_n_periods, 0)) < 0)
     {
-		fprintf(stderr, "Error setting capture periods.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting capture periods.\n");
+        return NULL;
+    }
 
-	if ((e = snd_pcm_hw_params(pcm_capture_handle, hwparams)) < 0)
+    if ((e = snd_pcm_hw_params(pcm_capture_handle, hwparams)) < 0)
     {
-		fprintf(stderr, "Error setting capture HW params.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting capture HW params.\n");
+        return NULL;
+    }
 
     printf("============= REPORT RADIO CAPTURE DEVICE %s =================\n", device);
     show_alsa(pcm_capture_handle, hwparams);
@@ -321,14 +315,12 @@ void *radio_capture_thread(void *device_ptr)
             {
                 fprintf(stderr, "overrun\n");
             }
-            else if (e < 0) {
-                fprintf(stderr,
-                        "error from readi: %s\n",
-                        snd_strerror(e));
-            }  else if (e != hw_period_size) {
-                fprintf(stderr,
-                        "short read, read %d frames\n", e);
-
+            else if (e < 0)
+            {
+                fprintf(stderr, "error from readi: %s\n", snd_strerror(e));
+            } else if (e != hw_period_size)
+            {
+                fprintf(stderr, "short read, read %d frames\n", e);
             }
             snd_pcm_prepare (pcm_capture_handle);
             continue;
@@ -341,7 +333,7 @@ void *radio_capture_thread(void *device_ptr)
             int32_t *sample = (int32_t *) &buffer[j * sample_size * channels + sample_size];
             *sample /= 15;
             memcpy(&mic[j*sample_size], sample, sample_size);
-//            memcpy(&mic[j*sample_size], &buffer[j * sample_size * channels + sample_size], sample_size);
+//            memcpy(&mic[j*sample_size], &buffer[j * sample_size * channels + sample_size], sample_size); // this would be just the copy if we did not need to change the sample
 
         }
 
@@ -386,41 +378,41 @@ void *radio_playback_thread(void *device_ptr)
 
     fprintf(stderr, "ALSA Playback device is: %s\n", device);
 
-	if ((e = snd_pcm_hw_params_any(pcm_play_handle, hwparams)) < 0)
-	{
-		fprintf(stderr, "Error getting hw playback params (%d)\n", e);
-		return NULL;
-	}
-
-	if ((e = snd_pcm_hw_params_set_access(pcm_play_handle, hwparams, SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0)
+    if ((e = snd_pcm_hw_params_any(pcm_play_handle, hwparams)) < 0)
     {
-		fprintf(stderr, "Error setting playback access.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error getting hw playback params (%d)\n", e);
+        return NULL;
+    }
 
-	if ((e = snd_pcm_hw_params_set_format(pcm_play_handle, hwparams, format)) < 0)
-	{
-		fprintf(stderr, "Error setting playback format.\n");
-		return NULL;
-	}
-
-	exact_rate = hw_rate;
-	e = snd_pcm_hw_params_set_rate_near(pcm_play_handle, hwparams, &exact_rate, 0);
-	if ( e < 0)
+    if ((e = snd_pcm_hw_params_set_access(pcm_play_handle, hwparams, SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0)
     {
-		fprintf(stderr, "Error setting playback rate.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting playback access.\n");
+        return NULL;
+    }
+
+    if ((e = snd_pcm_hw_params_set_format(pcm_play_handle, hwparams, format)) < 0)
+    {
+        fprintf(stderr, "Error setting playback format.\n");
+        return NULL;
+    }
+
+    exact_rate = hw_rate;
+    e = snd_pcm_hw_params_set_rate_near(pcm_play_handle, hwparams, &exact_rate, 0);
+    if ( e < 0)
+    {
+        fprintf(stderr, "Error setting playback rate.\n");
+        return NULL;
+    }
 
     if (hw_rate != exact_rate)
-		fprintf(stderr, "Playback rate %d changed to %d Hz\n", hw_rate, exact_rate);
+        fprintf(stderr, "Playback rate %d changed to %d Hz\n", hw_rate, exact_rate);
 
-	/* Set number of channels */
-	if ((e = snd_pcm_hw_params_set_channels(pcm_play_handle, hwparams, channels)) < 0)
+        /* Set number of channels */
+    if ((e = snd_pcm_hw_params_set_channels(pcm_play_handle, hwparams, channels)) < 0)
     {
-		fprintf(stderr, "Error setting playback channels.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting playback channels.\n");
+        return NULL;
+    }
 
     /* Set period size. */
     if ((e = snd_pcm_hw_params_set_period_size_near(pcm_play_handle,hwparams, &hw_period_size, 0)) < 0)
@@ -430,17 +422,17 @@ void *radio_playback_thread(void *device_ptr)
     }
 
     /* nr. of periods */
-	if ((e = snd_pcm_hw_params_set_periods(pcm_play_handle, hwparams, hw_n_periods, 0)) < 0)
+    if ((e = snd_pcm_hw_params_set_periods(pcm_play_handle, hwparams, hw_n_periods, 0)) < 0)
     {
-		fprintf(stderr, "Error setting playback periods.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting playback periods.\n");
+        return NULL;
+    }
 
-	if ((e = snd_pcm_hw_params(pcm_play_handle, hwparams)) < 0)
+    if ((e = snd_pcm_hw_params(pcm_play_handle, hwparams)) < 0)
     {
-		fprintf(stderr, "Error setting playback HW params.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting playback HW params.\n");
+        return NULL;
+    }
 
     printf("============= REPORT RADIO PLAYBACK DEVICE %s ================\n", device);
     show_alsa(pcm_play_handle, hwparams);
@@ -477,16 +469,13 @@ void *radio_playback_thread(void *device_ptr)
             if (e == -EPIPE)
             {
                 fprintf(stderr, "overrun\n");
-
             }
-            else if (e < 0) {
-                fprintf(stderr,
-                        "error from writei: %s\n",
-                        snd_strerror(e));
-            }  else if (e != hw_period_size) {
-                fprintf(stderr,
-                        "short write, wrote %d frames\n", e);
-
+            else if (e < 0)
+            {
+                fprintf(stderr, "error from writei: %s\n", snd_strerror(e));
+            } else if (e != hw_period_size)
+            {
+                fprintf(stderr, "short write, wrote %d frames\n", e);
             }
             snd_pcm_prepare (pcm_play_handle);
             goto try_again_radio_play;
@@ -524,41 +513,41 @@ void *loop_capture_thread(void *device_ptr)
 
     fprintf(stderr, "ALSA Loopback Capture device at: %s\n", device);
 
-	if ((e = snd_pcm_hw_params_any(loopback_capture_handle, hloop_params)) < 0)
+    if ((e = snd_pcm_hw_params_any(loopback_capture_handle, hloop_params)) < 0)
     {
-		fprintf(stderr, "Error setting capture access (%d)\n", e);
-		return NULL;
-	}
+        fprintf(stderr, "Error setting capture access (%d)\n", e);
+        return NULL;
+    }
 
-	if ((e = snd_pcm_hw_params_set_access(loopback_capture_handle, hloop_params, SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0)
+    if ((e = snd_pcm_hw_params_set_access(loopback_capture_handle, hloop_params, SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0)
     {
-		fprintf(stderr, "Error setting capture access.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting capture access.\n");
+        return NULL;
+    }
 
     /* Set sample format */
-	if ((e = snd_pcm_hw_params_set_format(loopback_capture_handle, hloop_params, format)) < 0)
+    if ((e = snd_pcm_hw_params_set_format(loopback_capture_handle, hloop_params, format)) < 0)
     {
         fprintf(stderr, "Error setting loopback capture format.\n");
-		return NULL;
-	}
+        return NULL;
+    }
 
-	exact_rate = loopback_rate;
-	if ((e = snd_pcm_hw_params_set_rate_near(loopback_capture_handle, hloop_params, &exact_rate, 0)) < 0)
+    exact_rate = loopback_rate;
+    if ((e = snd_pcm_hw_params_set_rate_near(loopback_capture_handle, hloop_params, &exact_rate, 0)) < 0)
     {
-		fprintf(stderr, "Error setting loopback capture rate.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting loopback capture rate.\n");
+        return NULL;
+    }
 
-	if (loopback_rate != exact_rate)
-		fprintf(stderr, "The loopback capture rate set to %d Hz\n", exact_rate);
+    if (loopback_rate != exact_rate)
+        fprintf(stderr, "The loopback capture rate set to %d Hz\n", exact_rate);
 
-	/* Set number of channels */
-	if ((e = snd_pcm_hw_params_set_channels(loopback_capture_handle, hloop_params, channels)) < 0)
+    /* Set number of channels */
+    if ((e = snd_pcm_hw_params_set_channels(loopback_capture_handle, hloop_params, channels)) < 0)
     {
-		fprintf(stderr, "Error setting loopback capture channels.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting loopback capture channels.\n");
+        return NULL;
+    }
 
     /* Set period size. */
     if ((e = snd_pcm_hw_params_set_period_size_near(loopback_capture_handle, hloop_params, &loopback_period_size, 0)) < 0)
@@ -567,17 +556,17 @@ void *loop_capture_thread(void *device_ptr)
         return NULL;
     }
 
-	if ((e = snd_pcm_hw_params_set_periods(loopback_capture_handle, hloop_params, loopback_n_periods, 0)) < 0) {
-		fprintf(stderr, "*Error setting loopback capture periods.\n");
-		return NULL;
-	}
+    if ((e = snd_pcm_hw_params_set_periods(loopback_capture_handle, hloop_params, loopback_n_periods, 0)) < 0) {
+        fprintf(stderr, "*Error setting loopback capture periods.\n");
+        return NULL;
+    }
 
 
-	if ((e = snd_pcm_hw_params(loopback_capture_handle, hloop_params)) < 0)
+    if ((e = snd_pcm_hw_params(loopback_capture_handle, hloop_params)) < 0)
     {
-		fprintf(stderr, "*Error setting capture HW params.\n");
-		return NULL;
-	}
+        fprintf(stderr, "*Error setting capture HW params.\n");
+        return NULL;
+    }
 
     printf("============= REPORT LOOPBACK CAPTURE DEVICE %s ==============\n", device);
     show_alsa(loopback_capture_handle, hloop_params);
@@ -606,13 +595,10 @@ void *loop_capture_thread(void *device_ptr)
                 fprintf(stderr, "overrun\n");
             }
             else if (e < 0) {
-                fprintf(stderr,
-                        "error from readi: %s\n",
-                        snd_strerror(e));
-            }  else if (e != loopback_period_size) {
-                fprintf(stderr,
-                        "short read, read %d frames\n", e);
-
+                fprintf(stderr,"error from readi: %s\n", snd_strerror(e));
+            } else if (e != loopback_period_size)
+            {
+                fprintf(stderr, "short read, read %d frames\n", e);
             }
             snd_pcm_prepare (loopback_capture_handle);
             continue;
@@ -628,7 +614,6 @@ void *loop_capture_thread(void *device_ptr)
         }
 
         write_buffer(loopback_to_dsp, buffer, buffer_size);
-
     }
 
     snd_pcm_hw_params_free(hloop_params);
@@ -663,42 +648,42 @@ void *loop_playback_thread(void *device_ptr)
 
     fprintf(stderr, "ALSA Loopback Playback device at: %s\n", device);
 
-	if ((e = snd_pcm_hw_params_any(loopback_play_handle, hloop_params)) < 0)
+    if ((e = snd_pcm_hw_params_any(loopback_play_handle, hloop_params)) < 0)
     {
-		fprintf(stderr, "Error getting loopback playback params (%d)\n", e);
-		return NULL;
-	}
+        fprintf(stderr, "Error getting loopback playback params (%d)\n", e);
+        return NULL;
+    }
 
-	if ((e = snd_pcm_hw_params_set_access(loopback_play_handle, hloop_params, SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0)
+    if ((e = snd_pcm_hw_params_set_access(loopback_play_handle, hloop_params, SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0)
     {
         fprintf(stderr, "Error setting loopback access.\n");
-		return NULL;
-	}
+        return NULL;
+    }
 
     /* Set sample format */
-	if ((e = snd_pcm_hw_params_set_format(loopback_play_handle, hloop_params, format)) < 0)
+    if ((e = snd_pcm_hw_params_set_format(loopback_play_handle, hloop_params, format)) < 0)
     {
-		fprintf(stderr, "Error setting loopback format.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting loopback format.\n");
+        return NULL;
+    }
 
-	exact_rate = loopback_rate;
-	if ((e = snd_pcm_hw_params_set_rate_near(loopback_play_handle, hloop_params, &exact_rate, 0)) < 0)
-	{
-		fprintf(stderr, "Error setting playback rate.\n");
-		return NULL;
-	}
-
-	if (loopback_rate != exact_rate)
-		fprintf(stderr, "Loopback playback rate %d changed to %d Hz\n", loopback_rate, exact_rate);
-
-
-	/* Set number of channels */
-	if ((e = snd_pcm_hw_params_set_channels(loopback_play_handle, hloop_params, channels)) < 0)
+    exact_rate = loopback_rate;
+    if ((e = snd_pcm_hw_params_set_rate_near(loopback_play_handle, hloop_params, &exact_rate, 0)) < 0)
     {
-		fprintf(stderr, "*Error setting playback channels.\n");
-		return NULL;
-	}
+        fprintf(stderr, "Error setting playback rate.\n");
+        return NULL;
+    }
+
+    if (loopback_rate != exact_rate)
+        fprintf(stderr, "Loopback playback rate %d changed to %d Hz\n", loopback_rate, exact_rate);
+
+
+    /* Set number of channels */
+    if ((e = snd_pcm_hw_params_set_channels(loopback_play_handle, hloop_params, channels)) < 0)
+    {
+        fprintf(stderr, "*Error setting playback channels.\n");
+        return NULL;
+    }
 
     /* Set period size. */
     if ((e = snd_pcm_hw_params_set_period_size_near(loopback_play_handle, hloop_params, &loopback_period_size, 0)) < 0)
@@ -708,17 +693,17 @@ void *loop_playback_thread(void *device_ptr)
     }
 
 
-	if ((e = snd_pcm_hw_params_set_periods(loopback_play_handle, hloop_params, loopback_n_periods, 0)) < 0)
+    if ((e = snd_pcm_hw_params_set_periods(loopback_play_handle, hloop_params, loopback_n_periods, 0)) < 0)
     {
-		fprintf(stderr, "*Error setting playback periods.\n");
-		return NULL;
-	}
+        fprintf(stderr, "*Error setting playback periods.\n");
+        return NULL;
+    }
 
-	if ((e = snd_pcm_hw_params(loopback_play_handle, hloop_params)) < 0)
+    if ((e = snd_pcm_hw_params(loopback_play_handle, hloop_params)) < 0)
     {
-		fprintf(stderr, "*Error setting loopback playback HW params.\n");
-		return NULL;
-	}
+        fprintf(stderr, "*Error setting loopback playback HW params.\n");
+        return NULL;
+    }
 
     printf("============= REPORT LOOPBACK PLAYBACK DEVICE %s =============\n", device);
     show_alsa(loopback_play_handle, hloop_params);
@@ -748,7 +733,8 @@ void *loop_playback_thread(void *device_ptr)
             else if (e < 0)
             {
                 fprintf(stderr, "error from writei: %s\n", snd_strerror(e));
-            }  else if (e != loopback_period_size) {
+            } else if (e != loopback_period_size)
+            {
                 fprintf(stderr, "short write, wrote %d frames\n", e);
             }
 
