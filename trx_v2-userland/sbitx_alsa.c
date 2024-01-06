@@ -220,16 +220,13 @@ void *radio_capture_thread(void *device_ptr)
 
     if ((e = snd_pcm_hw_params_malloc (&hwparams)) < 0)
     {
-        fprintf (stderr, "Can not allocate hardware parameter structure (%s)\n",
-                 snd_strerror (e));
+        fprintf (stderr, "Can not allocate hardware parameter structure (%s)\n", snd_strerror (e));
         return NULL;
     }
 
     if ((e = snd_pcm_open (&pcm_capture_handle, device, SND_PCM_STREAM_CAPTURE, 0)) < 0)
     {
-        fprintf (stderr, "Can not open audio device %s (%s)\n",
-                 device,
-                 snd_strerror (e));
+        fprintf (stderr, "Can not open audio device %s (%s)\n", device, snd_strerror (e));
         return NULL;
     }
 
@@ -362,16 +359,13 @@ void *radio_playback_thread(void *device_ptr)
 
     if ((e = snd_pcm_hw_params_malloc (&hwparams)) < 0)
     {
-        fprintf (stderr, "Can not allocate hardware parameter structure (%s)\n",
-                 snd_strerror (e));
+        fprintf (stderr, "Can not allocate hardware parameter structure (%s)\n", snd_strerror (e));
         return NULL;
     }
 
     if ((e = snd_pcm_open (&pcm_play_handle, device, SND_PCM_STREAM_PLAYBACK, 0)) < 0)
     {
-        fprintf (stderr, "Can not open audio device %s (%s)\n",
-                 device,
-                 snd_strerror (e));
+        fprintf (stderr, "Can not open audio device %s (%s)\n", device, snd_strerror (e));
         return NULL;
     }
 
@@ -498,16 +492,13 @@ void *loop_capture_thread(void *device_ptr)
 
     if ((e = snd_pcm_hw_params_malloc (&hloop_params)) < 0)
     {
-        fprintf (stderr, "Can not allocate hardware parameter structure (%s)\n",
-                 snd_strerror (e));
+        fprintf (stderr, "Can not allocate hardware parameter structure (%s)\n", snd_strerror (e));
         return NULL;
     }
 
     if ((e = snd_pcm_open (&loopback_capture_handle, device, SND_PCM_STREAM_CAPTURE, 0)) < 0)
     {
-        fprintf (stderr, "Can not open audio device %s (%s)\n",
-                 device,
-                 snd_strerror (e));
+        fprintf (stderr, "Can not open audio device %s (%s)\n", device, snd_strerror (e));
         return NULL;
     }
 
@@ -633,16 +624,13 @@ void *loop_playback_thread(void *device_ptr)
 
     if ((e = snd_pcm_hw_params_malloc (&hloop_params)) < 0)
     {
-        fprintf (stderr, "Can not allocate hardware parameter structure (%s)\n",
-                 snd_strerror (e));
+        fprintf (stderr, "Can not allocate hardware parameter structure (%s)\n", snd_strerror (e));
         return NULL;
     }
 
     if ((e = snd_pcm_open (&loopback_play_handle, device, SND_PCM_STREAM_PLAYBACK, 0)) < 0)
     {
-        fprintf (stderr, "Can not open audio device %s (%s)\n",
-                 device,
-                 snd_strerror (e));
+        fprintf (stderr, "Can not open audio device %s (%s)\n", device, snd_strerror (e));
         return NULL;
     }
 
