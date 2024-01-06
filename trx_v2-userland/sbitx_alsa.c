@@ -932,29 +932,27 @@ void sound_system_start()
     pthread_t radio_capture, radio_playback;
     pthread_t loop_capture, loop_playback;
 
-
     sound_system_running = true;
 
     pthread_t control_tid;
 #if 1
     pthread_create( &control_tid, NULL, control_thread, NULL);
-#else
+#else // old operation style
     dsp_start();
     pthread_create( &control_tid, NULL, control_thread_sbitx, NULL);
 #endif
 
     pthread_create( &radio_capture, NULL, radio_capture_thread, (void*)radio_capture_dev);
-	pthread_create( &radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
-    // wait here for sound bringup?
+    pthread_create( &radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
+
     pthread_create( &loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
-	pthread_create( &loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
+    pthread_create( &loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
 
-	struct sched_param sch;
-	sch.sched_priority = sched_get_priority_max(SCHED_FIFO);
-	pthread_setschedparam(radio_capture, SCHED_FIFO, &sch);
-	pthread_setschedparam(radio_playback, SCHED_FIFO, &sch);
-	pthread_setschedparam(loop_capture, SCHED_FIFO, &sch);
-	pthread_setschedparam(loop_playback, SCHED_FIFO, &sch);
-
+    struct sched_param sch;
+    sch.sched_priority = sched_get_priority_max(SCHED_FIFO);
+    pthread_setschedparam(radio_capture, SCHED_FIFO, &sch);
+    pthread_setschedparam(radio_playback, SCHED_FIFO, &sch);
+    pthread_setschedparam(loop_capture, SCHED_FIFO, &sch);
+    pthread_setschedparam(loop_playback, SCHED_FIFO, &sch);
 
 }
