@@ -21,7 +21,6 @@
 
 prefix=/usr
 CC=gcc
-# CFLAGS=-g -Wall -pedantic -std=gnu11 -pthread -fstack-protector -moutline-atomics -march=native
 CFLAGS=-O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -moutline-atomics -march=native
 
 ifeq ($(IS_SBITX), 1)

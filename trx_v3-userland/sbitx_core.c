@@ -24,11 +24,111 @@
 #include "sbitx_gpio.h"
 #include "sbitx_si5351.h"
 
-#include <string.h>
 #include <wiringPi.h>
+#include <string.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <signal.h>
+#include <sys/time.h>
+#include <stdlib.h>
+#include <time.h>
+#include <errno.h>
 
-void hw_init(radio *radio_h)
+extern _Atomic bool shutdown;
+
+// this is our main 10ms period io loop
+void io_tick(radio *radio_h)
+{
+    static uint64_t ticks = 0;
+    _Atomic uint32_t freq = radio_h->profiles[radio_h->profile_active_idx].freq;
+    _Atomic uint32_t volume = radio_h->profiles[radio_h->profile_active_idx].speaker_level;
+    _Atomic uint32_t tuning_step = radio_h->profiles[radio_h->profile_active_idx].step_size;
+
+    bool set_dirty = false;
+
+    ticks++;
+
+    // a speed up if one tunes the knob fast
+    if (radio_h->profiles[radio_h->profile_active_idx].enable_knob_frequency && radio_h->tuning_ticks)
+    {
+        if (abs(radio_h->tuning_ticks) > 50)
+            radio_h->tuning_ticks *= 4;
+
+        while (radio_h->tuning_ticks > 0)
+        {
+            radio_h->tuning_ticks--;
+            freq -= tuning_step;
+        }
+        while (radio_h->tuning_ticks < 0)
+        {
+            radio_h->tuning_ticks++;
+            freq += tuning_step;
+        }
+        set_dirty = true;
+        set_frequency(radio_h, freq);
+    }
+
+    if (radio_h->profiles[radio_h->profile_active_idx].enable_knob_volume && radio_h->volume_ticks)
+    {
+        if (abs(radio_h->volume_ticks) > 50)
+            radio_h->volume_ticks *= 2;
+
+        while (radio_h->volume_ticks > 0)
+        {
+            radio_h->volume_ticks--;
+            if (volume < 5)
+                volume = 0;
+            else
+                volume -= 4;
+        }
+        while (radio_h->volume_ticks < 0)
+        {
+            radio_h->volume_ticks++;
+            if (volume > 95)
+                volume = 100;
+            else
+                volume += 4;
+        }
+        set_dirty = true;
+        // TODO: put everything on a set_speaker_level()
+        // radio_h->profiles[radio_h->profile_active_idx].speaker_level = volume;
+        // set_speaker_level(radio_h, volume);
+	}
+
+    // period * 3, read power over i2c
+	if ( !(ticks % 3) && radio_h->txrx_state == IN_TX )
+    {
+            update_power_measurements(radio_h);
+    }
+
+#if 0 // we are not using the button presses for nothing up to now
+	if (!(ticks % 10))
+    {
+		if (radio_h->knob_a_pressed)
+        {
+            printf("Button A pressed\n");
+            radio_h->knob_a_pressed = 0;
+        }
+		if (radio_h->knob_b_pressed)
+        {
+            printf("Button B pressed\n");
+            radio_h->knob_b_pressed = 0;
+        }
+    }
+#endif
+
+    if (set_dirty)
+    {
+        radio_h->cfg_user_dirty = true;
+        // TODO: WebSockets...
+        //send_ws_update = true;
+    }
+
+}
+
+
+
+bool hw_init(radio *radio_h, pthread_t *hw_tid)
 {
     // I2C SETUP
     i2c_open(radio_h);
@@ -38,14 +138,47 @@ void hw_init(radio *radio_h)
 
     // Si5351 SETUP
     setup_oscillators(radio_h);
+
+    // start hw io monitor thread
+    pthread_create(hw_tid, NULL, hw_thread, (void *) radio_h);
+
+    return true;
 }
 
-void hw_shutdown(radio *radio_h)
+
+bool hw_shutdown(radio *radio_h, pthread_t *hw_tid)
 {
     i2c_close(radio_h);
 
     // WiringPi has no function to close/shutdown resources
     // should we stop the Si5351 clocks?
+
+    pthread_join(*hw_tid, NULL);
+
+    return true;
+}
+
+void *hw_thread(void *radio_h_v)
+{
+    radio *radio_h = (radio *) radio_h_v;
+
+    // starts our 10ms timer
+    int res = start_periodic_timer(10000);
+
+    if (res < 0)
+    {
+        printf("Fatal error: Start Periodic Timer\n");
+        shutdown = true;
+        return false;
+    }
+
+    while(!shutdown)
+    {
+        wait_next_activation();
+        io_tick(radio_h);
+    }
+
+    return NULL;
 }
 
 // reads the power measurements from I2C bus
@@ -109,9 +242,18 @@ void set_frequency(radio *radio_h, uint32_t frequency)
     uint32_t *radio_freq = &radio_h->profiles[radio_h->profile_active_idx].freq;
 
     *radio_freq = frequency;
-     // Were we are setting the real frequency of the radio (in USB, which is the current setup), without
-     // the 24 kHz offset as present in Ashhar implementation (just "- 24000" to replicate the behavior)
-    si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency);
+     // Were we are not setting the real frequency of the radio (in USB, which is the current setup)
+     // We add 24 kHz offset in order to use Ashhar fft implementation (just "- 24000")
+    si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 24000);
+
+    // TODO: put this inside a function in cfg_utils
+    char tmp1[64]; char tmp2[64];
+    sprintf(tmp1, "profile%u:freq", radio_h->profile_active_idx);
+    sprintf(tmp2, "%u", *radio_freq);
+    int rc = iniparser_set(radio_h->cfg_user, tmp1, tmp2);
+    if (rc != 0)
+        printf("Error modifying config file\n");
+
 }
 
 void set_bfo(radio *radio_h, uint32_t frequency)
@@ -136,13 +278,13 @@ void lpf_set(radio *radio_h)
 
     int lpf = 0;
 
-    if (*radio_freq < 5500000)
+    if (*radio_freq < 5250000)
         lpf = LPF_D;
     else if (*radio_freq < 10500000)
         lpf = LPF_C;
     else if (*radio_freq < 18500000)
         lpf = LPF_B;
-    else if (*radio_freq < 30000000)
+    else if (*radio_freq < 35000000)
         lpf = LPF_A;
 
     digitalWrite(lpf, HIGH);
@@ -170,4 +312,33 @@ void tr_switch(radio *radio_h, bool txrx_state)
         digitalWrite(TX_LINE, LOW); delay(2);
         lpf_set(radio_h);
     }
+}
+
+
+// auxiliary functions for timer functionality
+static struct timespec r;
+static uint64_t period;
+#define NSEC_PER_SEC 1000000000ULL
+
+static inline void timespec_add_us(struct timespec *t, uint64_t d)
+{
+    d *= 1000;
+    t->tv_nsec += d;
+    t->tv_sec += t->tv_nsec / NSEC_PER_SEC;
+    t->tv_nsec %= NSEC_PER_SEC;
+}
+
+void wait_next_activation(void)
+{
+    clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &r, NULL);
+    timespec_add_us(&r, period);
+}
+
+int start_periodic_timer(uint64_t offset)
+{
+    clock_gettime(CLOCK_REALTIME, &r);
+    timespec_add_us(&r, offset);
+    period = offset;
+
+    return 0;
 }

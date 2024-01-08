@@ -22,9 +22,37 @@
 
 #include <iniparser.h>
 
+#ifndef DEBUG_CFG_
+#define DEBUG_CFG_ 1
+#endif
+
 #include "cfg_utils.h"
 
 extern bool shutdown;
+
+bool cfg_init(radio *radio_h, char *cfg_core, char *cfg_user, pthread_t *config_tid)
+{
+    init_config_core(radio_h, cfg_core);
+    init_config_user(radio_h, cfg_user);
+
+    radio_h->cfg_core_dirty = false;
+    radio_h->cfg_user_dirty = false;
+
+    // start config file writer thread
+    pthread_create(config_tid, NULL, config_thread, (void *) radio_h);
+
+    return true;
+}
+
+bool cfg_shutdown(radio *radio_h, pthread_t *config_tid)
+{
+    close_config_core(radio_h);
+    close_config_user(radio_h);
+
+    pthread_join(*config_tid, NULL);
+
+    return true;
+}
 
 void *config_thread(void *radio_h_v)
 {
@@ -32,15 +60,19 @@ void *config_thread(void *radio_h_v)
 
     while (!shutdown)
     {
-        //if (dirty_core)
+        if (radio_h->cfg_core_dirty)
+        {
             write_config_core(radio_h, "config/output-core.ini");
+            radio_h->cfg_core_dirty = false;
+        }
 
-        // if (dirty_user) ...
+        if (radio_h->cfg_user_dirty)
+        {
             write_config_user(radio_h, "config/output-user.ini");
-
-        // every2 s we check if the dirty bit is set
+            radio_h->cfg_user_dirty = false;
+        }
+        // every ~2s we check if the dirty bit is set
         sleep(2);
-
     }
 
     return NULL;

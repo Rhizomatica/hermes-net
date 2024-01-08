@@ -20,11 +20,14 @@
  *
  */
 
+#define _GNU_SOURCE
+
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
+#include <sched.h>
 
 #include "sbitx_core.h"
 #include "cfg_utils.h"
@@ -33,50 +36,73 @@ _Atomic bool shutdown = false;
 
 void exit_radio(int sig)
 {
+    printf("Exiting...\n");
     shutdown = true;
 
 }
 
 int main(int argc, char* argv[])
 {
-    radio radio_h; // mais radio handler
+    radio radio_h; // radio handler
+    pthread_t cfg_tid; // configuration subsystem thread id
+    pthread_t hw_tid; // hw io thread id
 
-    signal(SIGINT, exit_radio);
-
-    if (argc != 1)
+   if (argc > 3)
     {
-        printf("Usage:\n%s\n", argv[0]);
+    manual:
+        fprintf(stderr, "Usage modes: \n%s\n%s -c [cpu_nr]\n", argv[0], argv[0]);
+        fprintf(stderr, "%s -h\n", argv[0]);
+        fprintf(stderr, "\nOptions:\n");
+        fprintf(stderr, " -c [cpu_nr]                Run on CPU [cpu_br].\n");
+        fprintf(stderr, " -h                         Prints this help.\n");
         return EXIT_FAILURE;
     }
 
+   int cpu_nr = -1;
+   int opt;
+   while ((opt = getopt(argc, argv, "hc:")) != -1)
+   {
+       switch (opt)
+       {
+       case 'c':
+           if(optarg)
+               cpu_nr = atoi(optarg);
+           break;
+       case 'h':
+       default:
+           goto manual;
+       }
+   }
 
-    memset(&radio_h, 0, sizeof(radio));
-    init_config_core(&radio_h, "config/test-core.ini");
-    init_config_user(&radio_h, "config/test-user.ini");
+   // our shutdown handling...
+   signal(SIGINT, exit_radio);
+   signal (SIGQUIT, exit_radio);
+   signal (SIGTERM, exit_radio);
 
-    int rc = iniparser_set(radio_h.cfg_core, "main:serial_number", "666");
-    if (rc != 0)
-        printf("Error modifying config file\n");
+    // Catch SIGPIPE
+   signal(SIGPIPE, SIG_IGN); // and ignores SIGPIPE...
 
-    // start config file writer thread
-    pthread_t config_tid;
-    pthread_create( &config_tid, NULL, config_thread, (void *) &radio_h);
+   memset(&radio_h, 0, sizeof(radio));
 
-    hw_init(&radio_h);
+   if (cpu_nr != -1)
+   {
+       cpu_set_t mask;
+       CPU_ZERO(&mask);
+       CPU_SET(cpu_nr, &mask);
+       sched_setaffinity(0, sizeof(mask), &mask);
+       printf("RUNNING ON CPU Nr %d\n", sched_getcpu());
+   }
 
-    // set rt_prio here?
-    while(!shutdown)
-    {
-        sleep(1);
-    }
+   /* Call in order... cfg, hw, etc */
+   cfg_init(&radio_h, "config/test-core.ini", "config/test-user.ini", &cfg_tid);
+   hw_init(&radio_h, &hw_tid);
 
-    pthread_join(config_tid, NULL);
+   // this call pthread_join(), so it blocks below, until shutdown == true
+   hw_shutdown(&radio_h, &hw_tid);
+   cfg_shutdown(&radio_h, &cfg_tid);
 
-    hw_shutdown(&radio_h);
 
-    close_config_core(&radio_h);
-    close_config_user(&radio_h);
 
-    return EXIT_SUCCESS;
+   return EXIT_SUCCESS;
 
 }

@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include <iniparser.h>
 
@@ -139,8 +140,8 @@ typedef struct
     // Radio status
     _Atomic uint32_t bfo_frequency;
     _Atomic bool txrx_state; // IN_RX or IN_TX
-    uint16_t reflected_threshold; // vswr * 10
-    bool swr_protection_enabled;
+    _Atomic uint16_t reflected_threshold; // vswr * 10
+    _Atomic bool swr_protection_enabled;
 
     // front panel controls and status
     encoder enc_a;
@@ -161,15 +162,15 @@ typedef struct
 
     _Atomic uint32_t bridge_compensation;
 
-    // "used once" variables... dont need to be atomic
-    bool enable_websocket;
-    bool enable_shm_control; // this is needed for sbitx_client
+    _Atomic bool enable_websocket;
+    _Atomic bool enable_shm_control; // this is needed for sbitx_client
 
     // some informational fields
-    uint32_t serial_number;
+    _Atomic uint32_t serial_number;
     _Atomic bool system_is_connected;  // VARA connection status
     _Atomic bool system_is_ok;  // means uucp is up and running
 
+    // read just at load, no need for atomic
     power_settings band_power[MAX_CAL_BANDS];
     uint32_t band_power_count;
 
@@ -181,14 +182,20 @@ typedef struct
     radio_profile profiles[MAX_RADIO_PROFILES];
 
     dictionary *cfg_core;
+    _Atomic bool cfg_core_dirty;
     dictionary *cfg_user;
+    _Atomic bool cfg_user_dirty;
 
 } radio;
 
 
+// init / shutdown functions
+bool hw_init(radio *radio_h, pthread_t *hw_tid);
+bool hw_shutdown(radio *radio_h, pthread_t *hw_tid);
 
-void hw_init(radio *radio_h);
-void hw_shutdown(radio *radio_h);
+// hw io thread
+void *hw_thread(void *radio_h_v);
+void io_tick(radio *radio_h);
 
 void set_frequency(radio *radio_h, uint32_t frequency);
 void set_bfo(radio *radio_h, uint32_t frequency);
@@ -200,10 +207,14 @@ void lpf_off(radio *radio_h);
 void lpf_set(radio *radio_h);
 
 // fwd, ref and swr measurements functions
-// call update_power_measurements for a reading
+// update_power_measurements issues a reading
 bool update_power_measurements(radio *radio_h);
 uint32_t get_fwd_power(radio *radio_h);
 uint32_t get_ref_power(radio *radio_h);
 uint32_t get_swr(radio *radio_h);
+
+// auxiliary functions for time functionality
+void wait_next_activation(void);
+int start_periodic_timer(uint64_t offset);
 
 #endif // SBITX_CORE_H_
