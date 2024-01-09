@@ -18,15 +18,20 @@
 # Boston, MA 02110-1301, USA.
 #
 
+uname_p := $(shell uname -p)
 
 prefix=/usr
 CC=gcc
-CFLAGS=-O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -moutline-atomics -march=native
-
-ifeq ($(IS_SBITX), 1)
-EXTRA_OBJ=../trx_v2-userland/sbitx_io.o
+ifeq ($(uname -m),aarch64)
+	CFLAGS=-O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -moutline-atomics -march=native
 else
-EXTRA_OBJ=../trx_v1-userland/ubitx_io.o
+	CFLAGS=-O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -march=x86-64-v2
+endif
+
+ifeq ($(IS_SBITX), 0)
+	EXTRA_OBJ=../trx_v1-userland/ubitx_io.o
+else
+	EXTRA_OBJ=../trx_v2-userland/sbitx_io.o
 endif
 
 all: uuardopd uuport

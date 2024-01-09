@@ -5,25 +5,25 @@ Network subsystems of the HERMES telecommunication system: https://rhizomatica.o
 
 # Compile And Install
 
-To compile the userland code for v1, run:
+To compile the userland code for the current HERMES (version 2, sBitx-based), run:
 
 * make
 
-For v2, run:
-
-* make v2
-
-To install for v1, run:
+To install, run:
 
 * make install
-
-To install for v2, run:
-
-* make install_v2
 
 Additionally, if installing in a gateway station, run:
 
 * make install_gateway
+
+For building the HERMES version 1 (uBitx-based), run:
+
+* make v1
+
+To install v1, run:
+
+* make install_v1
 
 To compile the firmware for v1 radio, run:
 

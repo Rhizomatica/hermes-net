@@ -18,11 +18,11 @@
 # Boston, MA 02110-1301, USA.
 #
 
-.PHONY: clean install trx_v1-firmware trx_v1-userland trx_v2-userland uuxcomp uucpd
+.PHONY: clean install install_gateway install_v1 install_v2 trx_v1-firmware trx_v1-userland trx_v2-userland uuxcomp uucpd uucpd-v1 uucpd-v1 v1 v2
 
 prefix=/usr
 
-all: uuxcomp uucpd
+all: trx_v2-userland uuxcomp uucpd-v2
 
 trx_v1-firmware:
 	$(MAKE) -C trx_v1-firmware
@@ -39,15 +39,20 @@ trx_v1-userland:
 uuxcomp:
 	$(MAKE) -C uuxcomp
 
-uucpd:
-	$(MAKE) -C uucpd
+uucpd-v1:
+	IS_SBITX=0 $(MAKE) -C uucpd
 
 uucpd-v2:
 	IS_SBITX=1 $(MAKE) -C uucpd
 
-v2: trx_v2-userland uuxcomp uucpd-v2
+# compat
+v2: all
+install: install_v2
 
-install_v2: v2
+# build for v1
+v1: uuxcomp uucpd-v1 trx_v1-userland
+
+install_v2:
 	$(MAKE) -C trx_v2-userland install
 	$(MAKE) -C uuxcomp install
 	IS_SBITX=1 $(MAKE) -C uucpd install
@@ -63,9 +68,8 @@ install_v2: v2
 	install -D system_scripts/uucpd/vara_watchdog.sh $(DESTDIR)$(prefix)/bin
 
 
-install_v1: install
 
-install: trx_v1-userland uuxcomp uucpd
+install_v1:
 	$(MAKE) -C trx_v1-userland install
 	$(MAKE) -C uuxcomp install
 	$(MAKE) -C uucpd install
