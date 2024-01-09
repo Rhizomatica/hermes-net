@@ -18,14 +18,18 @@
 # Boston, MA 02110-1301, USA.
 #
 
+uname_p := $(shell uname -m)
+
 CC=gcc
 prefix=/usr
 
 
-ifeq ($(uname -m),aarch64)
-	CFLAGS=`pkg-config --cflags gtk+-3.0` -O3 -funroll-loops -march=native -moutline-atomics -Wall -Wno-deprecated-declarations -std=gnu11 -pthread -DMG_ENABLE_OPENSSL -DMG_ARCH=1
+ifeq (${uname_p},aarch64)
+# aarch64 Raspberry Pi 4 or better
+	CFLAGS=`pkg-config --cflags gtk+-3.0` -O3 -funroll-loops -march=armv8-a+crc -moutline-atomics -Wall -Wno-deprecated-declarations -std=gnu11 -pthread -DMG_ENABLE_OPENSSL -DMG_ARCH=1
 else
-	CFLAGS=`pkg-config --cflags gtk+-3.0` -O3 -funroll-loops -march=native -Wall -Wno-deprecated-declarations -std=gnu11 -pthread -DMG_ENABLE_OPENSSL -DMG_ARCH=1
+# x86_64 with SSE 4.2 level or better
+	CFLAGS=`pkg-config --cflags gtk+-3.0` -O3 -funroll-loops -march=x86-64-v2 -Wall -Wno-deprecated-declarations -std=gnu11 -pthread -DMG_ENABLE_OPENSSL -DMG_ARCH=1
 endif
 
 LDFLAGS=`pkg-config --libs glib-2.0` -lwiringPi -lasound -lm -lfftw3 -lfftw3f -pthread -lssl -lcrypto -li2c

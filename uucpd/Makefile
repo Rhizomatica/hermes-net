@@ -18,13 +18,16 @@
 # Boston, MA 02110-1301, USA.
 #
 
-uname_p := $(shell uname -p)
+uname_p := $(shell uname -m)
 
 prefix=/usr
 CC=gcc
-ifeq ($(uname -m),aarch64)
-	CFLAGS=-O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -moutline-atomics -march=native
+
+ifeq (${uname_p},aarch64)
+# aarch64 Raspberry Pi 4 or better
+	CFLAGS=-O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -moutline-atomics -march=armv8-a+crc
 else
+# x86_64 with SSE 4.2 level or better
 	CFLAGS=-O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -march=x86-64-v2
 endif
 
