@@ -72,7 +72,7 @@ install_v2:
 install_v1:
 	$(MAKE) -C trx_v1-userland install
 	$(MAKE) -C uuxcomp install
-	$(MAKE) -C uucpd install
+	IS_SBITX=0 $(MAKE) -C uucpd install
 	install -m 644 -D system_services/init/uuardopd.service $(DESTDIR)/etc/systemd/system/uuardopd.service
 	install -m 644 -D system_services/init/vnc.service $(DESTDIR)/etc/systemd/system/vnc.service
 	install -D system_scripts/compression/compress_image.sh $(DESTDIR)$(prefix)/bin/compress_image.sh
