@@ -20,7 +20,15 @@
  */
 
 #include <stdbool.h>
-#include <wiringPi.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <inttypes.h>
+#include <sys/time.h>
+
+#include "gpiolib/gpiolib.h"
 
 #include "sbitx_gpio.h"
 
@@ -34,30 +42,58 @@ void gpio_init(radio *radio_h)
     // we need the radio handler available for the callbacks.
     radio_gpio_h = radio_h;
 
-    // GPIO SETUP
-    wiringPiSetup();
-
-    // TODO: change the number to the #defines for easier reading
-    char pins[13] = {0, 2, 3, 6, 7, 10, 11, 12, 13, 14, 21, 25, 27};
-    for (int i = 0; i < 13; i++)
+    // GPIOLIB initialization
+    int ret = gpiolib_init();
+    if (ret < 0)
     {
-        pinMode(pins[i], INPUT);
-        pullUpDnControl(pins[i], PUD_UP);
+        printf("Failed to initialise gpiolib - %d\n", ret);
+        return ;
     }
 
+    ret = gpiolib_mmap();
+    if (ret)
+    {
+        if (ret == EACCES && geteuid())
+            printf("Must be root\n");
+        else
+            printf("Failed to mmap gpiolib - %s\n", strerror(ret));
+        return ;
+    }
+
+    // Pin atribution definitions
+    unsigned int pins[8] = {ENC1_A, ENC1_B, ENC1_SW, ENC2_A, ENC2_B, ENC2_SW, PTT, DASH};
+    for (int i = 0; i < 8; i++)
+    {
+        gpio_set_fsel(pins[i], GPIO_FSEL_INPUT);
+        gpio_set_dir(pins[i], DIR_INPUT);
+        gpio_set_pull(pins[i], PULL_UP);
+    }
+
+    gpio_set_fsel(TX_LINE, GPIO_FSEL_OUTPUT);
+    gpio_set_dir(TX_LINE, DIR_OUTPUT);
+    gpio_set_fsel(LPF_A, GPIO_FSEL_OUTPUT);
+    gpio_set_dir(LPF_A, DIR_OUTPUT);
+    gpio_set_fsel(LPF_B, GPIO_FSEL_OUTPUT);
+    gpio_set_dir(LPF_B, DIR_OUTPUT);
+    gpio_set_fsel(LPF_C, GPIO_FSEL_OUTPUT);
+    gpio_set_dir(LPF_C, DIR_OUTPUT);
+    gpio_set_fsel(LPF_D, GPIO_FSEL_OUTPUT);
+    gpio_set_dir(LPF_D, DIR_OUTPUT);
+
+#ifdef SBITX_DE
+    gpio_set_fsel(TX_POWER, GPIO_FSEL_OUTPUT);
+    gpio_set_dir(TX_POWER, DIR_OUTPUT);
+#endif
     //setup the LPFs and TX lines to initial state
-    pinMode(TX_LINE, OUTPUT);
-    pinMode(TX_POWER, OUTPUT);
-    pinMode(LPF_A, OUTPUT);
-    pinMode(LPF_B, OUTPUT);
-    pinMode(LPF_C, OUTPUT);
-    pinMode(LPF_D, OUTPUT);
-    digitalWrite(LPF_A, LOW);
-    digitalWrite(LPF_B, LOW);
-    digitalWrite(LPF_C, LOW);
-    digitalWrite(LPF_D, LOW);
-    digitalWrite(TX_LINE, LOW);
-    digitalWrite(TX_POWER, LOW);
+    gpio_set_drive(LPF_A, DRIVE_LOW);
+    gpio_set_drive(LPF_B, DRIVE_LOW);
+    gpio_set_drive(LPF_C, DRIVE_LOW);
+    gpio_set_drive(LPF_D, DRIVE_LOW);
+    gpio_set_drive(TX_LINE, DRIVE_LOW);
+
+#ifdef SBITX_DE
+    gpio_set_drive(TX_POWER, DRIVE_LOW); // not used in v2 and v3
+#endif
 
     // Initialize our two encoder structs (front pannel knobs)
     enc_init(&radio_h->enc_a, ENC_FAST, ENC1_B, ENC1_A);
@@ -66,18 +102,19 @@ void gpio_init(radio *radio_h)
     radio_h->volume_ticks = 0;
     radio_h->tuning_ticks = 0;
 
-    // Setting the callback for the encoders interrupts
-    wiringPiISR(ENC2_A, INT_EDGE_BOTH, tuning_isr_b);
-    wiringPiISR(ENC2_B, INT_EDGE_BOTH, tuning_isr_b);
+    // add our input pins to our poll()-like edge detection
+    do_gpio_poll_add(ENC2_A);
+    do_gpio_poll_add(ENC2_B);
 
-    wiringPiISR(ENC1_A, INT_EDGE_BOTH, tuning_isr_a);
-    wiringPiISR(ENC1_B, INT_EDGE_BOTH, tuning_isr_a);
+    do_gpio_poll_add(ENC1_A);
+    do_gpio_poll_add(ENC1_B);
 
-    wiringPiISR(ENC1_SW, INT_EDGE_FALLING, knob_a_pressed);
-    wiringPiISR(ENC2_SW, INT_EDGE_FALLING, knob_b_pressed);
+    do_gpio_poll_add(ENC1_SW);
+    do_gpio_poll_add(ENC2_SW);
 
-    wiringPiISR(PTT, INT_EDGE_BOTH, ptt_change);
-    wiringPiISR(DASH, INT_EDGE_BOTH, dash_change);
+    do_gpio_poll_add(PTT);
+    do_gpio_poll_add(DASH);
+
 }
 
 
@@ -91,7 +128,7 @@ void enc_init(encoder *e, int speed, int pin_a, int pin_b)
 
 void ptt_change()
 {
-    if (digitalRead(PTT) == LOW)
+    if (gpio_get_level(PTT) == 0)
         radio_gpio_h->key_down = true;
     else
         radio_gpio_h->key_down = false;
@@ -99,7 +136,7 @@ void ptt_change()
 
 void dash_change()
 {
-    if (digitalRead(DASH) == LOW)
+    if (gpio_get_level(DASH) == 0)
         radio_gpio_h->dash_down = true;
     else
         radio_gpio_h->dash_down = false;
@@ -107,12 +144,22 @@ void dash_change()
 
 void knob_a_pressed(void)
 {
-    radio_gpio_h->knob_a_pressed++;
+    static bool first = true;
+
+    if (!first)
+        radio_gpio_h->knob_a_pressed++;
+    else
+        first = false;
 }
 
 void knob_b_pressed(void)
 {
-    radio_gpio_h->knob_b_pressed++;
+    static bool first = true;
+
+    if (!first)
+        radio_gpio_h->knob_b_pressed++;
+    else
+        first = false;
 }
 
 
@@ -152,7 +199,7 @@ void tuning_isr_b(void)
 
 int enc_state (encoder *e)
 {
-    return (digitalRead(e->pin_a) ? 1 : 0) + (digitalRead(e->pin_b) ? 2: 0);
+    return (gpio_get_level(e->pin_a) ? 1 : 0) + (gpio_get_level(e->pin_b) ? 2: 0);
 }
 
 int enc_read(encoder *e)
@@ -163,7 +210,7 @@ int enc_read(encoder *e)
     newState = enc_state(e); // Get current state
 
     if (newState != e->prev_state)
-        delay (1);
+        usleep(1000);
 
     if (enc_state(e) != newState || newState == e->prev_state)
         return 0;
@@ -197,4 +244,82 @@ int enc_read(encoder *e)
     }
 
     return result;
+}
+
+// our poll infrastructure
+struct poll_gpio_state {
+    unsigned int num;
+    unsigned int gpio;
+    const char *name;
+    int level;
+};
+
+int num_poll_gpios;
+struct poll_gpio_state *poll_gpios;
+
+int do_gpio_poll_add(unsigned int gpio)
+{
+    struct poll_gpio_state *new_gpio;
+    unsigned int num = gpio;
+
+    if (!gpio_num_is_valid(gpio))
+        return 1;
+
+    poll_gpios = reallocarray(poll_gpios, num_poll_gpios + 1,
+                              sizeof(*poll_gpios));
+    new_gpio = &poll_gpios[num_poll_gpios];
+    new_gpio->num = num;
+    new_gpio->gpio = gpio;
+    new_gpio->name = gpio_get_name(gpio);
+    new_gpio->level = -1; /* Unknown */
+    num_poll_gpios++;
+
+    return 0;
+}
+
+void do_gpio_poll(void)
+{
+    int i;
+
+    if (num_poll_gpios)
+    {
+        for (i = 0; i < num_poll_gpios; i++)
+        {
+            struct poll_gpio_state *state = &poll_gpios[i];
+            int level = gpio_get_level(state->gpio);
+            if (level != state->level)
+            {
+                switch (state->gpio)
+                {
+                case PTT:
+                    ptt_change();
+                    break;
+                case DASH:
+                    dash_change();
+                    break;
+                case ENC1_A:
+                    tuning_isr_a();
+                    break;
+                case ENC1_B:
+                    tuning_isr_a();
+                    break;
+                case ENC1_SW:
+                    knob_a_pressed();
+                    break;
+                case ENC2_A:
+                    tuning_isr_b();
+                    break;
+                case ENC2_B:
+                    tuning_isr_b();
+                    break;
+                case ENC2_SW:
+                    knob_b_pressed();
+                    break;
+                default:
+                    printf("Wrong GPIO\n");
+                }
+                state->level = level;
+            }
+        }
+    }
 }

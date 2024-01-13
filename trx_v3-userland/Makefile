@@ -22,7 +22,7 @@
 uname_p := $(shell uname -m)
 
 CC=gcc
-LDFLAGS=-lwiringPi -li2c -liniparser
+LDFLAGS=-li2c -liniparser
 
 ifeq (${uname_p},aarch64)
 # aarch64 Raspberry Pi 4 or better
@@ -34,12 +34,14 @@ else
 	CFLAGS=-O3 -Wall -std=gnu11 -pthread -fstack-protector -march=x86-64-v2 -I/usr/include/iniparser
 endif
 
+GPIOLIB_OBJS=gpiolib/gpiolib.o gpiolib/gpiochip_bcm2712.o gpiolib/gpiochip_bcm2835.o gpiolib/gpiochip_rp1.o gpiolib/util.o
+
 .PHONY: clean
 
 all: sbitx_controller
 
-sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o cfg_utils.o radio.o
-	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o cfg_utils.o radio.o $(LDFLAGS)
+sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o cfg_utils.o radio.o $(GPIOLIB_OBJS)
+	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o cfg_utils.o radio.o $(GPIOLIB_OBJS) $(LDFLAGS)
 
 radio.o: radio.c
 	$(CC) -c $(CFLAGS) radio.c -o radio.o
@@ -60,6 +62,21 @@ sbitx_core.o: sbitx_core.c sbitx_core.h
 sbitx_si5351.o: sbitx_si5351.c sbitx_si5351.h
 	$(CC) -c $(CFLAGS) sbitx_si5351.c -o sbitx_si5351.o
 
+# gpiolib stuff
+gpiolib/gpiolib.o: gpiolib/gpiolib.c gpiolib/gpiolib.h
+	$(CC) -c $(CFLAGS) gpiolib/gpiolib.c -o gpiolib/gpiolib.o
+
+gpiolib/gpiochip_bcm2712.o: gpiolib/gpiochip_bcm2712.c gpiolib/gpiochip.h
+	$(CC) -c $(CFLAGS) gpiolib/gpiochip_bcm2712.c -o gpiolib/gpiochip_bcm2712.o
+
+gpiolib/gpiochip_bcm2835.o: gpiolib/gpiochip_bcm2835.c gpiolib/gpiochip.h
+	$(CC) -c $(CFLAGS) gpiolib/gpiochip_bcm2835.c -o gpiolib/gpiochip_bcm2835.o
+
+gpiolib/gpiochip_rp1.o:  gpiolib/gpiochip_rp1.c gpiolib/gpiochip.h
+	$(CC) -c $(CFLAGS) gpiolib/gpiochip_rp1.c -o gpiolib/gpiochip_rp1.o
+
+gpiolib/util.o: gpiolib/util.c gpiolib/util.h
+	$(CC) -c $(CFLAGS) gpiolib/util.c -o gpiolib/util.o
 
 
 clean:

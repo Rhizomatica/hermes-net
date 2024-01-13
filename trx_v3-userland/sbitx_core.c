@@ -19,12 +19,6 @@
  *
  */
 
-#include "sbitx_core.h"
-#include "sbitx_i2c.h"
-#include "sbitx_gpio.h"
-#include "sbitx_si5351.h"
-
-#include <wiringPi.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -33,6 +27,13 @@
 #include <stdlib.h>
 #include <time.h>
 #include <errno.h>
+
+#include "sbitx_core.h"
+#include "sbitx_i2c.h"
+#include "sbitx_gpio.h"
+#include "sbitx_si5351.h"
+
+#include "gpiolib/gpiolib.h"
 
 extern _Atomic bool shutdown;
 
@@ -139,7 +140,7 @@ bool hw_init(radio *radio_h, pthread_t *hw_tid)
     // Si5351 SETUP
     setup_oscillators(radio_h);
 
-    // start hw io monitor thread
+    // start hw io monitor thread, ref/pwr readings, volume and freq changes
     pthread_create(hw_tid, NULL, hw_thread, (void *) radio_h);
 
     return true;
@@ -160,10 +161,11 @@ bool hw_shutdown(radio *radio_h, pthread_t *hw_tid)
 
 void *hw_thread(void *radio_h_v)
 {
+    uint64_t counter = 0;
     radio *radio_h = (radio *) radio_h_v;
 
-    // starts our 10ms timer
-    int res = start_periodic_timer(10000);
+    // starts our 1ms timer
+    int res = start_periodic_timer(1000);
 
     if (res < 0)
     {
@@ -175,7 +177,10 @@ void *hw_thread(void *radio_h_v)
     while(!shutdown)
     {
         wait_next_activation();
-        io_tick(radio_h);
+        do_gpio_poll();
+        if (!(counter % 10)) // we want 10ms io_tick()
+            io_tick(radio_h);
+        counter++;
     }
 
     return NULL;
@@ -243,7 +248,7 @@ void set_frequency(radio *radio_h, uint32_t frequency)
 
     *radio_freq = frequency;
      // Were we are not setting the real frequency of the radio (in USB, which is the current setup)
-     // We add 24 kHz offset in order to use Ashhar fft implementation (just "- 24000")
+     // We add 24 kHz offset in order to use Ashhar's DSP code (just "- 24000")
     si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 24000);
 
     // TODO: put this inside a function in cfg_utils
@@ -254,22 +259,31 @@ void set_frequency(radio *radio_h, uint32_t frequency)
     if (rc != 0)
         printf("Error modifying config file\n");
 
+    radio_h->cfg_user_dirty = true;
 }
 
 void set_bfo(radio *radio_h, uint32_t frequency)
 {
     radio_h->bfo_frequency = frequency;
     si5351bx_setfreq(1, radio_h->bfo_frequency);
+
+    // TODO: put this inside a function in cfg_utils
+    char tmp[64];
+    sprintf(tmp, "%u", radio_h->bfo_frequency);
+    int rc = iniparser_set(radio_h->cfg_core, "main:bfo", tmp);
+    if (rc != 0)
+        printf("Error modifying config file\n");
+
+    radio_h->cfg_core_dirty = true;
 }
 
 
 void lpf_off(radio *radio_h)
 {
-    digitalWrite(LPF_A, LOW);
-    digitalWrite(LPF_B, LOW);
-    digitalWrite(LPF_C, LOW);
-    digitalWrite(LPF_D, LOW);
-
+    gpio_set_drive(LPF_A, DRIVE_LOW);
+    gpio_set_drive(LPF_B, DRIVE_LOW);
+    gpio_set_drive(LPF_C, DRIVE_LOW);
+    gpio_set_drive(LPF_D, DRIVE_LOW);
 }
 
 void lpf_set(radio *radio_h)
@@ -287,7 +301,7 @@ void lpf_set(radio *radio_h)
     else if (*radio_freq < 35000000)
         lpf = LPF_A;
 
-    digitalWrite(lpf, HIGH);
+    gpio_set_drive(lpf, DRIVE_HIGH);
 }
 
 
@@ -299,17 +313,19 @@ void tr_switch(radio *radio_h, bool txrx_state)
     if (txrx_state == IN_TX)
     {
         radio_h->txrx_state = IN_TX;
-
-        lpf_off(radio_h); delay(2);
-        digitalWrite(TX_LINE, HIGH); delay(2);
+        lpf_off(radio_h);
+        usleep(2000);
+        gpio_set_drive(TX_LINE, DRIVE_HIGH);
+        usleep(2000);
         lpf_set(radio_h);
     }
     else
     {
         radio_h->txrx_state = IN_RX;
-
-        lpf_off(radio_h); delay(2);
-        digitalWrite(TX_LINE, LOW); delay(2);
+        lpf_off(radio_h);
+        usleep(2000);
+        gpio_set_drive(TX_LINE, DRIVE_LOW);
+        usleep(2000);
         lpf_set(radio_h);
     }
 }

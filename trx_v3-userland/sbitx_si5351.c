@@ -76,9 +76,9 @@ void setup_oscillators(radio *radio_h)
     internal_radio_h = radio_h;
 
     //initialize the SI5351
-    delay(200);
+    usleep(200000);
     si5351bx_init();
-    delay(200);
+    usleep(200000);
     si5351bx_setfreq(1, radio_h->bfo_frequency);
 
     si5351_reset();
@@ -259,7 +259,7 @@ void si5351_set_calibration(int32_t cal)
 void si5351bx_init()
 {
     si5351_reset();
-    delay(10);
+    usleep(10000);
     si5351a_clkoff(SI_CLK0_CONTROL);
     si5351a_clkoff(SI_CLK1_CONTROL);
     si5351a_clkoff(SI_CLK2_CONTROL);

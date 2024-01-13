@@ -5,7 +5,7 @@ Next generation of HERMES radio controller software for the sBitx v3.
 This software can perform all controls at the sBitx:
 
 * I2C communication to the Si5351a and ATTiny85 (power fwd and ref readings)
-* GPIO using the WiringPi library, for all kind of radio controls (encoders, lpf bank, tx/rx)
+* GPIO using the GPIOLIB library (gpiolib directory), for all kind of radio controls (encoders, lpf bank, tx/rx)
 * Si5351a control functions
 
 
