@@ -80,4 +80,4 @@ gpiolib/util.o: gpiolib/util.c gpiolib/util.h
 
 
 clean:
-	rm -f sbitx_controller *.o
+	rm -f sbitx_controller *.o gpiolib/*.o
