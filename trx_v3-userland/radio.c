@@ -97,6 +97,45 @@ int main(int argc, char* argv[])
    cfg_init(&radio_h, "config/test-core.ini", "config/test-user.ini", &cfg_tid);
    hw_init(&radio_h, &hw_tid);
 
+   // for testing purposes...
+#if 1
+   while(!shutdown)
+   {
+       // clean screen
+       printf("\e[1;1H\e[2J");
+       printf("\n");
+       printf("volume_ticks: %d\n", radio_h.volume_ticks);
+       printf("tuning_ticks: %d\n", radio_h.tuning_ticks);
+       printf("knob A pressed: %u\n", radio_h.knob_a_pressed);
+       printf("knob B pressed: %u\n", radio_h.knob_b_pressed);
+       printf("PTT: %s\n", radio_h.key_down ? "DOWN" : "UP" );
+       printf("DASH: %s\n", radio_h.dash_down ? "DOWN" : "UP" );
+
+       if (radio_h.key_down)
+           tr_switch(&radio_h, IN_TX);
+       else
+           tr_switch(&radio_h, IN_RX);
+
+       printf("TR_SWITCH: %s\n", (radio_h.txrx_state == IN_TX) ? "TX" : "RX" );
+
+       if (radio_h.txrx_state == IN_TX)
+       {
+           if (update_power_measurements(&radio_h))
+           {
+               printf("   FWD PWR: %.1f   REF PWR: %.1f   SWR: %.1f\n",
+                      (float) get_fwd_power(&radio_h) / 10,
+                      (float) get_ref_power(&radio_h) / 10,
+                      (float) get_swr(&radio_h) / 10);
+           }
+           else
+           {
+               printf("   FWD PWR: ERROR   REF PWR: ERROR   SWR: ERROR     \r");
+           }
+       }
+
+       usleep(50000);// 50 ms
+   }
+#endif
    // this call pthread_join(), so it blocks below, until shutdown == true
    hw_shutdown(&radio_h, &hw_tid);
    cfg_shutdown(&radio_h, &cfg_tid);
