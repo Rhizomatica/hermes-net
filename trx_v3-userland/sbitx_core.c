@@ -143,6 +143,14 @@ bool hw_init(radio *radio_h, pthread_t *hw_tid)
     // start hw io monitor thread, ref/pwr readings, volume and freq changes
     pthread_create(hw_tid, NULL, hw_thread, (void *) radio_h);
 
+    // start hw io monitor thread, ref/pwr readings, volume and freq changes
+    pthread_create(hw_tid, NULL, hw_thread, (void *) radio_h);
+
+    // start hw io monitor thread, ref/pwr readings, volume and freq changes
+    pthread_t tid;
+    pthread_create(&tid, NULL, do_gpio_poll, (void *) radio_h);
+
+
     return true;
 }
 
@@ -161,11 +169,10 @@ bool hw_shutdown(radio *radio_h, pthread_t *hw_tid)
 
 void *hw_thread(void *radio_h_v)
 {
-    uint64_t counter = 0;
     radio *radio_h = (radio *) radio_h_v;
 
-    // starts our 1ms timer
-    int res = start_periodic_timer(1000);
+    // starts our 10ms timer
+    int res = start_periodic_timer(10000);
 
     if (res < 0)
     {
@@ -177,10 +184,7 @@ void *hw_thread(void *radio_h_v)
     while(!shutdown)
     {
         wait_next_activation();
-        do_gpio_poll();
-        if (!(counter % 10)) // we want 10ms io_tick()
-            io_tick(radio_h);
-        counter++;
+        io_tick(radio_h);
     }
 
     return NULL;

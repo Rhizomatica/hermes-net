@@ -35,6 +35,9 @@
 // global radio handle pointer used for the callback functions
 radio *radio_gpio_h;
 
+extern bool shutdown;
+
+
 // for now this initializes the GPIO and also initializes the structures for
 // encoder/knobs for easy reading by application
 void gpio_init(radio *radio_h)
@@ -277,10 +280,10 @@ int do_gpio_poll_add(unsigned int gpio)
     return 0;
 }
 
-void do_gpio_poll(void)
+void *do_gpio_poll(void *radio_h_v)
 {
 
-    if (num_poll_gpios)
+    while (num_poll_gpios && !shutdown)
     {
         for (int i = 0; i < num_poll_gpios; i++)
         {
@@ -319,6 +322,10 @@ void do_gpio_poll(void)
                 }
                 state->level = level;
             }
+            else
+                usleep(1000);
         }
     }
+
+    return NULL;
 }

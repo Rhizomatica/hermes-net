@@ -41,6 +41,6 @@ int enc_state (encoder *e);
 int enc_read(encoder *e);
 
 int do_gpio_poll_add(unsigned int gpio);
-void do_gpio_poll(void);
+void *do_gpio_poll(void *radio_h_v);
 
 #endif // SBITX_GPIO_H_
