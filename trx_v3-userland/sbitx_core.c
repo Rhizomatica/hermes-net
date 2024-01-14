@@ -141,13 +141,7 @@ bool hw_init(radio *radio_h, pthread_t *hw_tid)
     setup_oscillators(radio_h);
 
     // start hw io monitor thread, ref/pwr readings, volume and freq changes
-    pthread_t tid;
-    pthread_create(&tid, NULL, do_gpio_poll, (void *) radio_h);
-
-    // start hw io monitor thread, ref/pwr readings, volume and freq changes
     pthread_create(hw_tid, NULL, hw_thread, (void *) radio_h);
-
-
 
     return true;
 }
