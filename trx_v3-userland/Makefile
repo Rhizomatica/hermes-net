@@ -22,16 +22,16 @@
 uname_p := $(shell uname -m)
 
 CC=gcc
-LDFLAGS=-li2c -liniparser
+LDFLAGS=-liniparser -li2c
 
 ifeq (${uname_p},aarch64)
 # aarch64 Raspberry Pi 4 or better
-	CFLAGS=-O3 -Wall -std=gnu11 -pthread -fstack-protector -moutline-atomics -march=armv8-a+crc -I/usr/include/iniparser
+	CFLAGS=-O3 -Wall -std=gnu11 -fstack-protector -moutline-atomics -march=armv8-a+crc -I/usr/include/iniparser
 # for Pi 5 use:
 #	CFLAGS=-O3 -Wall -std=gnu11 -pthread -fstack-protector -march=armv8.2-a+crypto+fp16+rcpc+dotprod -I/usr/include/iniparser
 else
 # x86_64 with SSE 4.2 level or better
-	CFLAGS=-O3 -Wall -std=gnu11 -pthread -fstack-protector -march=x86-64-v2 -I/usr/include/iniparser
+	CFLAGS=-O3 -Wall -std=gnu11 -fstack-protector -march=x86-64-v2 -I/usr/include/iniparser
 endif
 
 GPIOLIB_OBJS=gpiolib/gpiolib.o gpiolib/gpiochip_bcm2712.o gpiolib/gpiochip_bcm2835.o gpiolib/gpiochip_rp1.o gpiolib/util.o
