@@ -149,12 +149,9 @@ bool hw_init(radio *radio_h, pthread_t *hw_tid)
 
 bool hw_shutdown(radio *radio_h, pthread_t *hw_tid)
 {
-    i2c_close(radio_h);
-
-    // WiringPi has no function to close/shutdown resources
-    // should we stop the Si5351 clocks?
-
     pthread_join(*hw_tid, NULL);
+
+    i2c_close(radio_h);
 
     return true;
 }

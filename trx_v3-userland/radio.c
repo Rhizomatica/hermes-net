@@ -76,8 +76,8 @@ int main(int argc, char* argv[])
 
    // our shutdown handling...
    signal(SIGINT, exit_radio);
-   signal (SIGQUIT, exit_radio);
-   signal (SIGTERM, exit_radio);
+   signal(SIGQUIT, exit_radio);
+   signal(SIGTERM, exit_radio);
 
     // Catch SIGPIPE
    signal(SIGPIPE, SIG_IGN); // and ignores SIGPIPE...
@@ -139,8 +139,6 @@ int main(int argc, char* argv[])
    // this call pthread_join(), so it blocks below, until shutdown == true
    hw_shutdown(&radio_h, &hw_tid);
    cfg_shutdown(&radio_h, &cfg_tid);
-
-
 
    return EXIT_SUCCESS;
 

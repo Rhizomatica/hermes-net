@@ -286,9 +286,10 @@ int do_gpio_poll_add(unsigned int gpio)
 
 void *do_gpio_poll(void *radio_h_v)
 {
-
+    int changed = 0;
     while (num_poll_gpios && !shutdown)
     {
+        changed = 0;
         for (int i = 0; i < num_poll_gpios; i++)
         {
             struct poll_gpio_state *state = &poll_gpios[i];
@@ -325,10 +326,11 @@ void *do_gpio_poll(void *radio_h_v)
                     printf("Wrong GPIO\n");
                 }
                 state->level = level;
+                changed = 1;
             }
-            else
-                usleep(1000);
         }
+        if (changed)
+            usleep(1000);
     }
 
     return NULL;
