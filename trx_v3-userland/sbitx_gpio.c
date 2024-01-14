@@ -254,8 +254,8 @@ struct poll_gpio_state {
     int level;
 };
 
-int num_poll_gpios;
-struct poll_gpio_state *poll_gpios;
+static int num_poll_gpios;
+static struct poll_gpio_state *poll_gpios;
 
 int do_gpio_poll_add(unsigned int gpio)
 {
@@ -279,11 +279,10 @@ int do_gpio_poll_add(unsigned int gpio)
 
 void do_gpio_poll(void)
 {
-    int i;
 
     if (num_poll_gpios)
     {
-        for (i = 0; i < num_poll_gpios; i++)
+        for (int i = 0; i < num_poll_gpios; i++)
         {
             struct poll_gpio_state *state = &poll_gpios[i];
             int level = gpio_get_level(state->gpio);
