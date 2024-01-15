@@ -50,51 +50,65 @@ void io_tick(radio *radio_h)
     ticks++;
 
     // a speed up if one tunes the knob fast
-    if (radio_h->profiles[radio_h->profile_active_idx].enable_knob_frequency && radio_h->tuning_ticks)
+    if(radio_h->tuning_ticks)
     {
-        if (abs(radio_h->tuning_ticks) > 50)
-            radio_h->tuning_ticks *= 4;
+        if (radio_h->profiles[radio_h->profile_active_idx].enable_knob_frequency)
+        {
+            if (abs(radio_h->tuning_ticks) > 50)
+                radio_h->tuning_ticks *= 4;
 
-        while (radio_h->tuning_ticks > 0)
-        {
-            radio_h->tuning_ticks--;
-            freq -= tuning_step;
+            while (radio_h->tuning_ticks > 0)
+            {
+                radio_h->tuning_ticks--;
+                freq -= tuning_step;
+            }
+            while (radio_h->tuning_ticks < 0)
+            {
+                radio_h->tuning_ticks++;
+                freq += tuning_step;
+            }
+            set_dirty = true;
+            set_frequency(radio_h, freq);
         }
-        while (radio_h->tuning_ticks < 0)
+        else
         {
-            radio_h->tuning_ticks++;
-            freq += tuning_step;
+            radio_h->tuning_ticks = 0;
         }
-        set_dirty = true;
-        set_frequency(radio_h, freq);
     }
 
-    if (radio_h->profiles[radio_h->profile_active_idx].enable_knob_volume && radio_h->volume_ticks)
+    if (radio_h->volume_ticks)
     {
-        if (abs(radio_h->volume_ticks) > 50)
-            radio_h->volume_ticks *= 2;
+        if (radio_h->profiles[radio_h->profile_active_idx].enable_knob_volume)
+        {
+            if (abs(radio_h->volume_ticks) > 50)
+                radio_h->volume_ticks *= 2;
 
-        while (radio_h->volume_ticks > 0)
-        {
-            radio_h->volume_ticks--;
-            if (volume < 5)
-                volume = 0;
-            else
-                volume -= 4;
+            while (radio_h->volume_ticks > 0)
+            {
+                radio_h->volume_ticks--;
+                if (volume < 5)
+                    volume = 0;
+                else
+                    volume -= 4;
+            }
+            while (radio_h->volume_ticks < 0)
+            {
+                radio_h->volume_ticks++;
+                if (volume > 95)
+                    volume = 100;
+                else
+                    volume += 4;
+            }
+            set_dirty = true;
+            // TODO: put everything on a set_speaker_level()
+            // radio_h->profiles[radio_h->profile_active_idx].speaker_level = volume;
+            // set_speaker_level(radio_h, volume);
         }
-        while (radio_h->volume_ticks < 0)
+        else
         {
-            radio_h->volume_ticks++;
-            if (volume > 95)
-                volume = 100;
-            else
-                volume += 4;
+            radio_h->volume_ticks = 0;
         }
-        set_dirty = true;
-        // TODO: put everything on a set_speaker_level()
-        // radio_h->profiles[radio_h->profile_active_idx].speaker_level = volume;
-        // set_speaker_level(radio_h, volume);
-	}
+    }
 
     // period * 3, read power over i2c
 	if ( !(ticks % 3) && radio_h->txrx_state == IN_TX )
