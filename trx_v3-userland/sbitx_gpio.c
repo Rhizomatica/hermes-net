@@ -269,10 +269,10 @@ int do_gpio_poll_add(unsigned int gpio)
 
 void *do_gpio_poll(void *radio_h_v)
 {
-    int changed = 0;
+
     while (num_poll_gpios && !shutdown)
     {
-        changed = 0;
+        int changed = 0;
         for (int i = 0; i < num_poll_gpios; i++)
         {
             struct poll_gpio_state *state = &poll_gpios[i];
