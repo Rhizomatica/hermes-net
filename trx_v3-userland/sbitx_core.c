@@ -111,12 +111,13 @@ void io_tick(radio *radio_h)
     }
 
     // period * 3, read power over i2c
-	if ( !(ticks % 3) && radio_h->txrx_state == IN_TX )
+    if ( !(ticks % 3) && radio_h->txrx_state == IN_TX )
     {
-            update_power_measurements(radio_h);
+        update_power_measurements(radio_h);
     }
 
-#if 0 // we are not using the button presses for nothing up to now
+    // we are not using the button presses for nothing up to now
+#if 0
 	if (!(ticks % 10))
     {
 		if (radio_h->knob_a_pressed)
