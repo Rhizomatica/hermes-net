@@ -24,7 +24,8 @@
 #include <stdio.h>
 #include <linux/types.h>
 #include <stdint.h>
-#include <wiringPi.h>
+#include <unistd.h>
+
 #include "sbitx_i2c.h"
 #include "sbitx_si5351.h"
 #include "sbitx_core.h"
