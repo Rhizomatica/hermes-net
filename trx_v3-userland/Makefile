@@ -40,12 +40,11 @@ GPIOLIB_OBJS=gpiolib/gpiolib.o gpiolib/gpiochip_bcm2712.o gpiolib/gpiochip_bcm28
 
 all: sbitx_controller
 
-sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o cfg_utils.o radio.o $(GPIOLIB_OBJS)
-	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o cfg_utils.o radio.o $(GPIOLIB_OBJS) $(LDFLAGS)
+sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o cfg_utils.o sbitx_controller.o $(GPIOLIB_OBJS)
+	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o cfg_utils.o sbitx_controller.o $(GPIOLIB_OBJS) $(LDFLAGS)
 
-radio.o: radio.c
-	$(CC) -c $(CFLAGS) radio.c -o radio.o
-
+sbitx_controller.o: sbitx_controller.c
+	$(CC) -c $(CFLAGS) sbitx_controller.c -o sbitx_controller.o
 
 cfg_utils.o: cfg_utils.c cfg_utils.h
 	$(CC) -c $(CFLAGS) cfg_utils.c -o cfg_utils.o
