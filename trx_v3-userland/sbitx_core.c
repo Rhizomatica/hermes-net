@@ -144,7 +144,7 @@ void io_tick(radio *radio_h)
 
 
 
-bool hw_init(radio *radio_h, pthread_t *hw_tid)
+bool hw_init(radio *radio_h, pthread_t *hw_tids)
 {
     // I2C SETUP
     i2c_open(radio_h);
@@ -156,15 +156,20 @@ bool hw_init(radio *radio_h, pthread_t *hw_tid)
     setup_oscillators(radio_h);
 
     // start hw io monitor thread, ref/pwr readings, volume and freq changes
-    pthread_create(hw_tid, NULL, hw_thread, (void *) radio_h);
+    pthread_create(&hw_tids[0], NULL, hw_thread, (void *) radio_h);
+
+    // poll gpios thread
+    pthread_create(&hw_tids[1], NULL, do_gpio_poll, (void *) radio_h);
 
     return true;
 }
 
 
-bool hw_shutdown(radio *radio_h, pthread_t *hw_tid)
+bool hw_shutdown(radio *radio_h, pthread_t *hw_tids)
 {
-    pthread_join(*hw_tid, NULL);
+    pthread_join(hw_tids[0], NULL);
+
+    pthread_join(hw_tids[1], NULL);
 
     i2c_close(radio_h);
 

@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
 {
     radio radio_h; // radio handler
     pthread_t cfg_tid; // configuration subsystem thread id
-    pthread_t hw_tid; // hw io thread id
+    pthread_t hw_tids[2]; // 2 hw thread ids user for IO
 
    if (argc > 3)
     {
@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
 
    /* Call in order... cfg, hw, etc */
    cfg_init(&radio_h, CFG_CORE_PATH, CFG_USER_PATH, &cfg_tid);
-   hw_init(&radio_h, &hw_tid);
+   hw_init(&radio_h, hw_tids);
 
    // for testing purposes...
 #if 0
@@ -137,7 +137,7 @@ int main(int argc, char* argv[])
    }
 #endif
    // this call pthread_join(), so it blocks below, until shutdown == true
-   hw_shutdown(&radio_h, &hw_tid);
+   hw_shutdown(&radio_h, hw_tids);
    cfg_shutdown(&radio_h, &cfg_tid);
 
    return EXIT_SUCCESS;

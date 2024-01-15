@@ -194,8 +194,8 @@ typedef struct
 
 
 // init / shutdown functions
-bool hw_init(radio *radio_h, pthread_t *hw_tid);
-bool hw_shutdown(radio *radio_h, pthread_t *hw_tid);
+bool hw_init(radio *radio_h, pthread_t *hw_tids);
+bool hw_shutdown(radio *radio_h, pthread_t *hw_tids);
 
 // hw io thread
 void *hw_thread(void *radio_h_v);

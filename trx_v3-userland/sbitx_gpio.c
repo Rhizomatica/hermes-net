@@ -101,10 +101,6 @@ void gpio_init(radio *radio_h)
 
     do_gpio_poll_add(PTT);
     do_gpio_poll_add(DASH);
-
-    // start hw io monitor thread, ref/pwr readings, volume and freq changes
-    pthread_t tid;
-    pthread_create(&tid, NULL, do_gpio_poll, (void *) radio_h);
 }
 
 
