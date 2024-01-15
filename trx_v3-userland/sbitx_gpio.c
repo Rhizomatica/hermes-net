@@ -312,7 +312,7 @@ void *do_gpio_poll(void *radio_h_v)
                 changed = 1;
             }
         }
-        if (changed)
+        if (!changed)
             usleep(1000);
     }
 
