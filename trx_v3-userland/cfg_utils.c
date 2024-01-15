@@ -62,13 +62,13 @@ void *config_thread(void *radio_h_v)
     {
         if (radio_h->cfg_core_dirty)
         {
-            write_config_core(radio_h, "config/output-core.ini");
+            write_config_core(radio_h, CFG_CORE_PATH);
             radio_h->cfg_core_dirty = false;
         }
 
         if (radio_h->cfg_user_dirty)
         {
-            write_config_user(radio_h, "config/output-user.ini");
+            write_config_user(radio_h, CFG_USER_PATH);
             radio_h->cfg_user_dirty = false;
         }
         // every ~2s we check if the dirty bit is set

@@ -78,6 +78,12 @@ gpiolib/gpiochip_rp1.o:  gpiolib/gpiochip_rp1.c gpiolib/gpiochip.h
 gpiolib/util.o: gpiolib/util.c gpiolib/util.h
 	$(CC) -c $(CFLAGS) gpiolib/util.c -o gpiolib/util.o
 
+install: sbitx_controller
+	install -D sbitx_controller $(DESTDIR)$(prefix)/bin/sbitx_controller
+
+install_new:
+	install -D config/core.ini $(DESTDIR)/etc/sbitx/core.ini
+	install -D config/user.ini $(DESTDIR)/etc/sbitx/user.ini
 
 clean:
 	rm -f sbitx_controller *.o gpiolib/*.o

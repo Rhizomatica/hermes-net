@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
    }
 
    /* Call in order... cfg, hw, etc */
-   cfg_init(&radio_h, "config/test-core.ini", "config/test-user.ini", &cfg_tid);
+   cfg_init(&radio_h, CFG_CORE_PATH, CFG_USER_PATH, &cfg_tid);
    hw_init(&radio_h, &hw_tid);
 
    // for testing purposes...

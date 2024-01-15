@@ -23,6 +23,9 @@
 #ifndef SBITX_CORE_H_
 #define SBITX_CORE_H_
 
+#define CFG_CORE_PATH "/etc/sbitx/core.ini"
+#define CFG_USER_PATH "/etc/sbitx/user.ini"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <pthread.h>
