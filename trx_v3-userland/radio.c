@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
    hw_init(&radio_h, &hw_tid);
 
    // for testing purposes...
-#if 1
+#if 0
    while(!shutdown)
    {
        // clean screen

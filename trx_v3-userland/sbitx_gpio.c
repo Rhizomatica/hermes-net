@@ -47,9 +47,10 @@ void gpio_init(radio *radio_h)
 
     // GPIOLIB initialization
     int ret = gpiolib_init();
-    if (ret < 0)
+    if (ret <= 0)
     {
-        printf("Failed to initialise gpiolib - %d\n", ret);
+        printf("Failed to initialise gpiolib.\n");
+        shutdown = true;
         return ;
     }
 
@@ -60,37 +61,26 @@ void gpio_init(radio *radio_h)
             printf("Must be root\n");
         else
             printf("Failed to mmap gpiolib - %s\n", strerror(ret));
+        shutdown = true;
         return ;
     }
 
-    // Pin atribution definitions
-    unsigned int pins[8] = {ENC1_A, ENC1_B, ENC1_SW, ENC2_A, ENC2_B, ENC2_SW, PTT, DASH};
+    // INPUT pins
+    unsigned int input_pins[8] = {ENC1_A, ENC1_B, ENC1_SW, ENC2_A, ENC2_B, ENC2_SW, PTT, DASH};
     for (int i = 0; i < 8; i++)
     {
-        gpio_set_pull(pins[i], PULL_UP);
-        gpio_set_fsel(pins[i], GPIO_FSEL_INPUT);
+        gpio_set_pull(input_pins[i], PULL_UP);
+        gpio_set_fsel(input_pins[i], GPIO_FSEL_INPUT);
     }
 
-    //setup the LPFs and TX lines to initial state
-    gpio_set_drive(LPF_A, DRIVE_LOW);
-    gpio_set_drive(LPF_B, DRIVE_LOW);
-    gpio_set_drive(LPF_C, DRIVE_LOW);
-    gpio_set_drive(LPF_D, DRIVE_LOW);
-    gpio_set_drive(TX_LINE, DRIVE_LOW);
-
-#ifdef SBITX_DE
-    gpio_set_drive(TX_POWER, DRIVE_LOW); // not used in v2 and v3
-#endif
-
-    gpio_set_fsel(TX_LINE, GPIO_FSEL_OUTPUT);
-    gpio_set_fsel(LPF_A, GPIO_FSEL_OUTPUT);
-    gpio_set_fsel(LPF_B, GPIO_FSEL_OUTPUT);
-    gpio_set_fsel(LPF_C, GPIO_FSEL_OUTPUT);
-    gpio_set_fsel(LPF_D, GPIO_FSEL_OUTPUT);
-
-#ifdef SBITX_DE
-    gpio_set_fsel(TX_POWER, GPIO_FSEL_OUTPUT);
-#endif
+    // OUTPUT pins
+    // if on sBitx DE, add TX_POWER signal here and to tr_switch
+    unsigned int output_pins[5] = {LPF_A, LPF_B, LPF_C, LPF_D, TX_LINE};
+    for (int i = 0; i < 5; i++)
+    {
+        gpio_set_drive(output_pins[i], DRIVE_LOW);
+        gpio_set_fsel(output_pins[i], GPIO_FSEL_OUTPUT);
+    }
 
     // Initialize our two encoder structs (front pannel knobs)
     enc_init(&radio_h->enc_a, ENC_FAST, ENC1_B, ENC1_A);
