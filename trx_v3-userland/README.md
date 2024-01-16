@@ -2,12 +2,12 @@
 
 Next generation of HERMES radio controller software for the sBitx v3. 
 
-This software is aims to be a complete low-level implementation for all sBitx features, plus some DSP and ALSA code for providing a ready-to-use voice and digital functionality:
+This software is aims to be a complete low-level implementation for all sBitx features, plus some DSP and ALSA code for providing a ready-to-use voice and digital functionality. Already present in the code are the following features:
 
-* I2C communication to the Si5351a and ATTiny85 (power fwd and ref readings)
+* I2C communication to the Si5351a and ATTiny85 (power fwd and ref readings) using libi2c
 * GPIO using the GPIOLIB library (gpiolib directory), for all kind of radio controls (encoders, lpf bank, tx/rx)
 * Si5351a control functions
-
+* Configuration files located in /etc/sbitx/{core,user}.ini
 
 This code expects the I2C bus to be kernel I2C interface. Make sure you have one of the dtoverlays
 in /boot/config.txt
