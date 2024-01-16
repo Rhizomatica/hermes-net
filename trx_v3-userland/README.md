@@ -37,7 +37,7 @@ With gpio and RTC, it lists as:
 i2c-22  i2c             i2c-gpio-rtc@0                          I2C adapter
 ```
 
-By looking the I2C bus where the I2C BB driver is loaded, use the appropriate device file, eg., /dev/i2c-22 or /dev/i2c-2, in the sBitx core API.
+By looking the I2C bus where the I2C BB driver is loaded, use the appropriate device file, eg., /dev/i2c-22 or /dev/i2c-2, in /etc/sbitx/core.ini.
 
 # Compilation
 
