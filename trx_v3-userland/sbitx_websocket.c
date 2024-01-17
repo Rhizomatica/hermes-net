@@ -84,13 +84,13 @@ static void web_despatcher(struct mg_connection *c, struct mg_ws_message *wm){
 // This RESTful server implements the following endpoints:
 //   /websocket - upgrade to Websocket, and implement HERMES websocket streaming
 //   any other URI serves static files from s_web_root
-static void fn(struct mg_connection *c, int ev, void *ev_data) {
+static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if (ev == MG_EV_ACCEPT)
     {
         struct mg_tls_opts opts =
             {
                 .cert = CFG_SSL_CERT,    // Certificate file
-                .key = CFG_SSL_KEY,  // Private key file
+                .certkey = CFG_SSL_KEY,  // Private key file
             };
         mg_tls_init(c, &opts);
     }
