@@ -1,5 +1,6 @@
-/* sBitx core
- * Copyright (C) 2023 Rhizomatica
+/* HERMES sbitx controller
+ *
+ * Copyright (C) 2023-2024 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
@@ -34,110 +35,6 @@
 #include "sbitx_si5351.h"
 
 extern _Atomic bool shutdown_;
-
-// this is our main 10ms period io loop
-void io_tick(radio *radio_h)
-{
-    static uint64_t ticks = 0;
-    _Atomic uint32_t freq = radio_h->profiles[radio_h->profile_active_idx].freq;
-    _Atomic uint32_t volume = radio_h->profiles[radio_h->profile_active_idx].speaker_level;
-    _Atomic uint32_t tuning_step = radio_h->profiles[radio_h->profile_active_idx].step_size;
-
-    bool set_dirty_ws = false;
-
-    ticks++;
-
-    // a speed up if one tunes the knob fast
-    if(radio_h->tuning_ticks)
-    {
-        if (radio_h->profiles[radio_h->profile_active_idx].enable_knob_frequency)
-        {
-            if (abs(radio_h->tuning_ticks) > 50)
-                radio_h->tuning_ticks *= 4;
-
-            while (radio_h->tuning_ticks > 0)
-            {
-                radio_h->tuning_ticks--;
-                freq -= tuning_step;
-            }
-            while (radio_h->tuning_ticks < 0)
-            {
-                radio_h->tuning_ticks++;
-                freq += tuning_step;
-            }
-            set_dirty_ws = true;
-            set_frequency(radio_h, freq);
-        }
-        else
-        {
-            radio_h->tuning_ticks = 0;
-        }
-    }
-
-    if (radio_h->volume_ticks)
-    {
-        if (radio_h->profiles[radio_h->profile_active_idx].enable_knob_volume)
-        {
-            if (abs(radio_h->volume_ticks) > 50)
-                radio_h->volume_ticks *= 2;
-
-            while (radio_h->volume_ticks > 0)
-            {
-                radio_h->volume_ticks--;
-                if (volume < 5)
-                    volume = 0;
-                else
-                    volume -= 4;
-            }
-            while (radio_h->volume_ticks < 0)
-            {
-                radio_h->volume_ticks++;
-                if (volume > 95)
-                    volume = 100;
-                else
-                    volume += 4;
-            }
-            set_dirty_ws = true;
-            // TODO: put everything on a set_speaker_level()
-            // set_speaker_level(radio_h, volume);
-            radio_h->profiles[radio_h->profile_active_idx].speaker_level = volume;
-            radio_h->cfg_user_dirty = true;
-        }
-        else
-        {
-            radio_h->volume_ticks = 0;
-        }
-    }
-
-    // period * 3, read power over i2c
-    if ( !(ticks % 3) && radio_h->txrx_state == IN_TX )
-    {
-        update_power_measurements(radio_h);
-    }
-
-    // we are not using the button presses for nothing up to now
-#if 0
-	if (!(ticks % 10))
-    {
-		if (radio_h->knob_a_pressed)
-        {
-            printf("Button A pressed\n");
-            radio_h->knob_a_pressed = 0;
-        }
-		if (radio_h->knob_b_pressed)
-        {
-            printf("Button B pressed\n");
-            radio_h->knob_b_pressed = 0;
-        }
-    }
-#endif
-
-    if (set_dirty_ws)
-        radio_h->send_ws_update = true;
-
-}
-
-
 
 bool hw_init(radio *radio_h, pthread_t *hw_tids)
 {
@@ -337,6 +234,143 @@ void tr_switch(radio *radio_h, bool txrx_state)
         usleep(2000);
         lpf_set(radio_h);
     }
+}
+
+// this is our main 10ms period io loop
+void io_tick(radio *radio_h)
+{
+    static uint64_t ticks = 0;
+    _Atomic uint32_t freq = radio_h->profiles[radio_h->profile_active_idx].freq;
+    _Atomic uint32_t volume = radio_h->profiles[radio_h->profile_active_idx].speaker_level;
+    _Atomic uint32_t tuning_step = radio_h->profiles[radio_h->profile_active_idx].step_size;
+
+    bool set_dirty_ws = false;
+
+    ticks++;
+
+    // a speed up if one tunes the knob fast
+    if(radio_h->tuning_ticks)
+    {
+        if (radio_h->profiles[radio_h->profile_active_idx].enable_knob_frequency)
+        {
+            if (abs(radio_h->tuning_ticks) > 50)
+                radio_h->tuning_ticks *= 4;
+
+            while (radio_h->tuning_ticks > 0)
+            {
+                radio_h->tuning_ticks--;
+                freq -= tuning_step;
+            }
+            while (radio_h->tuning_ticks < 0)
+            {
+                radio_h->tuning_ticks++;
+                freq += tuning_step;
+            }
+            set_dirty_ws = true;
+            set_frequency(radio_h, freq);
+        }
+        else
+        {
+            radio_h->tuning_ticks = 0;
+        }
+    }
+
+    if (radio_h->volume_ticks)
+    {
+        if (radio_h->profiles[radio_h->profile_active_idx].enable_knob_volume)
+        {
+            if (abs(radio_h->volume_ticks) > 50)
+                radio_h->volume_ticks *= 2;
+
+            while (radio_h->volume_ticks > 0)
+            {
+                radio_h->volume_ticks--;
+                if (volume < 5)
+                    volume = 0;
+                else
+                    volume -= 4;
+            }
+            while (radio_h->volume_ticks < 0)
+            {
+                radio_h->volume_ticks++;
+                if (volume > 95)
+                    volume = 100;
+                else
+                    volume += 4;
+            }
+            set_dirty_ws = true;
+            // TODO: put everything on a set_speaker_level()
+            // set_speaker_level(radio_h, volume);
+            radio_h->profiles[radio_h->profile_active_idx].speaker_level = volume;
+            radio_h->cfg_user_dirty = true;
+        }
+        else
+        {
+            radio_h->volume_ticks = 0;
+        }
+    }
+
+    // period * 3, read power over i2c
+    if ( !(ticks % 3) && radio_h->txrx_state == IN_TX )
+    {
+        update_power_measurements(radio_h);
+    }
+
+    // we are not using the button presses for nothing up to now
+#if 0
+	if (!(ticks % 10))
+    {
+		if (radio_h->knob_a_pressed)
+        {
+            printf("Button A pressed\n");
+            radio_h->knob_a_pressed = 0;
+        }
+		if (radio_h->knob_b_pressed)
+        {
+            printf("Button B pressed\n");
+            radio_h->knob_b_pressed = 0;
+        }
+    }
+#endif
+
+    if (set_dirty_ws)
+        radio_h->send_ws_update = true;
+
+    // in development
+#if 0
+    // TODO: how to stop the timer or reset the timer?
+    static bool timer_reset = false;
+    static time_t last_time = 0;
+    static int32_t timeout_counter = 0;
+    // the profile timeout logic
+    if ( (radio_h->profile_default_idx != radio_h->profile_active_idx) &&
+         (radio_h->profile_timeout >= 0) )
+    {
+        if (timer_reset)
+        {
+            last_time = time(NULL);
+            timer_reset = false;
+            timeout_counter = radio_h->profile_timeout;
+        }
+        else
+        {
+            time_t curr_time = time(NULL);
+            if (curr_time > last_time)
+            {
+                timeout_counter -= last_time - curr_time;
+                if (timeout_counter <= 0)
+                {
+                    // TODO: switch to default profile
+                    // set frequency, mode, dsp functions, levels and so on... put this in a function
+                    radio_h->profile_active_idx = radio_h->profile_default_idx;
+                    timer_reset = true;
+                }
+            }
+        }
+    }
+    else
+        timer_reset = true;
+#endif
 }
 
 

@@ -1,5 +1,5 @@
-/* sBitx core
- * Copyright (C) 2023 Rhizomatica
+/* HERMES sbitx controller
+ * Copyright (C) 2023-2024 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
