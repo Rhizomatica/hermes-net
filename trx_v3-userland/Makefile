@@ -22,16 +22,17 @@
 uname_p := $(shell uname -m)
 
 CC=gcc
-LDFLAGS=-liniparser -li2c
+LDFLAGS=-liniparser -li2c -lssl -lcrypto
+CFLAGS=-Ofast -Wall -std=gnu11 -fstack-protector -I/usr/include/iniparser
 
 ifeq (${uname_p},aarch64)
 # aarch64 Raspberry Pi 4 or better
-	CFLAGS=-O3 -Wall -std=gnu11 -fstack-protector -moutline-atomics -march=armv8-a+crc -I/usr/include/iniparser
+	CFLAGS+=-moutline-atomics -march=armv8-a+crc -I/usr/include/iniparser
 # for Pi 5 use:
-#	CFLAGS=-O3 -Wall -std=gnu11 -pthread -fstack-protector -march=armv8.2-a+crypto+fp16+rcpc+dotprod -I/usr/include/iniparser
+#	CFLAGS=-march=armv8.2-a+crypto+fp16+rcpc+dotprod
 else
 # x86_64 with SSE 4.2 level or better
-	CFLAGS=-O3 -Wall -std=gnu11 -fstack-protector -march=x86-64-v2 -I/usr/include/iniparser
+	CFLAGS+=-march=x86-64-v2
 endif
 
 GPIOLIB_OBJS=gpiolib/gpiolib.o gpiolib/gpiochip_bcm2712.o gpiolib/gpiochip_bcm2835.o gpiolib/gpiochip_rp1.o gpiolib/util.o
@@ -40,8 +41,8 @@ GPIOLIB_OBJS=gpiolib/gpiolib.o gpiolib/gpiochip_bcm2712.o gpiolib/gpiochip_bcm28
 
 all: sbitx_controller
 
-sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o cfg_utils.o sbitx_controller.o $(GPIOLIB_OBJS)
-	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o cfg_utils.o sbitx_controller.o $(GPIOLIB_OBJS) $(LDFLAGS)
+sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o cfg_utils.o mongoose.o sbitx_controller.o $(GPIOLIB_OBJS)
+	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o cfg_utils.o mongoose.o sbitx_controller.o $(GPIOLIB_OBJS) $(LDFLAGS)
 
 sbitx_controller.o: sbitx_controller.c
 	$(CC) -c $(CFLAGS) sbitx_controller.c -o sbitx_controller.o
@@ -60,6 +61,13 @@ sbitx_core.o: sbitx_core.c sbitx_core.h
 
 sbitx_si5351.o: sbitx_si5351.c sbitx_si5351.h
 	$(CC) -c $(CFLAGS) sbitx_si5351.c -o sbitx_si5351.o
+
+# websocket stuff
+sbitx_websocket.o: sbitx_websocket.c sbitx_websocket.h
+	$(CC) -c $(CFLAGS) -Wno-missing-braces sbitx_websocket.c -o sbitx_websocket.o
+
+mongoose.o: mongoose.c mongoose.h
+	$(CC) -c $(CFLAGS) -DMG_TLS=MG_TLS_OPENSSL -DMG_ARCH=1 mongoose.c -o mongoose.o
 
 # gpiolib stuff
 gpiolib/gpiolib.o: gpiolib/gpiolib.c gpiolib/gpiolib.h

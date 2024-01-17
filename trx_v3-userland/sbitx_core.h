@@ -25,6 +25,9 @@
 
 #define CFG_CORE_PATH "/etc/sbitx/core.ini"
 #define CFG_USER_PATH "/etc/sbitx/user.ini"
+#define CFG_WEBSOCKET_PATH "/etc/sbitx/web"
+#define CFG_SSL_CERT "/etc/ssl/private/hermes.radio.crt"
+#define CFG_SSL_KEY "/etc/ssl/private/hermes.key"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -60,6 +63,7 @@
 /* ... yes, this is all done in software. */
 #define MODE_LSB 0
 #define MODE_USB 1
+#define MODE_CW 2
 
 #define AGC_OFF 0
 #define AGC_SLOW 1
@@ -100,26 +104,26 @@ typedef struct {
 
 typedef struct {
 
-    uint32_t freq;
+    _Atomic uint32_t freq;
     uint16_t operating_mode; // FULL or CONTROLS_ONLY
 
     // In OPERATING_MODE_CONTROLS_ONLY, most of these will just be ignored...
-    uint16_t mode; // MODE_*
+    _Atomic uint16_t mode; // MODE_*
     uint16_t agc; // AGC_*
     uint16_t compressor; // COMPRESSOR_*
 
     // Alsa levels
-    uint16_t mic_level; // 0 - 100
-    uint16_t rx_level;
-    uint16_t speaker_level; // 0 - 100
-    uint16_t tx_level;
+    _Atomic uint16_t mic_level; // 0 - 100
+    _Atomic uint16_t rx_level;
+    _Atomic uint16_t speaker_level; // 0 - 100
+    _Atomic uint16_t tx_level;
 
     // lpf settings
     uint32_t bpf_low; // band-pass filter settings
     uint32_t bpf_high;
 
     // knob frequency step size
-    uint32_t step_size;
+    _Atomic uint32_t step_size;
 
     // These are switche that can enable/disable interaction with the devices
     bool enable_knob_volume;
@@ -189,7 +193,7 @@ typedef struct
     _Atomic bool cfg_core_dirty;
     dictionary *cfg_user;
     _Atomic bool cfg_user_dirty;
-
+    _Atomic bool send_ws_update;
 } radio;
 
 

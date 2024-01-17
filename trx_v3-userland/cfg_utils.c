@@ -28,7 +28,7 @@
 
 #include "cfg_utils.h"
 
-extern bool shutdown;
+extern _Atomic bool shutdown_;
 
 bool cfg_init(radio *radio_h, char *cfg_core, char *cfg_user, pthread_t *config_tid)
 {
@@ -58,7 +58,7 @@ void *config_thread(void *radio_h_v)
 {
     radio *radio_h = (radio *) radio_h_v;
 
-    while (!shutdown)
+    while (!shutdown_)
     {
         if (radio_h->cfg_core_dirty)
         {

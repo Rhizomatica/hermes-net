@@ -35,7 +35,7 @@
 
 #include "gpiolib/gpiolib.h"
 
-extern _Atomic bool shutdown;
+extern _Atomic bool shutdown_;
 
 // this is our main 10ms period io loop
 void io_tick(radio *radio_h)
@@ -45,7 +45,7 @@ void io_tick(radio *radio_h)
     _Atomic uint32_t volume = radio_h->profiles[radio_h->profile_active_idx].speaker_level;
     _Atomic uint32_t tuning_step = radio_h->profiles[radio_h->profile_active_idx].step_size;
 
-    bool set_dirty = false;
+    bool set_dirty_ws = false;
 
     ticks++;
 
@@ -67,7 +67,7 @@ void io_tick(radio *radio_h)
                 radio_h->tuning_ticks++;
                 freq += tuning_step;
             }
-            set_dirty = true;
+            set_dirty_ws = true;
             set_frequency(radio_h, freq);
         }
         else
@@ -99,10 +99,11 @@ void io_tick(radio *radio_h)
                 else
                     volume += 4;
             }
-            set_dirty = true;
+            set_dirty_ws = true;
             // TODO: put everything on a set_speaker_level()
-            // radio_h->profiles[radio_h->profile_active_idx].speaker_level = volume;
             // set_speaker_level(radio_h, volume);
+            radio_h->profiles[radio_h->profile_active_idx].speaker_level = volume;
+            radio_h->cfg_user_dirty = true;
         }
         else
         {
@@ -133,12 +134,8 @@ void io_tick(radio *radio_h)
     }
 #endif
 
-    if (set_dirty)
-    {
-        radio_h->cfg_user_dirty = true;
-        // TODO: WebSockets...
-        //send_ws_update = true;
-    }
+    if (set_dirty_ws)
+        radio_h->send_ws_update = true;
 
 }
 
@@ -186,11 +183,11 @@ void *hw_thread(void *radio_h_v)
     if (res < 0)
     {
         printf("Fatal error: Start Periodic Timer\n");
-        shutdown = true;
+        shutdown_ = true;
         return false;
     }
 
-    while(!shutdown)
+    while(!shutdown_)
     {
         wait_next_activation();
         io_tick(radio_h);
@@ -223,7 +220,7 @@ bool update_power_measurements(radio *radio_h)
 uint32_t get_fwd_power(radio *radio_h)
 {
     // 40 should be we are using 40W as end of scale
-	uint32_t fwdvoltage =  (radio_h->fwd_power * 40) / 100; // 100 = bridge_compensation
+	uint32_t fwdvoltage =  (radio_h->fwd_power * 40) / radio_h->bridge_compensation;
 	uint32_t fwdpower = (fwdvoltage * fwdvoltage)/400;
 
     return fwdpower;
@@ -244,6 +241,7 @@ uint32_t get_swr(radio *radio_h)
     uint32_t vref = radio_h->ref_power;
     uint32_t vswr;
 
+    // no division by zero
     if (vref == vfwd)
         vfwd++;
 
@@ -257,7 +255,7 @@ uint32_t get_swr(radio *radio_h)
 
 void set_frequency(radio *radio_h, uint32_t frequency)
 {
-    uint32_t *radio_freq = &radio_h->profiles[radio_h->profile_active_idx].freq;
+    _Atomic uint32_t *radio_freq = &radio_h->profiles[radio_h->profile_active_idx].freq;
 
     *radio_freq = frequency;
      // Were we are not setting the real frequency of the radio (in USB, which is the current setup)
@@ -301,7 +299,7 @@ void lpf_off(radio *radio_h)
 
 void lpf_set(radio *radio_h)
 {
-    uint32_t *radio_freq = &radio_h->profiles[radio_h->profile_active_idx].freq;
+    _Atomic uint32_t *radio_freq = &radio_h->profiles[radio_h->profile_active_idx].freq;
 
     int lpf = 0;
 

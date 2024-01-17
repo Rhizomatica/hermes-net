@@ -35,7 +35,7 @@
 // global radio handle pointer used for the callback functions
 radio *radio_gpio_h;
 
-extern bool shutdown;
+extern _Atomic bool shutdown_;
 
 
 // for now this initializes the GPIO and also initializes the structures for
@@ -50,7 +50,7 @@ void gpio_init(radio *radio_h)
     if (ret <= 0)
     {
         printf("Failed to initialise gpiolib.\n");
-        shutdown = true;
+        shutdown_ = true;
         return ;
     }
 
@@ -61,7 +61,7 @@ void gpio_init(radio *radio_h)
             printf("Must be root\n");
         else
             printf("Failed to mmap gpiolib - %s\n", strerror(ret));
-        shutdown = true;
+        shutdown_ = true;
         return ;
     }
 
@@ -266,7 +266,7 @@ int do_gpio_poll_add(unsigned int gpio)
 void *do_gpio_poll(void *radio_h_v)
 {
 
-    while (num_poll_gpios && !shutdown)
+    while (num_poll_gpios && !shutdown_)
     {
         int changed = 0;
         for (int i = 0; i < num_poll_gpios; i++)

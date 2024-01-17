@@ -30,14 +30,15 @@
 #include <sched.h>
 
 #include "sbitx_core.h"
+#include "sbitx_websocket.h"
 #include "cfg_utils.h"
 
-_Atomic bool shutdown = false;
+_Atomic bool shutdown_ = false;
 
 void exit_radio(int sig)
 {
     printf("Exiting...\n");
-    shutdown = true;
+    shutdown_ = true;
 
 }
 
@@ -46,6 +47,7 @@ int main(int argc, char* argv[])
     radio radio_h; // radio handler
     pthread_t cfg_tid; // configuration subsystem thread id
     pthread_t hw_tids[2]; // 2 hw thread ids user for IO
+    pthread_t web_tid; // websocket thread id
 
    if (argc > 3)
     {
@@ -97,9 +99,11 @@ int main(int argc, char* argv[])
    cfg_init(&radio_h, CFG_CORE_PATH, CFG_USER_PATH, &cfg_tid);
    hw_init(&radio_h, hw_tids);
 
+   if (radio_h.enable_websocket)
+       websocket_init(&radio_h, CFG_WEBSOCKET_PATH, &web_tid);
    // for testing purposes...
 #if 0
-   while(!shutdown)
+   while(!shutdown_)
    {
        // clean screen
        printf("\e[1;1H\e[2J");
@@ -139,6 +143,9 @@ int main(int argc, char* argv[])
    // this call pthread_join(), so it blocks below, until shutdown == true
    hw_shutdown(&radio_h, hw_tids);
    cfg_shutdown(&radio_h, &cfg_tid);
+
+   if (radio_h.enable_websocket)
+       websocket_shutdown(&web_tid);
 
    return EXIT_SUCCESS;
 
