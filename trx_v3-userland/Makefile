@@ -91,6 +91,8 @@ install: sbitx_controller
 install_new:
 	install -D config/core.ini $(DESTDIR)/etc/sbitx/core.ini
 	install -D config/user.ini $(DESTDIR)/etc/sbitx/user.ini
+	mkdir -p /etc/sbitx/web
+	install -D web/* /etc/sbitx/web/
 
 clean:
 	rm -f sbitx_controller *.o gpiolib/*.o
