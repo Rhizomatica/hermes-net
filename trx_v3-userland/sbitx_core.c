@@ -33,8 +33,6 @@
 #include "sbitx_gpio.h"
 #include "sbitx_si5351.h"
 
-#include "gpiolib/gpiolib.h"
-
 extern _Atomic bool shutdown_;
 
 // this is our main 10ms period io loop
@@ -291,10 +289,10 @@ void set_bfo(radio *radio_h, uint32_t frequency)
 
 void lpf_off(radio *radio_h)
 {
-    gpio_set_drive(LPF_A, DRIVE_LOW);
-    gpio_set_drive(LPF_B, DRIVE_LOW);
-    gpio_set_drive(LPF_C, DRIVE_LOW);
-    gpio_set_drive(LPF_D, DRIVE_LOW);
+    set_drive(LPF_A, DRIVE_LOW);
+    set_drive(LPF_B, DRIVE_LOW);
+    set_drive(LPF_C, DRIVE_LOW);
+    set_drive(LPF_D, DRIVE_LOW);
 }
 
 void lpf_set(radio *radio_h)
@@ -312,7 +310,7 @@ void lpf_set(radio *radio_h)
     else if (*radio_freq < 35000000)
         lpf = LPF_A;
 
-    gpio_set_drive(lpf, DRIVE_HIGH);
+    set_drive(lpf, DRIVE_HIGH);
 }
 
 
@@ -326,7 +324,7 @@ void tr_switch(radio *radio_h, bool txrx_state)
         radio_h->txrx_state = IN_TX;
         lpf_off(radio_h);
         usleep(2000);
-        gpio_set_drive(TX_LINE, DRIVE_HIGH);
+        set_drive(TX_LINE, DRIVE_HIGH);
         usleep(2000);
         lpf_set(radio_h);
     }
@@ -335,7 +333,7 @@ void tr_switch(radio *radio_h, bool txrx_state)
         radio_h->txrx_state = IN_RX;
         lpf_off(radio_h);
         usleep(2000);
-        gpio_set_drive(TX_LINE, DRIVE_LOW);
+        set_drive(TX_LINE, DRIVE_LOW);
         usleep(2000);
         lpf_set(radio_h);
     }

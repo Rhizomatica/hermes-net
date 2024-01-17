@@ -25,7 +25,12 @@
 
 #include "sbitx_core.h"
 
+#include "gpiolib/gpiolib.h"
+
 void gpio_init(radio *radio_h);
+
+void set_drive(unsigned gpio, GPIO_DRIVE_T drv);
+int get_level(unsigned gpio);
 
 // callback functions
 void tuning_isr_a(void);

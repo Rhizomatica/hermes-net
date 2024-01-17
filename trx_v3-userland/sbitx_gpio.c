@@ -33,7 +33,7 @@
 #include "sbitx_gpio.h"
 
 // global radio handle pointer used for the callback functions
-radio *radio_gpio_h;
+static radio *radio_gpio_h;
 
 extern _Atomic bool shutdown_;
 
@@ -42,6 +42,9 @@ extern _Atomic bool shutdown_;
 // encoder/knobs for easy reading by application
 void gpio_init(radio *radio_h)
 {
+    // thread is started after init, so no need for wrapped functions here (set_drive and get_level)
+    pthread_mutex_init(&radio_h->gpio_mutex, NULL);
+
     // we need the radio handler available for the callbacks.
     radio_gpio_h = radio_h;
 
@@ -103,6 +106,22 @@ void gpio_init(radio *radio_h)
     do_gpio_poll_add(DASH);
 }
 
+// wrapped functions to ensure mutual exclusion to gpiolib calls
+inline void set_drive(unsigned gpio, GPIO_DRIVE_T drv)
+{
+    pthread_mutex_lock(&radio_gpio_h->gpio_mutex);
+    gpio_set_drive(gpio, drv);
+    pthread_mutex_unlock(&radio_gpio_h->gpio_mutex);
+}
+
+inline int get_level(unsigned gpio)
+{
+    pthread_mutex_lock(&radio_gpio_h->gpio_mutex);
+    int ret = gpio_get_level(gpio);
+    pthread_mutex_unlock(&radio_gpio_h->gpio_mutex);
+
+    return ret;
+}
 
 void enc_init(encoder *e, int speed, int pin_a, int pin_b)
 {
@@ -114,7 +133,7 @@ void enc_init(encoder *e, int speed, int pin_a, int pin_b)
 
 void ptt_change()
 {
-    if (gpio_get_level(PTT) == 0)
+    if (get_level(PTT) == 0)
         radio_gpio_h->key_down = true;
     else
         radio_gpio_h->key_down = false;
@@ -122,7 +141,7 @@ void ptt_change()
 
 void dash_change()
 {
-    if (gpio_get_level(DASH) == 0)
+    if (get_level(DASH) == 0)
         radio_gpio_h->dash_down = true;
     else
         radio_gpio_h->dash_down = false;
@@ -185,7 +204,7 @@ void tuning_isr_b(void)
 
 int enc_state (encoder *e)
 {
-    return (gpio_get_level(e->pin_a) ? 1 : 0) + (gpio_get_level(e->pin_b) ? 2: 0);
+    return (get_level(e->pin_a) ? 1 : 0) + (get_level(e->pin_b) ? 2: 0);
 }
 
 int enc_read(encoder *e)
@@ -272,7 +291,7 @@ void *do_gpio_poll(void *radio_h_v)
         for (int i = 0; i < num_poll_gpios; i++)
         {
             struct poll_gpio_state *state = &poll_gpios[i];
-            int level = gpio_get_level(state->gpio);
+            int level = get_level(state->gpio);
             if (level != state->level)
             {
                 switch (state->gpio)

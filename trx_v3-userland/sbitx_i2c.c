@@ -40,6 +40,7 @@
 #include "sbitx_core.h"
 #include "sbitx_i2c.h"
 
+extern _Atomic bool shutdown_;
 
 int i2c_read_pwr_levels(radio *radio_h, uint8_t *response)
 {
@@ -75,8 +76,10 @@ bool i2c_open(radio *radio_h)
     radio_h->i2c_bus = open(radio_h->i2c_device, O_RDWR);
 
     if (radio_h->i2c_bus < 0)
+    {
+        shutdown_ = true;
         return false;
-
+    }
     return true;
 }
 
