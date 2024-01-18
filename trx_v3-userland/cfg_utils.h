@@ -26,10 +26,13 @@
 #include <stdbool.h>
 
 #include "sbitx_core.h"
+#include <iniparser.h>
 
 // main functions
 bool cfg_init(radio *radio_h, char *cfg_core, char *cfg_user, pthread_t *config_tid);
 bool cfg_shutdown(radio *radio_h, pthread_t *config_tid);
+
+int cfg_set(radio *radio_h, dictionary * ini, const char * entry, const char * val);
 
 // returns true if successful
 bool init_config_core(radio *radio_h, char *ini_name);

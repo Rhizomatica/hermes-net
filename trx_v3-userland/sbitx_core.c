@@ -29,6 +29,7 @@
 #include <time.h>
 #include <errno.h>
 
+#include "cfg_utils.h"
 #include "sbitx_core.h"
 #include "sbitx_i2c.h"
 #include "sbitx_gpio.h"
@@ -161,7 +162,7 @@ void set_frequency(radio *radio_h, uint32_t frequency)
     char tmp1[64]; char tmp2[64];
     sprintf(tmp1, "profile%u:freq", radio_h->profile_active_idx);
     sprintf(tmp2, "%u", *radio_freq);
-    int rc = iniparser_set(radio_h->cfg_user, tmp1, tmp2);
+    int rc = cfg_set(radio_h, radio_h->cfg_user, tmp1, tmp2);
     if (rc != 0)
         printf("Error modifying config file\n");
 
@@ -176,7 +177,7 @@ void set_bfo(radio *radio_h, uint32_t frequency)
     // TODO: put this inside a function in cfg_utils
     char tmp[64];
     sprintf(tmp, "%u", radio_h->bfo_frequency);
-    int rc = iniparser_set(radio_h->cfg_core, "main:bfo", tmp);
+    int rc = cfg_set(radio_h, radio_h->cfg_core, "main:bfo", tmp);
     if (rc != 0)
         printf("Error modifying config file\n");
 

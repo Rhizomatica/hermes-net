@@ -32,6 +32,9 @@ extern _Atomic bool shutdown_;
 
 bool cfg_init(radio *radio_h, char *cfg_core, char *cfg_user, pthread_t *config_tid)
 {
+    // thread is started after init, so no need for using mutex in init_*
+    pthread_mutex_init(&radio_h->cfg_mutex, NULL);
+
     init_config_core(radio_h, cfg_core);
     init_config_user(radio_h, cfg_user);
 
@@ -297,20 +300,57 @@ bool init_config_user(radio *radio_h, char *ini_name)
 
 bool write_config_core(radio *radio_h, char *ini_name)
 {
+    char *bp;
+    size_t size;
+    FILE *stream;
+
+    stream = open_memstream (&bp, &size);
+
+    pthread_mutex_lock(&radio_h->cfg_mutex);
+    iniparser_dump_ini(radio_h->cfg_core, stream);
+    pthread_mutex_unlock(&radio_h->cfg_mutex);
+
+    fclose(stream);
+
     FILE *f = fopen(ini_name, "w");
-    iniparser_dump_ini(radio_h->cfg_core, f);
+    fwrite(bp, size, 1, f);
     fclose(f);
+
+    free(bp);
 
     return true;
 }
 
 bool write_config_user(radio *radio_h, char *ini_name)
 {
+    char *bp;
+    size_t size;
+    FILE *stream;
+
+    stream = open_memstream (&bp, &size);
+
+    pthread_mutex_lock(&radio_h->cfg_mutex);
+    iniparser_dump_ini(radio_h->cfg_user, stream);
+    pthread_mutex_unlock(&radio_h->cfg_mutex);
+
+    fclose(stream);
+
     FILE *f = fopen(ini_name, "w");
-    iniparser_dump_ini(radio_h->cfg_user, f);
+    fwrite(bp, size, 1, f);
     fclose(f);
 
+    free(bp);
+
     return true;
+}
+
+int cfg_set(radio *radio_h, dictionary * ini, const char * entry, const char * val)
+{
+    pthread_mutex_lock(&radio_h->cfg_mutex);
+    int ret = iniparser_set(ini, entry, val);
+    pthread_mutex_unlock(&radio_h->cfg_mutex);
+
+    return ret;
 }
 
 bool close_config_core(radio *radio_h)

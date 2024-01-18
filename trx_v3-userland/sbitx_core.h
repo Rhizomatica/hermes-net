@@ -144,6 +144,7 @@ typedef struct
     int i2c_bus;
     pthread_mutex_t i2c_mutex;
     pthread_mutex_t gpio_mutex;
+    pthread_mutex_t cfg_mutex;
 
     // Radio status
     _Atomic uint32_t bfo_frequency;
