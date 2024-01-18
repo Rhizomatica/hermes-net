@@ -396,6 +396,7 @@ static inline void timespec_add_us(struct timespec *t, uint64_t d)
 
 void wait_next_activation(void)
 {
+    // check with clock_gettime is abs time to sleep is already no passed.. go to the next one
     clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &r, NULL);
     timespec_add_us(&r, period);
 }
