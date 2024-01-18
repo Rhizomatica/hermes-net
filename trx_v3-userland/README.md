@@ -8,6 +8,7 @@ This software is aims to be a complete low-level implementation for all sBitx fe
 * GPIO using the GPIOLIB library (gpiolib directory), for all kind of radio controls (encoders, lpf bank, tx/rx)
 * Si5351a control functions
 * Configuration files located in /etc/sbitx/{core,user}.ini
+* Websocket streaming for Web UI
 
 This code expects the I2C bus to be kernel I2C interface. Make sure you have one of the dtoverlays
 in /boot/config.txt

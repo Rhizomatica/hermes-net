@@ -51,7 +51,7 @@ bool hw_init(radio *radio_h, pthread_t *hw_tids)
     // start hw io monitor thread, ref/pwr readings, volume and freq changes
     pthread_create(&hw_tids[0], NULL, hw_thread, (void *) radio_h);
 
-    // poll gpios thread
+    // thread that just polls the gpios
     pthread_create(&hw_tids[1], NULL, do_gpio_poll, (void *) radio_h);
 
     return true;
