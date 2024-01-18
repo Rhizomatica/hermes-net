@@ -39,10 +39,13 @@ GPIOLIB_OBJS=gpiolib/gpiolib.o gpiolib/gpiochip_bcm2712.o gpiolib/gpiochip_bcm28
 
 .PHONY: clean
 
-all: sbitx_controller
+all: sbitx_controller sbitx_client
 
 sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o $(GPIOLIB_OBJS)
 	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o $(GPIOLIB_OBJS) $(LDFLAGS)
+
+sbitx_client: sbitx_client.c shm_utils.c sbitx_io.c help.h ../include/radio_cmds.h
+	$(CC) $(CFLAGS) sbitx_client.c sbitx_io.c shm_utils.c -o sbitx_client
 
 sbitx_controller.o: sbitx_controller.c
 	$(CC) -c $(CFLAGS) sbitx_controller.c -o sbitx_controller.o
@@ -94,6 +97,7 @@ gpiolib/util.o: gpiolib/util.c gpiolib/util.h
 
 install: sbitx_controller
 	install -D sbitx_controller $(DESTDIR)$(prefix)/bin/sbitx_controller
+	install -D sbitx_client $(DESTDIR)$(prefix)/bin/sbitx_client
 
 install_new:
 	install -D config/core.ini $(DESTDIR)/etc/sbitx/core.ini
