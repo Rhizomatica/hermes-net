@@ -41,8 +41,8 @@ GPIOLIB_OBJS=gpiolib/gpiolib.o gpiolib/gpiochip_bcm2712.o gpiolib/gpiochip_bcm28
 
 all: sbitx_controller
 
-sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o cfg_utils.o mongoose.o sbitx_controller.o $(GPIOLIB_OBJS)
-	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o cfg_utils.o mongoose.o sbitx_controller.o $(GPIOLIB_OBJS) $(LDFLAGS)
+sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o $(GPIOLIB_OBJS)
+	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o $(GPIOLIB_OBJS) $(LDFLAGS)
 
 sbitx_controller.o: sbitx_controller.c
 	$(CC) -c $(CFLAGS) sbitx_controller.c -o sbitx_controller.o
@@ -61,6 +61,13 @@ sbitx_core.o: sbitx_core.c sbitx_core.h
 
 sbitx_si5351.o: sbitx_si5351.c sbitx_si5351.h
 	$(CC) -c $(CFLAGS) sbitx_si5351.c -o sbitx_si5351.o
+
+# shared memory api stuff
+sbitx_shm.o: sbitx_shm.c sbitx_shm.h
+	$(CC) -c $(CFLAGS) sbitx_shm.c -o sbitx_shm.o
+
+shm_utils.o: shm_utils.c shm_utils.h
+	$(CC) -c $(CFLAGS) shm_utils.c -o shm_utils.o
 
 # websocket stuff
 sbitx_websocket.o: sbitx_websocket.c sbitx_websocket.h

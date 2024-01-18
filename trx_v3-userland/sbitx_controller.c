@@ -29,6 +29,7 @@
 #include <signal.h>
 #include <sched.h>
 
+#include "sbitx_shm.h"
 #include "sbitx_core.h"
 #include "sbitx_websocket.h"
 #include "cfg_utils.h"
@@ -48,6 +49,7 @@ int main(int argc, char* argv[])
     pthread_t cfg_tid; // configuration subsystem thread id
     pthread_t hw_tids[2]; // 2 hw thread ids user for IO
     pthread_t web_tid; // websocket thread id
+    pthread_t shm_tid; // shared memory interface thread id
 
    if (argc > 3)
     {
@@ -80,7 +82,6 @@ int main(int argc, char* argv[])
    signal(SIGINT, exit_radio);
    signal(SIGQUIT, exit_radio);
    signal(SIGTERM, exit_radio);
-
     // Catch SIGPIPE
    signal(SIGPIPE, SIG_IGN); // and ignores SIGPIPE...
 
@@ -101,6 +102,10 @@ int main(int argc, char* argv[])
 
    if (radio_h.enable_websocket)
        websocket_init(&radio_h, CFG_WEBSOCKET_PATH, &web_tid);
+
+   if (radio_h.enable_shm_control)
+       shm_controller_init(&radio_h, &shm_tid);
+
    // for testing purposes...
 #if 0
    while(!shutdown_)
@@ -146,6 +151,9 @@ int main(int argc, char* argv[])
 
    if (radio_h.enable_websocket)
        websocket_shutdown(&web_tid);
+
+   if (radio_h.enable_shm_control)
+       shm_controller_shutdown(&shm_tid);
 
    return EXIT_SUCCESS;
 
