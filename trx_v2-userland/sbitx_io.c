@@ -63,6 +63,7 @@ bool radio_cmd(controller_conn *connector, uint8_t *srv_cmd, uint8_t *response)
         connector->response_available = false;
         ret_value = true;
     }
+    // else timeout? (create a message for this)
 
 
  get_out:

@@ -211,7 +211,7 @@ void lpf_set(radio *radio_h)
     set_drive(lpf, DRIVE_HIGH);
 }
 
-
+    // TODO: all DSP and ALSA calls here or tr_switch?
 void tr_switch(radio *radio_h, bool txrx_state)
 {
     if (txrx_state == radio_h->txrx_state)
@@ -248,6 +248,12 @@ void io_tick(radio *radio_h)
     bool set_dirty_ws = false;
 
     ticks++;
+
+    // TODO: all DSP and ALSA calls here or tr_switch?
+    if (radio_h->key_down)
+        tr_switch(radio_h, IN_TX);
+    else
+        tr_switch(radio_h, IN_TX);
 
     // a speed up if one tunes the knob fast
     if(radio_h->tuning_ticks)
