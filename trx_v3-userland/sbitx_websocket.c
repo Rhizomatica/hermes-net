@@ -216,8 +216,6 @@ void *webserver_thread_function(void *radio_h_v)
     }
     mg_mgr_poll(&mgr, 100);
 
-	printf("Exiting webserver thread\n");
-
     return NULL;
 }
 

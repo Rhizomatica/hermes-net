@@ -49,10 +49,10 @@ bool cfg_init(radio *radio_h, char *cfg_core, char *cfg_user, pthread_t *config_
 
 bool cfg_shutdown(radio *radio_h, pthread_t *config_tid)
 {
+    pthread_join(*config_tid, NULL);
+
     close_config_core(radio_h);
     close_config_user(radio_h);
-
-    pthread_join(*config_tid, NULL);
 
     return true;
 }
