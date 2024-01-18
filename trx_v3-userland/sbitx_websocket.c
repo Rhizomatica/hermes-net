@@ -227,9 +227,8 @@ void websocket_shutdown(pthread_t *web_tid)
     mg_mgr_free(&mgr);
 }
 
-static pthread_t webserver_thread;
-
-void websocket_init(radio *radio_h, char *web_path, pthread_t *web_tid){
-	strcpy(s_web_root, web_path);
- 	pthread_create(&webserver_thread, NULL, webserver_thread_function, (void*) radio_h);
+void websocket_init(radio *radio_h, char *web_path, pthread_t *web_tid)
+{
+    strcpy(s_web_root, web_path);
+    pthread_create(web_tid, NULL, webserver_thread_function, (void*) radio_h);
 }
