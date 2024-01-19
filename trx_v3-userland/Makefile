@@ -74,7 +74,7 @@ shm_utils.o: shm_utils.c shm_utils.h
 
 # websocket stuff
 sbitx_websocket.o: sbitx_websocket.c sbitx_websocket.h
-	$(CC) -c $(CFLAGS) -Wno-missing-braces sbitx_websocket.c -o sbitx_websocket.o
+	$(CC) -c $(CFLAGS) sbitx_websocket.c -o sbitx_websocket.o
 
 mongoose.o: mongoose.c mongoose.h
 	$(CC) -c $(CFLAGS) -DMG_ENABLE_OPENSSL -DMG_TLS=MG_TLS_OPENSSL -DMG_ARCH=1 mongoose.c -o mongoose.o

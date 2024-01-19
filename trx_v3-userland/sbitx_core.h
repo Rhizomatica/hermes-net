@@ -125,9 +125,6 @@ typedef struct {
     uint32_t bpf_low; // band-pass filter settings
     uint32_t bpf_high;
 
-    // knob frequency step size
-    _Atomic uint32_t step_size;
-
     // These are switche that can enable/disable interaction with the devices
     bool enable_knob_volume;
     bool enable_knob_frequency;
@@ -161,6 +158,9 @@ typedef struct
 
     _Atomic int32_t volume_ticks;
     _Atomic int32_t tuning_ticks;
+
+    // knob frequency step size
+    _Atomic uint32_t step_size;
 
     _Atomic uint32_t knob_a_pressed;
     _Atomic uint32_t knob_b_pressed;

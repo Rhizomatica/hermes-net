@@ -191,6 +191,10 @@ bool init_config_user(radio *radio_h, char *ini_name)
     printf("default_profile_fallback_timeout:      [%d]\n", i);
     radio_h->profile_timeout = (int32_t) i;
 
+    i = iniparser_getint(ini, "main:step_size", 100);
+    printf("step_size:      [%d]\n", i);
+    radio_h->step_size = (uint32_t) i;
+
     int sec_count = iniparser_getnsec(ini);
     sec_count--;
     printf("Number of Sections:     [%d]\n", sec_count);
@@ -272,11 +276,6 @@ bool init_config_user(radio *radio_h, char *ini_name)
         i = iniparser_getint(ini, profile_field, 3000);
         printf("%s:      [%d]\n", profile_field, i);
         radio_h->profiles[k].bpf_high = (uint32_t) i;
-
-        sprintf(profile_field, "%s:step_size", profile_name);
-        i = iniparser_getint(ini, profile_field, 100);
-        printf("%s:      [%d]\n", profile_field, i);
-        radio_h->profiles[k].step_size = (uint32_t) i;
 
         sprintf(profile_field, "%s:enable_knob_volume", profile_name);
         b = iniparser_getboolean(ini, profile_field, 1);

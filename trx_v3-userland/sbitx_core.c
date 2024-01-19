@@ -272,7 +272,7 @@ void io_tick(radio *radio_h)
     static uint64_t ticks = 0;
     _Atomic uint32_t freq = radio_h->profiles[radio_h->profile_active_idx].freq;
     _Atomic uint32_t volume = radio_h->profiles[radio_h->profile_active_idx].speaker_level;
-    _Atomic uint32_t tuning_step = radio_h->profiles[radio_h->profile_active_idx].step_size;
+    _Atomic uint32_t tuning_step = radio_h->step_size;
 
     bool set_dirty_ws = false;
 

@@ -139,6 +139,67 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         memcpy(response+1, &vswr, 2);
         break;
 
+    case CMD_GET_LED_STATUS: // GET LED STATUS
+        if (radio_h->system_is_ok)
+            response[0] = CMD_RESP_GET_LED_STATUS_ON;
+        else
+            response[0] = CMD_RESP_GET_LED_STATUS_OFF;
+        break;
+
+    case CMD_SET_LED_STATUS: // SET LED STATUS
+        radio_h->system_is_ok = cmd[0];
+        response[0] = CMD_RESP_SET_LED_STATUS_ACK;
+        break;
+
+    case CMD_GET_CONNECTED_STATUS: // GET CONNECTED STATUS
+        if (radio_h->system_is_connected)
+            response[0] = CMD_RESP_GET_CONNECTED_STATUS_ON;
+        else
+            response[0] = CMD_RESP_GET_CONNECTED_STATUS_OFF;
+        break;
+
+    case CMD_SET_CONNECTED_STATUS: // SET CONNECTED STATUS
+        radio_h->system_is_connected = cmd[0];
+        response[0] = CMD_RESP_SET_CONNECTED_STATUS_ACK;
+        break;
+
+    case CMD_GET_SERIAL: // GET SERIAL NUMBER
+        response[0] = CMD_RESP_GET_SERIAL_ACK;
+        memcpy(response+1, &radio_h->serial_number, 4);
+      break;
+
+    case CMD_SET_SERIAL: // SET SERIAL NUMBER
+        response[0] = CMD_RESP_SET_SERIAL_ACK;
+        memcpy(&radio_h->serial_number, cmd, 4);
+        radio_h->cfg_core_dirty = true;
+        break;
+
+    case CMD_GET_STEPHZ: // CMD_GET_STEPHZ
+        response[0] = CMD_RESP_GET_SERIAL_ACK;
+        memcpy(response+1, &radio_h->step_size, 4);
+      break;
+
+    case CMD_SET_STEPHZ: // CMD_SET_STEPHZ
+        memcpy(&radio_h->step_size, cmd, 4);
+        response[0] = CMD_RESP_SET_STEPHZ_ACK;
+        radio_h->cfg_user_dirty = true;
+        break;
+
+    case CMD_GET_REF_THRESHOLD: // CMD_GET_REF_THRESHOLD
+        response[0] = CMD_RESP_GET_REF_THRESHOLD_ACK;
+        uint16_t reflected_threshold_g = (uint16_t) radio_h->reflected_threshold;
+        memcpy(response+1, &reflected_threshold_g, 2);
+        break;
+
+    case CMD_SET_REF_THRESHOLD: // CMD_SET_REF_THRESHOLD
+        response[0] = CMD_RESP_SET_REF_THRESHOLD_ACK;
+        uint16_t reflected_threshold_s;
+        memcpy(&reflected_threshold_s, cmd, 2);
+        radio_h->reflected_threshold = (uint32_t) reflected_threshold_s;
+        // cade?
+        // radio_h->cfg_user_dirty = true;
+        break;
+
 
 #if 0
     case CMD_GET_FREQ: // GET FREQUENCY
@@ -203,63 +264,6 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         save_user_settings(1);
         break;
 
-
-    case CMD_GET_LED_STATUS: // GET LED STATUS
-        if (led_status)
-            response[0] = CMD_RESP_GET_LED_STATUS_ON;
-        else
-            response[0] = CMD_RESP_GET_LED_STATUS_OFF;
-        break;
-
-    case CMD_SET_LED_STATUS: // SET LED STATUS
-        led_status = cmd[0];
-        response[0] = CMD_RESP_SET_LED_STATUS_ACK;
-        break;
-
-    case CMD_GET_CONNECTED_STATUS: // GET CONNECTED STATUS
-        if (connected_status)
-            response[0] = CMD_RESP_GET_CONNECTED_STATUS_ON;
-        else
-            response[0] = CMD_RESP_GET_CONNECTED_STATUS_OFF;
-      break;
-
-    case CMD_SET_CONNECTED_STATUS: // SET CONNECTED STATUS
-        connected_status = cmd[0];
-        response[0] = CMD_RESP_SET_CONNECTED_STATUS_ACK;
-        break;
-
-    case CMD_GET_SERIAL: // GET SERIAL NUMBER
-        response[0] = CMD_RESP_GET_SERIAL_ACK;
-        memcpy(response+1, &serial_number, 4);
-      break;
-
-    case CMD_SET_SERIAL: // SET SERIAL NUMBER
-        memcpy(&serial_number, cmd, 4);
-        response[0] = CMD_RESP_SET_SERIAL_ACK;
-        save_user_settings(1);
-        break;
-
-    case CMD_GET_STEPHZ: // CMD_GET_STEPHZ
-        response[0] = CMD_RESP_GET_SERIAL_ACK;
-        memcpy(response+1, &tuning_step, 4);
-      break;
-
-    case CMD_SET_STEPHZ: // CMD_SET_STEPHZ
-        memcpy(&tuning_step, cmd, 4);
-        response[0] = CMD_RESP_SET_STEPHZ_ACK;
-        save_user_settings(1);
-        break;
-
-    case CMD_SET_REF_THRESHOLD: // CMD_SET_REF_THRESHOLD
-        memcpy(&reflected_threshold, cmd, 2);
-        response[0] = CMD_RESP_SET_REF_THRESHOLD_ACK;
-        save_user_settings(1);
-        break;
-
-    case CMD_GET_REF_THRESHOLD: // CMD_GET_REF_THRESHOLD
-        response[0] = CMD_RESP_GET_REF_THRESHOLD_ACK;
-        memcpy(response+1, &reflected_threshold, 2);
-        break;
 
     case CMD_GET_VOLUME: // GET_VOLUME
         response[0] = CMD_RESP_GET_VOLUME_ACK;
