@@ -69,8 +69,8 @@ int xtal_freq_calibrated = 25000000; // tcxo
 
 uint32_t plla_freq, pllb_freq;
 
-// global radio handle pointer used for simplifying the function prototypes
-radio *internal_radio_h;
+// local radio handle pointer used for simplifying the function prototypes
+static radio *internal_radio_h;
 
 void setup_oscillators(radio *radio_h)
 {

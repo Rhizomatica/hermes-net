@@ -117,7 +117,7 @@ uint32_t get_fwd_power(radio *radio_h)
 {
     // 40 should be we are using 40W as end of scale
 	uint32_t fwdvoltage =  (radio_h->fwd_power * 40) / radio_h->bridge_compensation;
-	uint32_t fwdpower = (fwdvoltage * fwdvoltage)/400;
+	uint32_t fwdpower = (fwdvoltage * fwdvoltage) / 400;
 
     return fwdpower;
 }
@@ -211,11 +211,38 @@ void lpf_set(radio *radio_h)
     set_drive(lpf, DRIVE_HIGH);
 }
 
-    // TODO: all DSP and ALSA calls here or tr_switch?
+void swr_protection_check(radio *radio_h)
+{
+    uint32_t vswr = get_swr(radio_h);
+
+    static uint16_t peak_removal_counter = 0;
+
+    if (vswr > radio_h->reflected_threshold && radio_h->ref_power)
+        peak_removal_counter++;
+    else
+        peak_removal_counter = 0;
+
+    if (peak_removal_counter > REF_PEAK_REMOVAL)
+    {
+        radio_h->swr_protection_enabled = true;
+        // sound_input(0);
+        tr_switch(radio_h, IN_RX);
+        peak_removal_counter = 0;
+        radio_h->send_ws_update = true;
+    }
+}
+
+// TODO: all DSP and ALSA calls here or tr_switch? or not? lets keep things separate?
 void tr_switch(radio *radio_h, bool txrx_state)
 {
     if (txrx_state == radio_h->txrx_state)
         return;
+
+    if (radio_h->swr_protection_enabled)
+    {
+        printf("Warning: tx_on trigger with SWR protection on, not turning tx on\n");
+        return;
+    }
 
     if (txrx_state == IN_TX)
     {
@@ -235,6 +262,8 @@ void tr_switch(radio *radio_h, bool txrx_state)
         usleep(2000);
         lpf_set(radio_h);
     }
+
+    radio_h->send_ws_update = true;
 }
 
 // this is our main 10ms period io loop
@@ -321,6 +350,7 @@ void io_tick(radio *radio_h)
     if ( !(ticks % 3) && radio_h->txrx_state == IN_TX )
     {
         update_power_measurements(radio_h);
+        swr_protection_check(radio_h);
     }
 
     // we are not using the button presses for nothing up to now

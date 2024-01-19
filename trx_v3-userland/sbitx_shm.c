@@ -46,26 +46,29 @@
 extern _Atomic bool shutdown_;
 
 static controller_conn *connector_local;
+// local radio handle pointer used for simplifying the function prototypes
+static radio *radio_h_shm;
 
 void process_radio_command(uint8_t *cmd, uint8_t *response)
 {
-    uint32_t frequency;
-    char command[64];
+//    uint32_t frequency;
+//    char command[64];
 
+    radio *radio_h = radio_h_shm;
     memset(response, 0, 5);
 
     // TODO: write me!!
     switch(cmd[4]){
-#if 0
+
     case CMD_PTT_ON: // PTT On
-        if (is_swr_protect_enabled)
+        if (radio_h->swr_protection_enabled)
         {
             response[0] = CMD_ALERT_PROTECTION_ON;
         }
-        else if (in_tx == 0)
+        else if (radio_h->txrx_state == IN_RX)
         {
-            sound_input(1);
-            tx_on(TX_SOFT);
+            // sound_input(1);
+            tr_switch(radio_h, IN_TX);
             response[0] = CMD_RESP_PTT_ON_ACK;
         }
         else
@@ -75,15 +78,15 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         break;
 
     case CMD_PTT_OFF: // PTT OFF
-        if (is_swr_protect_enabled)
+        // tx was already shut at this point
+        if (radio_h->swr_protection_enabled)
         {
             response[0] = CMD_ALERT_PROTECTION_ON;
         }
-        else
-        if (in_tx != 0)
+        else if (radio_h->txrx_state == IN_TX)
         {
-            sound_input(0);
-            tx_off();
+            // sound_input(0);
+            tr_switch(radio_h, IN_RX);
             response[0] = CMD_RESP_PTT_OFF_ACK;
         }
         else
@@ -91,6 +94,53 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
             response[0] = CMD_RESP_PTT_OFF_NACK;
         }
         break;
+
+    case CMD_GET_TXRX_STATUS: // GET TX/RX STATUS
+        if (radio_h->txrx_state == IN_TX)
+            response[0] = CMD_RESP_GET_TXRX_INTX;
+        else
+            response[0] = CMD_RESP_GET_TXRX_INRX;
+        break;
+
+    case CMD_RESET_PROTECTION: // RESET PROTECTION
+        response[0] = CMD_RESP_RESET_PROTECTION_ACK;
+        radio_h->swr_protection_enabled = false;
+        radio_h->send_ws_update = true;
+        break;
+
+    case CMD_GET_PROTECTION_STATUS: // GET PROTECTION STATUS
+        if (radio_h->swr_protection_enabled)
+            response[0] = CMD_RESP_GET_PROTECTION_ON;
+        else
+            response[0] = CMD_RESP_GET_PROTECTION_OFF;
+        break;
+
+    case CMD_GET_BFO: // GET BFO
+        response[0] = CMD_RESP_GET_BFO_ACK;
+        memcpy(response+1, &radio_h->bfo_frequency, 4);
+        break;
+
+    case CMD_SET_BFO: // SET BFO
+        response[0] = CMD_RESP_SET_BFO_ACK;
+        uint32_t bfo_freq;
+        memcpy(&bfo_freq, cmd, 4);
+        set_bfo(radio_h, bfo_freq);
+        break;
+
+    case CMD_GET_FWD: // GET FWD
+        response[0] = CMD_RESP_GET_FWD_ACK;
+        uint16_t fwdpower = (uint16_t) get_fwd_power(radio_h);
+        memcpy(response+1, &fwdpower, 2);
+        break;
+
+    case CMD_GET_REF: // GET REF
+        response[0] = CMD_RESP_GET_REF_ACK;
+        uint16_t vswr = (uint16_t) get_swr(radio_h);
+        memcpy(response+1, &vswr, 2);
+        break;
+
+
+#if 0
     case CMD_GET_FREQ: // GET FREQUENCY
         response[0] = CMD_RESP_GET_FREQ_ACK;
         frequency = (uint32_t) get_freq();
@@ -111,12 +161,6 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         save_user_settings(1);
         break;
 
-    case CMD_GET_TXRX_STATUS: // GET TX/RX STATUS
-        if (in_tx)
-            response[0] = CMD_RESP_GET_TXRX_INTX;
-        else
-            response[0] = CMD_RESP_GET_TXRX_INRX;
-        break;
 
     case CMD_SET_MODE: // set mode
         if (cmd[0] == 0x00 || cmd[0] == 0x03)
@@ -148,19 +192,6 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
             response[0] = CMD_RESP_GET_MODE_CW;
         break;
 
-    case CMD_RESET_PROTECTION: // RESET PROTECTION
-        response[0] = CMD_RESP_RESET_PROTECTION_ACK;
-        is_swr_protect_enabled = false;
-        send_ws_update = true;
-        break;
-
-    case CMD_GET_PROTECTION_STATUS: // GET PROTECTION STATUS
-        if (is_swr_protect_enabled)
-            response[0] = CMD_RESP_GET_PROTECTION_ON;
-        else
-            response[0] = CMD_RESP_GET_PROTECTION_OFF;
-        break;
-
     case CMD_GET_MASTERCAL: // GET MASTER CAL
         response[0] = CMD_RESP_GET_MASTERCAL_ACK;
         memcpy(response+1, &frequency_offset, 4);
@@ -172,26 +203,6 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         save_user_settings(1);
         break;
 
-    case CMD_GET_BFO: // GET BFO
-        response[0] = CMD_RESP_GET_BFO_ACK;
-        memcpy(response+1, &bfo_freq, 4);
-        break;
-
-    case CMD_SET_BFO: // SET BFO
-        memcpy(&bfo_freq, cmd, 4);
-        response[0] = CMD_RESP_SET_BFO_ACK;
-        save_user_settings(1);
-        break;
-
-    case CMD_GET_FWD: // GET FWD
-        response[0] = CMD_RESP_GET_FWD_ACK;
-        memcpy(response+1, &fwdpower, 2);
-        break;
-
-    case CMD_GET_REF: // GET REF
-        response[0] = CMD_RESP_GET_REF_ACK;
-        memcpy(response+1, &vswr, 2);
-        break;
 
     case CMD_GET_LED_STATUS: // GET LED STATUS
         if (led_status)
@@ -350,6 +361,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
 
 }
 
+// this is shm command thread
 void *process_radio_command_thread(void *arg)
 {
     controller_conn *conn = arg;
@@ -460,6 +472,7 @@ bool initialize_connector(controller_conn *connector)
 void shm_controller_init(radio *radio_h, pthread_t *shm_tid)
 {
     controller_conn *connector;
+    radio_h_shm = radio_h;
 
     if (shm_is_created(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn)))
     {
@@ -480,6 +493,7 @@ void shm_controller_shutdown(pthread_t *shm_tid)
 {
     controller_conn *connector = connector_local;
 
+    // we unblock the command thread so it can properly exit
     pthread_cond_signal(&connector->cmd_condition);
     pthread_mutex_unlock(&connector->cmd_mutex);
 

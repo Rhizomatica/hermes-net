@@ -36,6 +36,9 @@
 
 #include <iniparser.h>
 
+// around 400ms before cutting the tx in case of high swr
+#define REF_PEAK_REMOVAL 10
+
 /* GPIO Pin definitions  // Hardware 40-header numbering commented */
 #define ENC1_A    9 // Pin 21
 #define ENC1_B   10 // Pin 19
@@ -149,7 +152,7 @@ typedef struct
     // Radio status
     _Atomic uint32_t bfo_frequency;
     _Atomic bool txrx_state; // IN_RX or IN_TX
-    _Atomic uint16_t reflected_threshold; // vswr * 10
+    _Atomic uint32_t reflected_threshold; // vswr * 10
     _Atomic bool swr_protection_enabled;
 
     // front panel controls and status
@@ -216,13 +219,14 @@ void lpf_off(radio *radio_h);
 void lpf_set(radio *radio_h);
 
 // fwd, ref and swr measurements functions
-// update_power_measurements issues a reading
+// update_power_measurements() calls the i2c power readings
 bool update_power_measurements(radio *radio_h);
 uint32_t get_fwd_power(radio *radio_h);
 uint32_t get_ref_power(radio *radio_h);
 uint32_t get_swr(radio *radio_h);
+void swr_protection_check(radio *radio_h);
 
-// auxiliary functions for time functionality
+// auxiliary functions for timer functionality
 void wait_next_activation(void);
 int start_periodic_timer(uint64_t offset);
 
