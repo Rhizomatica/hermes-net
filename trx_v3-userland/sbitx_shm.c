@@ -41,24 +41,24 @@
 #include "shm_utils.h"
 #include "sbitx_shm.h"
 
-#include "../include/radio_cmds.h"
+#include "radio_cmds.h"
 
 extern _Atomic bool shutdown_;
 
 static controller_conn *connector_local;
+
 // local radio handle pointer used for simplifying the function prototypes
 static radio *radio_h_shm;
 
 void process_radio_command(uint8_t *cmd, uint8_t *response)
 {
-//    uint32_t frequency;
-//    char command[64];
+    uint32_t frequency;
 
     radio *radio_h = radio_h_shm;
     memset(response, 0, 5);
 
-    // TODO: write me!!
-    switch(cmd[4]){
+    // here we split the upper 3 bits, with the profile number, and lower 5 bits, with the command
+    switch(cmd[4] & 0x1f){
 
     case CMD_PTT_ON: // PTT On
         if (radio_h->swr_protection_enabled)
@@ -67,9 +67,9 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         }
         else if (radio_h->txrx_state == IN_RX)
         {
-            // sound_input(1);
+            // TODO: sound_input(1);
             tr_switch(radio_h, IN_TX);
-            response[0] = CMD_RESP_PTT_ON_ACK;
+            response[0] = CMD_RESP_ACK;
         }
         else
         {
@@ -85,9 +85,9 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         }
         else if (radio_h->txrx_state == IN_TX)
         {
-            // sound_input(0);
+            // TODO: sound_input(0);
             tr_switch(radio_h, IN_RX);
-            response[0] = CMD_RESP_PTT_OFF_ACK;
+            response[0] = CMD_RESP_ACK;
         }
         else
         {
@@ -103,7 +103,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         break;
 
     case CMD_RESET_PROTECTION: // RESET PROTECTION
-        response[0] = CMD_RESP_RESET_PROTECTION_ACK;
+        response[0] = CMD_RESP_ACK;
         radio_h->swr_protection_enabled = false;
         radio_h->send_ws_update = true;
         break;
@@ -121,7 +121,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         break;
 
     case CMD_SET_BFO: // SET BFO
-        response[0] = CMD_RESP_SET_BFO_ACK;
+        response[0] = CMD_RESP_ACK;
         uint32_t bfo_freq;
         memcpy(&bfo_freq, cmd, 4);
         set_bfo(radio_h, bfo_freq);
@@ -147,8 +147,8 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         break;
 
     case CMD_SET_LED_STATUS: // SET LED STATUS
+        response[0] = CMD_RESP_ACK;
         radio_h->system_is_ok = cmd[0];
-        response[0] = CMD_RESP_SET_LED_STATUS_ACK;
         break;
 
     case CMD_GET_CONNECTED_STATUS: // GET CONNECTED STATUS
@@ -159,8 +159,8 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         break;
 
     case CMD_SET_CONNECTED_STATUS: // SET CONNECTED STATUS
+        response[0] = CMD_RESP_ACK;
         radio_h->system_is_connected = cmd[0];
-        response[0] = CMD_RESP_SET_CONNECTED_STATUS_ACK;
         break;
 
     case CMD_GET_SERIAL: // GET SERIAL NUMBER
@@ -169,7 +169,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
       break;
 
     case CMD_SET_SERIAL: // SET SERIAL NUMBER
-        response[0] = CMD_RESP_SET_SERIAL_ACK;
+        response[0] = CMD_RESP_ACK;
         memcpy(&radio_h->serial_number, cmd, 4);
         radio_h->cfg_core_dirty = true;
         break;
@@ -180,8 +180,8 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
       break;
 
     case CMD_SET_STEPHZ: // CMD_SET_STEPHZ
+        response[0] = CMD_RESP_ACK;
         memcpy(&radio_h->step_size, cmd, 4);
-        response[0] = CMD_RESP_SET_STEPHZ_ACK;
         radio_h->cfg_user_dirty = true;
         break;
 
@@ -192,12 +192,28 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         break;
 
     case CMD_SET_REF_THRESHOLD: // CMD_SET_REF_THRESHOLD
-        response[0] = CMD_RESP_SET_REF_THRESHOLD_ACK;
+        response[0] = CMD_RESP_ACK;
         uint16_t reflected_threshold_s;
         memcpy(&reflected_threshold_s, cmd, 2);
         radio_h->reflected_threshold = (uint32_t) reflected_threshold_s;
         // cade?
         // radio_h->cfg_user_dirty = true;
+        break;
+
+    case CMD_GET_PROFILE: // CMD_GET_PROFILE
+        response[0] = CMD_RESP_GET_PROFILE;
+        response[1] = (uint8_t) radio_h->profile_active_idx;
+        break;
+
+    case CMD_SET_PROFILE: // CMD_SET_PROFILE
+        response[0] = CMD_RESP_ACK;
+        radio_h->profile_active_idx = (uint32_t) cmd[0];
+        // TODO: we need a function to switch profile...
+        break;
+
+    case CMD_RADIO_RESET: // RADIO RESET
+        response[0] = CMD_RESP_WRONG_COMMAND;
+        shutdown_ = true;
         break;
 
 
@@ -335,15 +351,6 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
 // GET_OPERATING_MODE
 // SET_OPERATION_MODE
 
-    case CMD_GPS_CALIBRATE: // CMD_GPS_CALIBRATE
-        response[0] = CMD_RESP_GPS_NOT_PRESENT;
-        break;
-
-    case CMD_GET_STATUS: // CMD_GET_STATUS
-        response[0] = CMD_RESP_GET_STATUS_ACK;
-        memcpy(response+1, &radio_operation_result, 4);
-        break;
-
     case CMD_SET_RADIO_DEFAULTS: // SET RADIO DEFAULTS
         save_user_settings(1);
         save_hw_settings();
@@ -355,9 +362,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         read_hw_ini();
         response[0] = CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK;
         break;
-    case CMD_RADIO_RESET: // RADIO RESET
-        exit(-1);
-        break;
+
 #endif
     default:
         response[0] = CMD_RESP_WRONG_COMMAND;

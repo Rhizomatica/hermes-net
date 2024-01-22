@@ -28,7 +28,7 @@
 #include <stdlib.h>
 
 #include "sbitx_io.h"
-#include "../include/radio_cmds.h"
+#include "radio_cmds.h"
 
 bool radio_cmd(controller_conn *connector, uint8_t *srv_cmd, uint8_t *response)
 {
