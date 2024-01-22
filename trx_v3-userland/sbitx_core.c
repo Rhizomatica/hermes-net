@@ -272,6 +272,7 @@ void tr_switch(radio *radio_h, bool txrx_state)
 void io_tick(radio *radio_h)
 {
     static uint64_t ticks = 0;
+    static bool last_key_state = false;
     _Atomic uint32_t freq = radio_h->profiles[radio_h->profile_active_idx].freq;
     _Atomic uint32_t volume = radio_h->profiles[radio_h->profile_active_idx].speaker_level;
     _Atomic uint32_t tuning_step = radio_h->step_size;
@@ -281,10 +282,14 @@ void io_tick(radio *radio_h)
     ticks++;
 
     // TODO: all DSP and ALSA calls here or tr_switch?
-    if (radio_h->key_down)
-        tr_switch(radio_h, IN_TX);
-    else
-        tr_switch(radio_h, IN_RX);
+    if (last_key_state != radio_h->key_down)
+    {
+        if (radio_h->key_down)
+            tr_switch(radio_h, IN_TX);
+        else
+            tr_switch(radio_h, IN_RX);
+        last_key_state = radio_h->key_down;
+    }
 
     // a speed up if one tunes the knob fast
     if(radio_h->tuning_ticks)
