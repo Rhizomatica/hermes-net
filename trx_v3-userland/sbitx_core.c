@@ -263,6 +263,8 @@ void tr_switch(radio *radio_h, bool txrx_state)
         lpf_set(radio_h);
     }
 
+    printf("tr_switch tx: %d\n", radio_h->txrx_state);
+
     radio_h->send_ws_update = true;
 }
 
@@ -282,7 +284,7 @@ void io_tick(radio *radio_h)
     if (radio_h->key_down)
         tr_switch(radio_h, IN_TX);
     else
-        tr_switch(radio_h, IN_TX);
+        tr_switch(radio_h, IN_RX);
 
     // a speed up if one tunes the knob fast
     if(radio_h->tuning_ticks)

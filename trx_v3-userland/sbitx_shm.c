@@ -37,6 +37,7 @@
 #include <threads.h>
 #include <pthread.h>
 
+#include "cfg_utils.h"
 #include "sbitx_core.h"
 #include "shm_utils.h"
 #include "sbitx_shm.h"
@@ -52,13 +53,14 @@ static radio *radio_h_shm;
 
 void process_radio_command(uint8_t *cmd, uint8_t *response)
 {
-    uint32_t frequency;
+    uint32_t frequency = 0;
+    uint8_t profile;
 
     radio *radio_h = radio_h_shm;
     memset(response, 0, 5);
 
-    // here we split the upper 3 bits, with the profile number, and lower 5 bits, with the command
-    switch(cmd[4] & 0x1f){
+    // here we split the upper 2 bits, with the profile number, and lower 6 bits, with the command
+   switch(cmd[4] & 0x3f){
 
     case CMD_PTT_ON: // PTT On
         if (radio_h->swr_protection_enabled)
@@ -216,29 +218,39 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         shutdown_ = true;
         break;
 
-
-#if 0
     case CMD_GET_FREQ: // GET FREQUENCY
         response[0] = CMD_RESP_GET_FREQ_ACK;
-        frequency = (uint32_t) get_freq();
+        profile = cmd[4] >> 6;
+        if (profile < radio_h->profiles_count)
+            frequency = radio_h->profiles[profile].freq;
         memcpy(response+1, &frequency, 4);
         break;
 
     case CMD_SET_FREQ: // SET FREQUENCY
-        memcpy(&frequency, cmd, 4);
-
-        sprintf(command, "r1:freq=%u", frequency);
-        do_cmd(command);
-
-        sprintf(command, "%u", frequency);
-        set_field("r1:freq", command);
-        set_field("#vfo_a_freq", command);
-
-        response[0] = CMD_RESP_SET_FREQ_ACK;
-        save_user_settings(1);
+        response[0] = CMD_RESP_ACK;
+        profile = cmd[4] >> 6;
+        if (profile < radio_h->profiles_count)
+        {
+            memcpy(&frequency, cmd, 4);
+            if (profile == radio_h->profile_active_idx)
+            {
+                set_frequency(radio_h, frequency);
+            }
+            else
+            {
+                // TODO: put this inside a function in cfg_utils
+                char tmp1[64]; char tmp2[64];
+                sprintf(tmp1, "profile%hhu:freq", profile);
+                sprintf(tmp2, "%u", frequency);
+                int rc = cfg_set(radio_h, radio_h->cfg_user, tmp1, tmp2);
+                if (rc != 0)
+                    printf("Error modifying config file\n");
+                radio_h->cfg_core_dirty = true;
+            }
+        }
         break;
 
-
+#if 0
     case CMD_SET_MODE: // set mode
         if (cmd[0] == 0x00 || cmd[0] == 0x03)
         {

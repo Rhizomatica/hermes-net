@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
     }
     else if (!strcmp(command, "get_frequency"))
     {
-        srv_cmd[4] = CMD_GET_FREQ;
+        srv_cmd[4] = CMD_GET_FREQ | (profile << 6);
     }
     else if (!strcmp(command, "set_frequency"))
     {
@@ -142,12 +142,11 @@ int main(int argc, char *argv[])
 
         uint32_t freq = (uint32_t) atoi(command_argument);
         memcpy(srv_cmd, &freq, 4);
-        // here we also set the profile
-        srv_cmd[4] = CMD_SET_FREQ | (profile << 5);
+        srv_cmd[4] = CMD_SET_FREQ | (profile << 6);
     }
     else if (!strcmp(command, "get_mode"))
     {
-        srv_cmd[4] = CMD_GET_MODE;
+        srv_cmd[4] = CMD_GET_MODE | (profile << 6);
     }
     else if (!strcmp(command, "set_mode"))
     {
@@ -163,7 +162,7 @@ int main(int argc, char *argv[])
         if (!strcmp(command_argument, "cw") || !strcmp(command_argument, "CW"))
             srv_cmd[0] = 0x04;
 
-        srv_cmd[4] = CMD_SET_MODE | (profile << 5);
+        srv_cmd[4] = CMD_SET_MODE | (profile << 6);
     }
     else if (!strcmp(command, "get_txrx_status"))
     {

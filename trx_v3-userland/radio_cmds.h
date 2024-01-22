@@ -27,7 +27,7 @@
 // IT MIGHT NOT WORK ON BIG ENDIAN MACHINES RIGHT NOW!
 
 
-// per profile (3 upper bits for profile, 5 bits for the command itself), so commands only from 0 to 0x1F only!
+// per profile (2 upper bits for profile, 6 bits for the command itself), so commands only from 0 to 0x3F only!
 #define CMD_GET_FREQ 0x01
 #define CMD_SET_FREQ 0x02
 
