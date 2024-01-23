@@ -245,11 +245,11 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
        }
        if (cmd[0] == 0x01)
        {
-           set_mode(radio_h, MODE_LSB, profile);
+           set_mode(radio_h, MODE_USB, profile);
        }
        if (cmd[0] == 0x04)
        {
-           set_mode(radio_h, MODE_LSB, profile);
+           set_mode(radio_h, MODE_CW, profile);
        }
        break;
 
