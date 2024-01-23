@@ -209,7 +209,8 @@ bool hw_shutdown(radio *radio_h, pthread_t *hw_tids);
 void *hw_thread(void *radio_h_v);
 void io_tick(radio *radio_h);
 
-void set_frequency(radio *radio_h, uint32_t frequency);
+void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile);
+void set_mode(radio *radio_h, uint16_t mode, uint32_t profile);
 void set_bfo(radio *radio_h, uint32_t frequency);
 void tr_switch(radio *radio_h, bool txrx_state);
 

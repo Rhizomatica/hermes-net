@@ -45,7 +45,7 @@ sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_web
 	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o $(GPIOLIB_OBJS) $(LDFLAGS)
 
 sbitx_client: sbitx_client.c shm_utils.c sbitx_io.c help.h radio_cmds.h
-	$(CC) $(CFLAGS) sbitx_client.c sbitx_io.c shm_utils.c -o sbitx_client
+	$(CC) $(CFLAGS) sbitx_client.c sbitx_io.c shm_utils.c -o sbitx_client -lpthread
 
 sbitx_controller.o: sbitx_controller.c
 	$(CC) -c $(CFLAGS) sbitx_controller.c -o sbitx_controller.o

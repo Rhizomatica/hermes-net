@@ -149,18 +149,22 @@ uint32_t get_swr(radio *radio_h)
     return vswr;
 }
 
-void set_frequency(radio *radio_h, uint32_t frequency)
+void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile)
 {
-    _Atomic uint32_t *radio_freq = &radio_h->profiles[radio_h->profile_active_idx].freq;
+    _Atomic uint32_t *radio_freq = &radio_h->profiles[profile].freq;
 
     *radio_freq = frequency;
-     // Were we are not setting the real frequency of the radio (in USB, which is the current setup)
-     // We add 24 kHz offset in order to use Ashhar's DSP code (just "- 24000")
-    si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 24000);
+
+    if (profile == radio_h->profile_active_idx)
+    {
+        // Were we are not setting the real frequency of the radio (in USB, which is the current setup)
+        // We add 24 kHz offset in order to use Farhan's DSP code (just "- 24000")
+        si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 24000);
+    }
 
     // TODO: put this inside a function in cfg_utils
     char tmp1[64]; char tmp2[64];
-    sprintf(tmp1, "profile%u:freq", radio_h->profile_active_idx);
+    sprintf(tmp1, "profile%u:freq", profile);
     sprintf(tmp2, "%u", *radio_freq);
     int rc = cfg_set(radio_h, radio_h->cfg_user, tmp1, tmp2);
     if (rc != 0)
@@ -168,6 +172,31 @@ void set_frequency(radio *radio_h, uint32_t frequency)
 
     radio_h->cfg_user_dirty = true;
 }
+
+void set_mode(radio *radio_h, uint16_t mode, uint32_t profile)
+{
+    _Atomic uint16_t *radio_mode = &radio_h->profiles[profile].mode;
+
+    if (*radio_mode != mode)
+        return;
+
+    *radio_mode = mode;
+
+    char tmp1[64]; char tmp2[64];
+    sprintf(tmp1, "profile%u:freq", profile);
+    if (mode == MODE_USB)
+        sprintf(tmp2, "USB");
+    if (mode == MODE_LSB)
+        sprintf(tmp2, "LSB");
+    if (mode == MODE_CW)
+        sprintf(tmp2, "CW");
+    int rc = cfg_set(radio_h, radio_h->cfg_user, tmp1, tmp2);
+    if (rc != 0)
+        printf("Error modifying config file\n");
+
+    radio_h->cfg_user_dirty = true;
+}
+
 
 void set_bfo(radio *radio_h, uint32_t frequency)
 {
@@ -310,7 +339,7 @@ void io_tick(radio *radio_h)
                 freq += tuning_step;
             }
             set_dirty_ws = true;
-            set_frequency(radio_h, freq);
+            set_frequency(radio_h, freq, radio_h->profile_active_idx);
         }
         else
         {
