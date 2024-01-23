@@ -177,7 +177,7 @@ void set_mode(radio *radio_h, uint16_t mode, uint32_t profile)
 {
     _Atomic uint16_t *radio_mode = &radio_h->profiles[profile].mode;
 
-    if (*radio_mode != mode)
+    if (*radio_mode == mode)
         return;
 
     *radio_mode = mode;
