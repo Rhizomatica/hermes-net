@@ -153,6 +153,9 @@ void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile)
 {
     _Atomic uint32_t *radio_freq = &radio_h->profiles[profile].freq;
 
+    if (*radio_freq == frequency)
+        return;
+
     *radio_freq = frequency;
 
     if (profile == radio_h->profile_active_idx)
