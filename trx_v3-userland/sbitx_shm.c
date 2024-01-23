@@ -238,6 +238,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
             }
             else
             {
+                radio_h->profiles[profile].freq = frequency;
                 // TODO: put this inside a function in cfg_utils
                 char tmp1[64]; char tmp2[64];
                 sprintf(tmp1, "profile%hhu:freq", profile);
