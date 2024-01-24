@@ -165,6 +165,23 @@ void set_reflected_threshold(radio *radio_h, uint32_t ref_threshold)
     radio_h->cfg_core_dirty = true;
 }
 
+void set_profile(radio *radio_h, uint32_t profile)
+{
+    if (radio_h->profile_active_idx == profile)
+        return;
+
+    radio_h->profile_active_idx = profile;
+
+    char tmp[64];
+    sprintf(tmp, "%u", radio_h->profile_active_idx);
+    int rc = cfg_set(radio_h, radio_h->cfg_user, "main:current_profile", tmp);
+    if (rc != 0)
+        printf("Error modifying config file\n");
+
+    // TODO: we need a function to switch profile... frequency, mode, agc, compressor, etc...
+
+    radio_h->cfg_user_dirty = true;
+}
 void set_speaker_volume(radio *radio_h, uint32_t speaker_level, uint32_t profile)
 {
     _Atomic uint32_t *volume = &radio_h->profiles[profile].speaker_level;

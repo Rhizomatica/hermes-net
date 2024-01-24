@@ -209,10 +209,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
        response[0] = CMD_RESP_ACK;
        uint32_t prof_set = (uint32_t) cmd[0];
        if (prof_set < radio_h->profiles_count)
-       {
-           radio_h->profile_active_idx = prof_set;
-       }
-       // TODO: we need a function to switch profile...
+           set_profile(radio_h, prof_set);
        break;
 
    case CMD_RADIO_RESET: // RADIO RESET
@@ -283,6 +280,8 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
             speaker_level = 100;
         set_speaker_volume(radio_h, speaker_level, profile);
         break;
+
+// TODO: finish implementig the remaining commands
 #if 0
 
     case CMD_GET_TONE: // GET_TONE
@@ -306,8 +305,8 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         read_hw_ini();
         response[0] = CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK;
         break;
-
 #endif
+
     default:
         response[0] = CMD_RESP_WRONG_COMMAND;
     }

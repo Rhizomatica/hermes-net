@@ -214,6 +214,7 @@ void set_mode(radio *radio_h, uint16_t mode, uint32_t profile);
 void set_bfo(radio *radio_h, uint32_t frequency);
 void set_reflected_threshold(radio *radio_h, uint32_t ref_threshold);
 void set_speaker_volume(radio *radio_h, uint32_t speaker_level, uint32_t profile);
+void set_profile(radio *radio_h, uint32_t profile);
 
 // TX/RX switch
 void tr_switch(radio *radio_h, bool txrx_state);
