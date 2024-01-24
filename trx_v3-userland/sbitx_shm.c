@@ -207,7 +207,11 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
 
    case CMD_SET_PROFILE: // CMD_SET_PROFILE
        response[0] = CMD_RESP_ACK;
-       radio_h->profile_active_idx = (uint32_t) cmd[0];
+       uint32_t prof_set = (uint32_t) cmd[0];
+       if (prof_set < radio_h->profiles_count)
+       {
+           radio_h->profile_active_idx = prof_set;
+       }
        // TODO: we need a function to switch profile...
        break;
 
