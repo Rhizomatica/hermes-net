@@ -99,6 +99,14 @@ const char format_str[] = "* ptt_on\n"
 "  * Serial Number\n"
 "  * Resp: OK | ERROR\n\n"
 
+"* get_profile\n"
+"  * No Argument\n"
+"  * Resp: Profile Number | ERROR\n\n"
+
+"* set_profile\n"
+"  * Profile Number\n"
+"  * Resp: OK | ERROR\n\n"
+
 "* get_freqstep\n"
 "  * No Argument\n"
 "  * Resp: Frequency Step (Hz) | ERROR\n\n"
@@ -123,7 +131,6 @@ const char format_str[] = "* ptt_on\n"
 "  * Set transmit tone (0 to disable, 1 to enable)\n"
 "  * Resp: OK | ERROR\n\n"
 
-
 "* reset_protection\n"
 "  * No Argument\n"
 "  * Resp: OK | ERROR\n\n"
@@ -136,10 +143,6 @@ const char format_str[] = "* ptt_on\n"
 "  * No Argument\n"
 "  * Resp: Reflected Threshold Level | ERROR\n\n"
 
-"* gps_calibrate\n"
-"  * No Argument\n"
-"  * Resp: NO_GPS | ERROR\n\n"
-
 "* set_radio_defaults\n"
 "  * No Argument\n"
 "  * Resp: OK (set default settings) | ERROR\n\n"
@@ -147,13 +150,6 @@ const char format_str[] = "* ptt_on\n"
 "* restore_radio_defaults\n"
 "  * No Argument\n"
 "  * Resp: OK (restore default settings) | ERROR\n\n"
-
-"* get_status\n"
-"  * No Argument\n"
-"  * Resp: 3 lines output with a constant word and a response:\n"
-"  * PPS_STATUS FAIL\n"
-"  * OFFSET_CAL_STATUS FAIL\n"
-"  * LATEST_OFFSET_CAL Offset\n\n"
 
 "* radio_reset\n"
 "  * No Argument\n"
