@@ -197,9 +197,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
        response[0] = CMD_RESP_ACK;
        uint16_t reflected_threshold_s;
        memcpy(&reflected_threshold_s, cmd, 2);
-       radio_h->reflected_threshold = (uint32_t) reflected_threshold_s;
-       // cade?
-       // radio_h->cfg_user_dirty = true;
+       set_reflected_threshold(radio_h, (uint32_t) reflected_threshold_s);
        break;
 
    case CMD_GET_PROFILE: // CMD_GET_PROFILE
@@ -263,20 +261,25 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
            response[0] = CMD_RESP_GET_MODE_CW;
        break;
 
-#if 0
     case CMD_GET_VOLUME: // GET_VOLUME
         response[0] = CMD_RESP_GET_VOLUME_ACK;
-        memcpy(response+1, &rx_vol, 4);
+        profile = cmd[4] >> 6;
+       if (profile < radio_h->profiles_count)
+           memcpy(response+1, &radio_h->profiles[profile].speaker_level, 4);
         break;
 
     case CMD_SET_VOLUME: // SET_VOLUME
-        memcpy(&rx_vol, cmd, 4);
-        if (rx_vol < 0) rx_vol = 0; if (rx_vol > 100) rx_vol = 100;
-        sprintf(command, "%d", rx_vol);
-        set_field("r1:volume", command);
-        response[0] = CMD_RESP_SET_VOLUME_ACK;
-        save_user_settings(1);
+        response[0] = CMD_RESP_ACK;
+        profile = cmd[4] >> 6;
+        uint32_t speaker_level;
+        memcpy(&speaker_level, cmd, 4);
+        if (speaker_level < 0)
+            speaker_level = 0;
+        if (speaker_level > 100)
+            speaker_level = 100;
+        set_speaker_volume(radio_h, speaker_level, profile);
         break;
+#if 0
 
     case CMD_GET_TONE: // GET_TONE
         response[0] = CMD_RESP_GET_TONE_ACK;

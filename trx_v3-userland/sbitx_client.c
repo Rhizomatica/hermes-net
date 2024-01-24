@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
     }
     else if (!strcmp(command, "get_volume"))
     {
-        srv_cmd[4] = CMD_GET_VOLUME;
+        srv_cmd[4] = CMD_GET_VOLUME | (profile << 6);
     }
     else if (!strcmp(command, "set_volume"))
     {
@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
 
         int volume = (uint32_t) atoi(command_argument);
         memcpy(srv_cmd, &volume, 4);
-        srv_cmd[4] = CMD_SET_VOLUME;
+        srv_cmd[4] = CMD_SET_VOLUME | (profile << 6);
     }
     else if (!strcmp(command, "get_tone"))
     {

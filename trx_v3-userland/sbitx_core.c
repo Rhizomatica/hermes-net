@@ -149,6 +149,43 @@ uint32_t get_swr(radio *radio_h)
     return vswr;
 }
 
+void set_reflected_threshold(radio *radio_h, uint32_t ref_threshold)
+{
+    if (ref_threshold == radio_h->reflected_threshold)
+        return;
+
+    radio_h->reflected_threshold = ref_threshold;
+
+    char tmp[64];
+    sprintf(tmp, "%u", radio_h->reflected_threshold);
+    int rc = cfg_set(radio_h, radio_h->cfg_core, "main:reflected_threshold", tmp);
+    if (rc != 0)
+        printf("Error modifying config file\n");
+
+    radio_h->cfg_core_dirty = true;
+}
+
+void set_speaker_volume(radio *radio_h, uint32_t speaker_level, uint32_t profile)
+{
+    _Atomic uint32_t *volume = &radio_h->profiles[profile].speaker_level;
+
+    if (*volume == speaker_level)
+        return;
+
+    *volume = speaker_level;
+
+    char tmp1[64]; char tmp2[64];
+    sprintf(tmp1, "profile%u:speaker_level", profile);
+    sprintf(tmp2, "%u", *volume);
+    int rc = cfg_set(radio_h, radio_h->cfg_user, tmp1, tmp2);
+    if (rc != 0)
+        printf("Error modifying config file\n");
+
+    radio_h->cfg_user_dirty = true;
+}
+
+
+
 void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile)
 {
     _Atomic uint32_t *radio_freq = &radio_h->profiles[profile].freq;
@@ -165,7 +202,6 @@ void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile)
         si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 24000);
     }
 
-    // TODO: put this inside a function in cfg_utils
     char tmp1[64]; char tmp2[64];
     sprintf(tmp1, "profile%u:freq", profile);
     sprintf(tmp2, "%u", *radio_freq);
@@ -203,10 +239,12 @@ void set_mode(radio *radio_h, uint16_t mode, uint32_t profile)
 
 void set_bfo(radio *radio_h, uint32_t frequency)
 {
+    if (frequency == radio_h->bfo_frequency)
+        return;
+
     radio_h->bfo_frequency = frequency;
     si5351bx_setfreq(1, radio_h->bfo_frequency);
 
-    // TODO: put this inside a function in cfg_utils
     char tmp[64];
     sprintf(tmp, "%u", radio_h->bfo_frequency);
     int rc = cfg_set(radio_h, radio_h->cfg_core, "main:bfo", tmp);

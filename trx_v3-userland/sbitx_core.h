@@ -116,10 +116,10 @@ typedef struct {
     uint16_t compressor; // COMPRESSOR_*
 
     // Alsa levels
-    _Atomic uint16_t mic_level; // 0 - 100
-    _Atomic uint16_t rx_level;
-    _Atomic uint16_t speaker_level; // 0 - 100
-    _Atomic uint16_t tx_level;
+    _Atomic uint32_t mic_level; // 0 - 100
+    _Atomic uint32_t rx_level;
+    _Atomic uint32_t speaker_level; // 0 - 100
+    _Atomic uint32_t tx_level;
 
     // lpf settings
     uint32_t bpf_low; // band-pass filter settings
@@ -212,6 +212,10 @@ void io_tick(radio *radio_h);
 void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile);
 void set_mode(radio *radio_h, uint16_t mode, uint32_t profile);
 void set_bfo(radio *radio_h, uint32_t frequency);
+void set_reflected_threshold(radio *radio_h, uint32_t ref_threshold);
+void set_speaker_volume(radio *radio_h, uint32_t speaker_level, uint32_t profile);
+
+// TX/RX switch
 void tr_switch(radio *radio_h, bool txrx_state);
 
 // disconnect all LPFs
