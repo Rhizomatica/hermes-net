@@ -116,6 +116,10 @@ bool init_config_core(radio *radio_h, char *ini_name)
     printf("Serial Number:      [%d]\n", i);
     radio_h->serial_number = (uint32_t) i;
 
+    i = iniparser_getint(ini, "main:reflected_threshold", 25);
+    printf("Reflected Threshold:      [%d]\n", i);
+    radio_h->reflected_threshold = (uint32_t) i;
+
     b = iniparser_getboolean(ini, "main:enable_websocket", 0);
     printf("Enable Websocket:       [%d]\n", b);
     radio_h->enable_websocket = (bool) b;
