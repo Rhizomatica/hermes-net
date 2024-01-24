@@ -22,7 +22,7 @@
 uname_p := $(shell uname -m)
 
 CC=gcc
-LDFLAGS=-liniparser -li2c -lssl -lcrypto -lpthread
+LDFLAGS=-liniparser -li2c -lssl -lcrypto -lpthread -lasound
 CFLAGS=-Ofast -Wall -std=gnu11 -fstack-protector -I/usr/include/iniparser
 
 ifeq (${uname_p},aarch64)
@@ -41,8 +41,8 @@ GPIOLIB_OBJS=gpiolib/gpiolib.o gpiolib/gpiochip_bcm2712.o gpiolib/gpiochip_bcm28
 
 all: sbitx_controller sbitx_client
 
-sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o $(GPIOLIB_OBJS)
-	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o $(GPIOLIB_OBJS) $(LDFLAGS)
+sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o ring_buffer.o $(GPIOLIB_OBJS)
+	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o ring_buffer.o $(GPIOLIB_OBJS) $(LDFLAGS)
 
 sbitx_client: sbitx_client.c shm_utils.c sbitx_io.c help.h radio_cmds.h
 	$(CC) $(CFLAGS) sbitx_client.c sbitx_io.c shm_utils.c -o sbitx_client -lpthread
@@ -78,6 +78,16 @@ sbitx_websocket.o: sbitx_websocket.c sbitx_websocket.h
 
 mongoose.o: mongoose.c mongoose.h
 	$(CC) -c $(CFLAGS) -DMG_ENABLE_OPENSSL -DMG_TLS=MG_TLS_OPENSSL -DMG_ARCH=1 mongoose.c -o mongoose.o
+
+# sound system
+sbitx_alsa.o: sbitx_alsa.c sbitx_alsa.h
+	$(CC) -c $(CFLAGS) sbitx_alsa.c -o sbitx_alsa.o
+
+sbitx_buffer.o: sbitx_buffer.c sbitx_buffer.h
+	$(CC) -c $(CFLAGS) sbitx_buffer.c -o sbitx_buffer.o
+
+ring_buffer.o: ring_buffer.c ring_buffer.h
+	$(CC) -c $(CFLAGS) ring_buffer.c -o ring_buffer.o
 
 # gpiolib stuff
 gpiolib/gpiolib.o: gpiolib/gpiolib.c gpiolib/gpiolib.h

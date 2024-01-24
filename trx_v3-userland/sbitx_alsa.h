@@ -1,5 +1,5 @@
 /* sBitx controller
- * Copyright (C) 2023 Rhizomatica
+ * Copyright (C) 2023-2024 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
@@ -23,18 +23,18 @@
 #define SBITX_ALSA_H_
 
 #include <alsa/asoundlib.h>
-#include <stdbool.h>
-#include <stdatomic.h>
 
-extern bool disable_alsa;
-extern atomic_bool sound_system_running;
-extern atomic_bool use_loopback;
+#include "sbitx_core.h"
+
+void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_capture,
+                       pthread_t *radio_playback, pthread_t *loop_capture, pthread_t *loop_playback);
+
+void sound_system_shutdown(radio *radio_h, pthread_t *control_tid, pthread_t *radio_capture,
+                           pthread_t *radio_playback, pthread_t *loop_capture, pthread_t *loop_playback);
 
 
 void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params);
 void sound_mixer(char *card_name, char *element, int make_on);
-void sound_system_start();
 void clear_buffers();
-void sound_input(int loop);
 
 #endif

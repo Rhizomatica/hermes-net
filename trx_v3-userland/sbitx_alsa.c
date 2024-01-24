@@ -27,8 +27,8 @@
 #include <stdatomic.h>
 
 #include "sbitx_alsa.h"
-#include "sbitx_dsp.h"
-#include "buffer.h"
+//#include "sbitx_dsp.h" // TODO: import me
+#include "sbitx_buffer.h"
 
 char *radio_capture_dev = "hw:0,0";
 char *radio_playback_dev = "hw:0,0";
@@ -51,11 +51,8 @@ uint64_t loopback_n_periods = 4; // number of periods
 snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
 uint32_t channels = 2;
 
-atomic_bool use_loopback;
-
 // local radio handle used to easy parameter passing
 static radio *radio_h_snd;
-
 extern _Atomic bool shutdown_;
 
 #if 0
@@ -164,11 +161,9 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 
 void sound_mixer(char *card_name, char *element, int make_on)
 {
-#if 0
-    // TODO: just test the operating mode
-    if (disable_alsa)
+    // this is alsa-less operation...
+    if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
         return;
-#endif
 
     long min, max;
     snd_mixer_t *handle;
@@ -188,7 +183,7 @@ void sound_mixer(char *card_name, char *element, int make_on)
     //find out if the his element is capture side or plaback
     if(snd_mixer_selem_has_capture_switch(elem))
     {
-                snd_mixer_selem_set_capture_switch_all(elem, make_on);
+        snd_mixer_selem_set_capture_switch_all(elem, make_on);
     }
     else if (snd_mixer_selem_has_playback_switch(elem))
     {
@@ -768,7 +763,7 @@ void *control_thread(void *device_ptr)
         read_buffer(radio_to_dsp, buffer_radio_to_dsp, hw_buffer_size);
         read_buffer(mic_to_dsp, buffer_mic_to_dsp, hw_buffer_size); // the samplerate is half
 
-        if (use_loopback)
+        if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_FULL_LOOPBACK)
         {
             if (size_buffer(loopback_to_dsp) >= loop_buffer_size)
             {
@@ -782,7 +777,7 @@ void *control_thread(void *device_ptr)
                 input_mic = (int32_t *)buffer_null;
             }
         }
-        else
+        else // OPERATING_MODE_FULL_VOICE
         {
             input_mic = (int32_t *)buffer_mic_to_dsp;
             clear_buffer(loopback_to_dsp);
@@ -802,13 +797,8 @@ void *control_thread(void *device_ptr)
             output_speaker[i+1] = output_speaker[i];
         write_buffer(dsp_to_loopback, (uint8_t *)output_speaker, hw_buffer_size);             // good ol' mono->stereo rate halving
     }
-}
 
-void sound_input(int loop){
-    if (loop)
-        use_loopback = true;
-    else
-        use_loopback = false;
+    return NULL;
 }
 
 
@@ -823,33 +813,38 @@ void clear_buffers()
 }
 
 // initialize the ALSA sound system
-void sound_system_init(radio *radio_h)
+void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_capture,
+                       pthread_t *radio_playback, pthread_t *loop_capture, pthread_t *loop_playback)
 {
     radio_h_snd = radio_h;
 
-    pthread_t radio_capture, radio_playback;
-    pthread_t loop_capture, loop_playback;
+    pthread_create(control_tid, NULL, control_thread, NULL);
 
-    pthread_t control_tid;
-    pthread_create( &control_tid, NULL, control_thread, NULL);
+    pthread_create(radio_capture, NULL, radio_capture_thread, (void*)radio_capture_dev);
+    pthread_create(radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
 
-    pthread_create( &radio_capture, NULL, radio_capture_thread, (void*)radio_capture_dev);
-    pthread_create( &radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
-
-    pthread_create( &loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
-    pthread_create( &loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
+    pthread_create(loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
+    pthread_create(loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
 
     struct sched_param sch;
     sch.sched_priority = sched_get_priority_max(SCHED_FIFO);
-    pthread_setschedparam(radio_capture, SCHED_FIFO, &sch);
-    pthread_setschedparam(radio_playback, SCHED_FIFO, &sch);
-    pthread_setschedparam(loop_capture, SCHED_FIFO, &sch);
-    pthread_setschedparam(loop_playback, SCHED_FIFO, &sch);
+    pthread_setschedparam(*radio_capture, SCHED_FIFO, &sch);
+    pthread_setschedparam(*radio_playback, SCHED_FIFO, &sch);
+    pthread_setschedparam(*loop_capture, SCHED_FIFO, &sch);
+    pthread_setschedparam(*loop_playback, SCHED_FIFO, &sch);
 
 }
 
 // shutdown the ALSA sound system
-void sound_system_shutdown(radio *radio_h)
+void sound_system_shutdown(radio *radio_h, pthread_t *control_tid, pthread_t *radio_capture,
+                           pthread_t *radio_playback, pthread_t *loop_capture, pthread_t *loop_playback)
 {
+    pthread_join(*control_tid, NULL);
+
+    pthread_join(*radio_capture, NULL);
+    pthread_join(*radio_playback, NULL);
+
+    pthread_join(*loop_capture, NULL);
+    pthread_join(*loop_playback, NULL);
 
 }

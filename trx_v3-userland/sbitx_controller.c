@@ -29,6 +29,7 @@
 #include <signal.h>
 #include <sched.h>
 
+#include "sbitx_alsa.h"
 #include "sbitx_shm.h"
 #include "sbitx_core.h"
 #include "sbitx_websocket.h"
@@ -50,6 +51,7 @@ int main(int argc, char* argv[])
     pthread_t hw_tids[2]; // 2 hw thread ids user for IO
     pthread_t web_tid; // websocket thread id
     pthread_t shm_tid; // shared memory interface thread id
+    pthread_t control_tid, radio_capture, radio_playback, loop_capture, loop_playback;
 
    if (argc > 3)
     {
@@ -96,8 +98,9 @@ int main(int argc, char* argv[])
        printf("RUNNING ON CPU Nr %d\n", sched_getcpu());
    }
 
-   /* Call in order... cfg, hw, etc */
+   /* Call in order... cfg, hw, shm, sound, shutdown in reverse order */
    cfg_init(&radio_h, CFG_CORE_PATH, CFG_USER_PATH, &cfg_tid);
+
    hw_init(&radio_h, hw_tids);
 
    if (radio_h.enable_websocket)
@@ -106,7 +109,12 @@ int main(int argc, char* argv[])
    if (radio_h.enable_shm_control)
        shm_controller_init(&radio_h, &shm_tid);
 
-   // this call pthread_join(), so it blocks below, until shutdown == true
+   bool disable_sound_system = (radio_h.profiles_count == 1 && radio_h.profiles[0].operating_mode == OPERATING_MODE_CONTROLS_ONLY) ? true : false;
+   if (!disable_sound_system)
+       sound_system_init(&radio_h, &control_tid, &radio_capture, &radio_playback, &loop_capture, &loop_playback);
+
+
+   // the next call calls pthread_join(), so it blocks until shutdown == true
    hw_shutdown(&radio_h, hw_tids);
    cfg_shutdown(&radio_h, &cfg_tid);
 
@@ -115,6 +123,9 @@ int main(int argc, char* argv[])
 
    if (radio_h.enable_shm_control)
        shm_controller_shutdown(&shm_tid);
+
+   if (!disable_sound_system)
+       sound_system_shutdown(&radio_h, &control_tid, &radio_capture, &radio_playback, &loop_capture, &loop_playback);
 
    return EXIT_SUCCESS;
 
