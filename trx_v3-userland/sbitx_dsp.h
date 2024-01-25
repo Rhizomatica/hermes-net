@@ -29,12 +29,13 @@
 
 #include "sbitx_core.h"
 
-struct filter {
-        complex float *fir_coeff;
-        complex float *overlap;
-        int N;
-        int L;
-        int M;
+struct filter
+{
+    complex float *fir_coeff;
+    complex float *overlap;
+    int N;
+    int L;
+    int M;
 };
 
 #include <stdint.h>
@@ -46,14 +47,11 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
 void dsp_start(radio *radio_h);
 
+// DSP, from https://github.com/afarhan/sbitx/blob/main/fft_filter.c
 struct filter *filter_new(int input_length, int impulse_length);
-
 int filter_tune(struct filter *f, float const low,float const high,float const kaiser_beta);
-
 int window_filter(int const L,int const M,complex float * const response,float const beta);
-
 int make_kaiser(float * const window,unsigned int const M,float const beta);
-
 const float i0(float const z);
 
 
