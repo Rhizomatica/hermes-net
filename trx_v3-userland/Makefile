@@ -22,7 +22,7 @@
 uname_p := $(shell uname -m)
 
 CC=gcc
-LDFLAGS=-liniparser -li2c -lssl -lcrypto -lpthread -lasound -lm
+LDFLAGS=-liniparser -li2c -lssl -lcrypto -lpthread -lasound -lm -lfftw3 -lfftw3f
 CFLAGS=-Ofast -Wall -std=gnu11 -fstack-protector -I/usr/include/iniparser
 
 ifeq (${uname_p},aarch64)

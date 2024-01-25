@@ -55,13 +55,6 @@ uint32_t channels = 2;
 static radio *radio_h_snd;
 extern _Atomic bool shutdown_;
 
-#if 0
-// TODO: we need refactor here
-extern void sound_process(
-    int32_t *input_rx, int32_t *input_mic,
-    int32_t *output_speaker, int32_t *output_tx,
-    int n_samples);
-#endif
 
 void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 {
@@ -795,17 +788,12 @@ void *control_thread(void *device_ptr)
 
         write_buffer(dsp_to_loopback, output_loopback, buffer_size); // stereo 48 kHz interleaved
         write_buffer(dsp_to_radio, output_tx, buffer_size); // mono 96 kHz
-
-        // convert from 96 kHz mono to 48 kHz stereo?
-#if 0 // this does not seems correct
-        for (int i = 0; i < i_need_1024_frames; i = i + 2)
-            output_speaker[i+1] = output_speaker[i];
-#endif
-
         write_buffer(dsp_to_speaker, output_speaker, buffer_size); // mono 96 kHz
     }
 
-    // TODO: free stuff here
+    free(output_tx);
+    free(output_speaker);
+    free(output_loopback);
 
     return NULL;
 }
