@@ -1,7 +1,7 @@
 /*
  * sBitx controller
  *
- * Copyright (C) 2023-204 Rhizomatica
+ * Copyright (C) 2023-2024 Rhizomatica
  * Author: Rafael Diniz <rafael@rhizomatica.org>
  *
  * This is free software; you can redistribute it and/or modify
