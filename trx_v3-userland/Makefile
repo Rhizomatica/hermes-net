@@ -22,7 +22,7 @@
 uname_p := $(shell uname -m)
 
 CC=gcc
-LDFLAGS=-liniparser -li2c -lssl -lcrypto -lpthread -lasound
+LDFLAGS=-liniparser -li2c -lssl -lcrypto -lpthread -lasound -lm
 CFLAGS=-Ofast -Wall -std=gnu11 -fstack-protector -I/usr/include/iniparser
 
 ifeq (${uname_p},aarch64)
@@ -41,8 +41,8 @@ GPIOLIB_OBJS=gpiolib/gpiolib.o gpiolib/gpiochip_bcm2712.o gpiolib/gpiochip_bcm28
 
 all: sbitx_controller sbitx_client
 
-sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o ring_buffer.o $(GPIOLIB_OBJS)
-	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o ring_buffer.o $(GPIOLIB_OBJS) $(LDFLAGS)
+sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o sbitx_dsp.o ring_buffer.o $(GPIOLIB_OBJS)
+	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o sbitx_dsp.o ring_buffer.o  $(GPIOLIB_OBJS) $(LDFLAGS)
 
 sbitx_client: sbitx_client.c shm_utils.c sbitx_io.c help.h radio_cmds.h
 	$(CC) $(CFLAGS) sbitx_client.c sbitx_io.c shm_utils.c -o sbitx_client -lpthread
@@ -81,7 +81,11 @@ mongoose.o: mongoose.c mongoose.h
 
 # sound system
 sbitx_alsa.o: sbitx_alsa.c sbitx_alsa.h
-	$(CC) -c $(CFLAGS) sbitx_alsa.c -o sbitx_alsa.o
+	$(CC) -c $(CFLAGS) -Wno-deprecated-declarations sbitx_alsa.c -o sbitx_alsa.o
+
+sbitx_dsp.o: sbitx_dsp.c sbitx_dsp.h
+	$(CC) -c $(CFLAGS) sbitx_dsp.c -o sbitx_dsp.o
+
 
 sbitx_buffer.o: sbitx_buffer.c sbitx_buffer.h
 	$(CC) -c $(CFLAGS) sbitx_buffer.c -o sbitx_buffer.o

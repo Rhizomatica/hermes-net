@@ -105,6 +105,7 @@ typedef struct {
 	double scale;
 } power_settings;
 
+// variables without _Atomic are not supposed to change during runtime after config file loads
 typedef struct {
 
     _Atomic uint32_t freq;
@@ -112,8 +113,8 @@ typedef struct {
 
     // In OPERATING_MODE_CONTROLS_ONLY, most of these will just be ignored...
     _Atomic uint16_t mode; // MODE_*
-    uint16_t agc; // AGC_*
-    uint16_t compressor; // COMPRESSOR_*
+    _Atomic uint16_t agc; // AGC_*
+    _Atomic uint16_t compressor; // COMPRESSOR_*
 
     // Alsa levels
     _Atomic uint32_t mic_level; // 0 - 100

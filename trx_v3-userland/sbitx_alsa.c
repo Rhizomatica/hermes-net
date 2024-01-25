@@ -27,7 +27,7 @@
 #include <stdatomic.h>
 
 #include "sbitx_alsa.h"
-//#include "sbitx_dsp.h" // TODO: import me
+#include "sbitx_dsp.h"
 #include "sbitx_buffer.h"
 
 char *radio_capture_dev = "hw:0,0";
@@ -739,64 +739,73 @@ void *loop_playback_thread(void *device_ptr)
 
 void *control_thread(void *device_ptr)
 {
-    int i_need_1024_frames = 1024;     // this is because of how the DSP code works now, keep like this for now
-
     int sample_size = snd_pcm_format_width(format) / 8;
-    uint32_t hw_buffer_size = i_need_1024_frames * sample_size;     //uint32_t hw_buffer_size = hw_period_size * sample_size;
-    uint8_t *buffer_radio_to_dsp = malloc(hw_buffer_size);
-    uint8_t *buffer_mic_to_dsp = malloc(hw_buffer_size);
 
-    uint32_t loop_buffer_size = (i_need_1024_frames / 2) * sample_size * channels; // the samplerate is half, 2 ch
-    uint8_t *buffer_loop_to_dsp = malloc(loop_buffer_size);
-    uint8_t *buffer_null = malloc(loop_buffer_size);
+    // we have 96 kHz in the radio soundcard, and 48 kHz in the loopback soundcard
+    // we define our block transfer size as the minimum of both, in order to try to reduce latency a bit
+    uint32_t block_size = hw_period_size;
 
-    memset(buffer_null, 0, loop_buffer_size);
+    if (hw_period_size != (loopback_period_size * 2))
+    {
+        fprintf(stderr, "Hardware 96 kHz sound period size != (Loopback 48 kHz period size * 2)\n");
+        block_size = hw_period_size;
+    }
+
+    uint32_t buffer_size = block_size * sample_size;
 
 
-    int32_t *input_rx; int32_t *input_mic; int32_t *output_speaker; int32_t *output_tx;
+    uint8_t *buffer_radio_to_dsp = malloc(buffer_size);
+    uint8_t *buffer_mic_to_dsp = malloc(buffer_size);
 
-    output_tx = (int32_t *)malloc(hw_buffer_size);
-    output_speaker = (int32_t *)malloc(hw_buffer_size);
+    uint8_t *buffer_loop_to_dsp = malloc(buffer_size);
+
+
+    uint8_t *signal_to_tx;
+    uint8_t *output_speaker; uint8_t *output_loopback; uint8_t *output_tx;
+
+    output_tx = malloc(buffer_size);
+    output_speaker = malloc(buffer_size);
+    output_loopback = malloc(buffer_size);
 
     while (!shutdown_)
     {
-        read_buffer(radio_to_dsp, buffer_radio_to_dsp, hw_buffer_size);
-        read_buffer(mic_to_dsp, buffer_mic_to_dsp, hw_buffer_size); // the samplerate is half
+        _Atomic bool use_loopback = (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_FULL_LOOPBACK) ? true : false;
 
-        if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_FULL_LOOPBACK)
+        read_buffer(radio_to_dsp, buffer_radio_to_dsp, buffer_size); // mono
+        read_buffer(mic_to_dsp, buffer_mic_to_dsp, buffer_size); // mono
+
+        if (use_loopback)
         {
-            if (size_buffer(loopback_to_dsp) >= loop_buffer_size)
-            {
-                // this 48kHz 2ch to 96kHz 1ch conversion is done in tx_process
-                read_buffer(loopback_to_dsp, buffer_loop_to_dsp, loop_buffer_size);
-                input_mic = (int32_t *)buffer_loop_to_dsp;
-            }
-            else
-            {
-                fprintf(stderr, "Skipping transmission frame from loopback!\n");
-                input_mic = (int32_t *)buffer_null;
-            }
+            read_buffer(loopback_to_dsp, buffer_loop_to_dsp, buffer_size); // stereo interleaved
+            signal_to_tx = buffer_loop_to_dsp;
         }
-        else // OPERATING_MODE_FULL_VOICE
+        else
         {
-            input_mic = (int32_t *)buffer_mic_to_dsp;
             clear_buffer(loopback_to_dsp);
+            signal_to_tx = buffer_mic_to_dsp;
+        }
+        if (radio_h_snd->txrx_state == IN_RX)
+        {
+            dsp_process_rx(buffer_radio_to_dsp, output_speaker, output_loopback, output_tx, block_size);
+        }
+        else
+        {
+            dsp_process_tx(signal_to_tx, output_speaker, output_loopback, output_tx, block_size, use_loopback);
         }
 
-        input_rx = (int32_t *)buffer_radio_to_dsp;
+        write_buffer(dsp_to_loopback, output_loopback, buffer_size); // stereo 48 kHz interleaved
+        write_buffer(dsp_to_radio, output_tx, buffer_size); // mono 96 kHz
 
-#if 0
-        // TODO: refactor this
-        sound_process(input_rx, input_mic, output_speaker, output_tx, i_need_1024_frames);
-#endif
-        write_buffer(dsp_to_radio, (uint8_t *)output_tx, hw_buffer_size);
-        write_buffer(dsp_to_speaker, (uint8_t *)output_speaker, hw_buffer_size);
-
-        // convert 96 kHz mono to 48 kHz stereo
+        // convert from 96 kHz mono to 48 kHz stereo?
+#if 0 // this does not seems correct
         for (int i = 0; i < i_need_1024_frames; i = i + 2)
             output_speaker[i+1] = output_speaker[i];
-        write_buffer(dsp_to_loopback, (uint8_t *)output_speaker, hw_buffer_size);             // good ol' mono->stereo rate halving
+#endif
+
+        write_buffer(dsp_to_speaker, output_speaker, buffer_size); // mono 96 kHz
     }
+
+    // TODO: free stuff here
 
     return NULL;
 }
