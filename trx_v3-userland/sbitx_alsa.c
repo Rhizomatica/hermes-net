@@ -821,13 +821,14 @@ void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_
 
     initialize_buffers();
 
+    pthread_create(radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
+    pthread_create(loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
+
     pthread_create(control_tid, NULL, control_thread, NULL);
 
     pthread_create(radio_capture, NULL, radio_capture_thread, (void*)radio_capture_dev);
-    pthread_create(radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
-
     pthread_create(loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
-    pthread_create(loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
+
 
     struct sched_param sch;
     sch.sched_priority = sched_get_priority_max(SCHED_FIFO);
@@ -842,12 +843,11 @@ void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_
 void sound_system_shutdown(radio *radio_h, pthread_t *control_tid, pthread_t *radio_capture,
                            pthread_t *radio_playback, pthread_t *loop_capture, pthread_t *loop_playback)
 {
+    pthread_join(*radio_playback, NULL);
+    pthread_join(*loop_playback, NULL);
+
     pthread_join(*control_tid, NULL);
 
     pthread_join(*radio_capture, NULL);
-    pthread_join(*radio_playback, NULL);
-
     pthread_join(*loop_capture, NULL);
-    pthread_join(*loop_playback, NULL);
-
 }
