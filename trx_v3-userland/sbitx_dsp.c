@@ -307,8 +307,8 @@ void dsp_free()
 
 void dsp_set_filters()
 {
-    int32_t bpf_low = radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_low;
-    int32_t bpf_high = radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_high;
+    float bpf_low = (float) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_low;
+    float bpf_high = (float) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_high;
 
     if(radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].mode == MODE_LSB)
     {
