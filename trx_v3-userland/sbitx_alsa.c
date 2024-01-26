@@ -819,6 +819,8 @@ void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_
 {
     radio_h_snd = radio_h;
 
+    initialize_buffers();
+
     pthread_create(control_tid, NULL, control_thread, NULL);
 
     pthread_create(radio_capture, NULL, radio_capture_thread, (void*)radio_capture_dev);
