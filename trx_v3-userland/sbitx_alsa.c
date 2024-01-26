@@ -734,24 +734,28 @@ void *control_thread(void *device_ptr)
 {
     int sample_size = snd_pcm_format_width(format) / 8;
 
+    // TODO: DSP with 512 sample window?
     // we have 96 kHz in the radio soundcard, and 48 kHz in the loopback soundcard
     // we define our block transfer size as the minimum of both, in order to try to reduce latency a bit
-    uint32_t block_size = hw_period_size;
+    // uint32_t block_size = hw_period_size;
+    // As our DSP code needs 1024 samples window to work... we force 1024
+    uint32_t block_size = 1024;
 
+    // as we are hardcoding block sizes... this gets false
+#if 0
     if (hw_period_size != (loopback_period_size * 2))
     {
         fprintf(stderr, "Hardware 96 kHz sound period size != (Loopback 48 kHz period size * 2)\n");
         block_size = hw_period_size;
     }
+#endif
 
     uint32_t buffer_size = block_size * sample_size;
 
 
     uint8_t *buffer_radio_to_dsp = malloc(buffer_size);
     uint8_t *buffer_mic_to_dsp = malloc(buffer_size);
-
     uint8_t *buffer_loop_to_dsp = malloc(buffer_size);
-
 
     uint8_t *signal_to_tx;
     uint8_t *output_speaker; uint8_t *output_loopback; uint8_t *output_tx;
@@ -777,6 +781,7 @@ void *control_thread(void *device_ptr)
             clear_buffer(loopback_to_dsp);
             signal_to_tx = buffer_mic_to_dsp;
         }
+
         if (radio_h_snd->txrx_state == IN_RX)
         {
             dsp_process_rx(buffer_radio_to_dsp, output_speaker, output_loopback, output_tx, block_size);

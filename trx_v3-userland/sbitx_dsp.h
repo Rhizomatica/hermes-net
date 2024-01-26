@@ -41,11 +41,16 @@ struct filter
 #include <stdint.h>
 #include <stdbool.h>
 
-void dsp_process_rx(uint8_t *buffer_radio_to_dsp, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t * output_tx, uint32_t block_size);
+// init and free, for initialization and shutdown procedures
+void dsp_init(radio *radio_h);
+void dsp_free();
 
+// main DSP calls
+void dsp_process_rx(uint8_t *buffer_radio_to_dsp, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t * output_tx, uint32_t block_size);
 void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t *output_tx, uint32_t block_size, bool input_is_48k_stereo);
 
-void dsp_start(radio *radio_h);
+// set the filters according to bpf_low and bpf_high of current profile
+void dsp_set_filters();
 
 // DSP, from https://github.com/afarhan/sbitx/blob/main/fft_filter.c
 struct filter *filter_new(int input_length, int impulse_length);

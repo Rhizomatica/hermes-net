@@ -1,8 +1,9 @@
 /*
  * sBitx controller
  *
- * Copyright (C) 2023-2024 Rhizomatica
- * Author: Rafael Diniz <rafael@rhizomatica.org>
+ * Copyright (C) 2023-2024 Ashhar Farhan and Rafael Diniz
+ * Authors: Ashhar Farhan <afarhan@gmail.com>>
+ *          Rafael Diniz <rafael@rhizomatica.org>
  *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +20,7 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  *
+ * Based on https://github.com/afarhan/sbitx/blob/main/sbitx.c
  */
 
 #include <stdint.h>
@@ -57,7 +59,6 @@ struct filter *tx_filter;	// tx convolution filter
 // - block_size: number of samples
 void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t *output_tx, uint32_t block_size)
 {
-	int i, j = 0;
 	double i_sample, q_sample;
 
     int32_t *input_rx = (int32_t *) signal_input;
@@ -69,18 +70,18 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 	// m is the index into incoming samples, starting at zero
 	// i is the index into the time samples, picking from
 	// the samples added in the previous step
-	int m = 0;
+    int i;
+    int j = 0;
 	//gather the samples into a time domain array
-	for (i= MAX_BINS/2; i < MAX_BINS; i++, j++, m++){
-		i_sample = (1.0  * input_rx[j]) / 200000000.0;
+	for (i = MAX_BINS / 2; i < MAX_BINS; i++, j++){
+		i_sample = (1.0  * input_rx[j]) / 200000000.0; // TODO: and about this constant?
 		q_sample = 0;
 
-		__real__ fft_m[m] = i_sample;
-		__imag__ fft_m[m] = q_sample;
+		__real__ fft_m[j] = i_sample;
+		__imag__ fft_m[j] = q_sample;
 
 		__real__ fft_in[i]  = i_sample;
 		__imag__ fft_in[i]  = q_sample;
-		m++;
 	}
 
 	// STEP 3: convert the time domain samples to  frequency domain
@@ -117,7 +118,7 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
 	//STEP 9: send the output back to where it needs to go
     int32_t *output_speaker_int = (int32_t *)output_speaker;
-    for (i= 0; i < MAX_BINS / 2; i++)
+    for (i = 0; i < MAX_BINS / 2; i++)
     {
         int32_t sample = cimag(fft_time[i+(MAX_BINS/2)]);
         output_speaker_int[i] = sample;
@@ -157,7 +158,7 @@ void fft_reset_m_bins(){
 	memset(fft_freq, 0, sizeof(fftw_complex) * MAX_BINS);
 }
 
-void dsp_start(radio *radio_h)
+void dsp_init(radio *radio_h)
 {
     radio_h_dsp = radio_h;
 
@@ -176,17 +177,43 @@ void dsp_start(radio *radio_h)
     plan_rev = fftw_plan_dft_1d(MAX_BINS, fft_freq, fft_time, FFTW_BACKWARD, FFTW_ESTIMATE);
 	plan_fwd = fftw_plan_dft_1d(MAX_BINS, fft_in, fft_out, FFTW_FORWARD, FFTW_ESTIMATE);
 
-    // TODO: move this to a set_passband
-    uint32_t bpf_low = radio_h->profiles[radio_h->profile_active_idx].bpf_low;
-    uint32_t bpf_high = radio_h->profiles[radio_h->profile_active_idx].bpf_high;
-
     rx_filter = filter_new(1024, 1025);
-	filter_tune(rx_filter, (1.0 * bpf_low)/96000.0, (1.0 * bpf_high)/96000.0 , 5);
-
 	tx_filter = filter_new(1024, 1025);
-	filter_tune(tx_filter, (1.0 * bpf_low)/96000.0, (1.0 * bpf_high)/96000.0 , 5);
 
+    dsp_set_filters();
 }
+
+void dsp_free()
+{
+    fftw_destroy_plan(plan_rev);
+    fftw_destroy_plan(plan_fwd);
+    fftw_free(fft_m);
+    fftw_free(fft_in);
+    fftw_free(fft_out);
+    fftw_free(fft_time);
+    fftw_free(fft_freq);
+    free(rx_filter);
+    free(tx_filter);
+}
+
+
+void dsp_set_filters()
+{
+    uint32_t bpf_low = radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_low;
+    uint32_t bpf_high = radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_high;
+
+    if(radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].mode == MODE_LSB)
+    {
+        filter_tune(tx_filter, (1.0 * -bpf_high) / 96000.0, (1.0 * -bpf_low) / 96000.0, 5);
+        filter_tune(rx_filter, (1.0 * -bpf_high) / 96000.0, (1.0 * -bpf_low) / 96000.0, 5);
+    }
+    else
+    {
+        filter_tune(tx_filter, (1.0 * bpf_low) / 96000.0, (1.0 * bpf_high) / 96000.0, 5);
+        filter_tune(rx_filter, (1.0 * bpf_low) / 96000.0, (1.0 * bpf_high) / 96000.0, 5);
+    }
+}
+
 
 struct filter *filter_new(int input_length, int impulse_length)
 {
