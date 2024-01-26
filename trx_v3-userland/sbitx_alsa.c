@@ -752,7 +752,6 @@ void *control_thread(void *device_ptr)
 
     uint32_t buffer_size = block_size * sample_size;
 
-
     uint8_t *buffer_radio_to_dsp = malloc(buffer_size);
     uint8_t *buffer_mic_to_dsp = malloc(buffer_size);
     uint8_t *buffer_loop_to_dsp = malloc(buffer_size);
