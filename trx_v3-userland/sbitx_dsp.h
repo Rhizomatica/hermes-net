@@ -1,8 +1,10 @@
 /*
  * sBitx controller
  *
- * Copyright (C) 2023-2024 Rhizomatica
- * Author: Rafael Diniz <rafael@rhizomatica.org>
+ * Copyright (C) 2023-2024 Rafael Diniz, Ashhar Farhan and Fadi Jerji
+ * Authors: Rafael Diniz <rafael@rhizomatica.org>
+ *          Fadi Jerji <fadi.jerji@rhizomatica.org>
+ *          Ashhar Farhan <afarhan@gmail.com>
  *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,9 +27,14 @@
 #ifndef SBITX_DSP_H_
 #define SBITX_DSP_H_
 
+#include <stdint.h>
+#include <stdbool.h>
 #include <complex.h>
 
 #include "sbitx_core.h"
+
+#define INTERPOLATION 0
+#define DECIMATION 1
 
 struct filter
 {
@@ -37,9 +44,6 @@ struct filter
     int L;
     int M;
 };
-
-#include <stdint.h>
-#include <stdbool.h>
 
 // init and free, for initialization and shutdown procedures
 void dsp_init(radio *radio_h);
@@ -52,12 +56,15 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 // set the filters according to bpf_low and bpf_high of current profile
 void dsp_set_filters();
 
-// DSP, from https://github.com/afarhan/sbitx/blob/main/fft_filter.c
+// by Ashhar Farhan, from https://github.com/afarhan/sbitx/blob/main/fft_filter.c
 struct filter *filter_new(int input_length, int impulse_length);
 int filter_tune(struct filter *f, float const low,float const high,float const kaiser_beta);
 int window_filter(int const L,int const M,complex float * const response,float const beta);
 int make_kaiser(float * const window,unsigned int const M,float const beta);
 const float i0(float const z);
 
+// by Fadi Jerji @ Rhizomatica
+void rational_resampler(double * in, int in_size, double * out, int rate, int interpolation_decimation);
+double interpolate_linear(double  a,double a_x,double b,double b_x,double x);
 
 #endif // SBITX_DSP_H_

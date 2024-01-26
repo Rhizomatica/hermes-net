@@ -1,9 +1,10 @@
 /*
  * sBitx controller
  *
- * Copyright (C) 2023-2024 Ashhar Farhan and Rafael Diniz
- * Authors: Ashhar Farhan <afarhan@gmail.com>>
- *          Rafael Diniz <rafael@rhizomatica.org>
+ * Copyright (C) 2023-2024 Rafael Diniz, Ashhar Farhan and Fadi Jerji
+ * Authors: Rafael Diniz <rafael@rhizomatica.org>
+ *          Fadi Jerji <fadi.jerji@rhizomatica.org>
+ *          Ashhar Farhan <afarhan@gmail.com>
  *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +21,7 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  *
- * Based on https://github.com/afarhan/sbitx/blob/main/sbitx.c
+ * Based on https://github.com/afarhan/sbitx/blob/main/sbitx.c and Jerji's
  */
 
 #include <stdint.h>
@@ -37,7 +38,11 @@
  // we read the mode sample format from here
 extern snd_pcm_format_t format;
 
+extern _Atomic bool shutdown_;
+
 static radio *radio_h_dsp;
+
+
 
 #define MAX_BINS 2048
 #define TUNED_BINS 512
@@ -70,8 +75,7 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 	// m is the index into incoming samples, starting at zero
 	// i is the index into the time samples, picking from
 	// the samples added in the previous step
-    int i;
-    int j = 0;
+    int i, j = 0;
 	//gather the samples into a time domain array
 	for (i = MAX_BINS / 2; i < MAX_BINS; i++, j++){
 		i_sample = (1.0  * input_rx[j]) / 200000000.0; // TODO: and about this constant?
@@ -124,7 +128,7 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         output_speaker_int[i] = sample;
     }
 
-    // 96 kHz mono to 48 kHz stereo conversion
+    // 96 kHz mono to 48 kHz stereo decimation, L=R
     int32_t *output_loopback_int = (int32_t *) output_loopback;
     for(i = 0; i < block_size; i += 2)
     {
@@ -143,10 +147,114 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 // - input_is_48k_stereo: if true, input is 48 kHz stereo (loopback), otherwise, 96 kHz mono (mic)
 void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t *output_tx, uint32_t block_size, bool input_is_48k_stereo)
 {
+    static double loopback_in[512]; // n_samples / 2
+    static double signal_input_f[1024]; // n_samples
+
+    int32_t *signal_input_int = (int32_t *) signal_input;
+    int32_t *signal_output_int = (int32_t *) output_tx;
+
+    if (block_size != 1024)
+    {
+        fprintf(stderr, "Exploding... n_samples != 1024 in tx_process\n");
+        shutdown_ = true;
+        return;
+    }
+
+#if 0 // TODO: re-add this
+	//fix the burst at the start of transmission
+	if (tx_process_restart){
+        fft_reset_m_bins();
+        clear_buffers();
+		tx_process_restart = 0;
+	}
+#endif
+
+	//first add the previous M samples
+	memcpy(fft_in, fft_m, MAX_BINS/2 * sizeof(fftw_complex));
+
+    double i_sample, q_sample;
+    int i, j = 0;
+    // prepare data from loopback... 48kHz stereo to 96 kHz mono
+    if (input_is_48k_stereo)
+    {
+        for (i = 0; i < block_size; i = i + 2)
+        {
+            // just left channel
+            loopback_in[i/2] = (1.0 * signal_input_int[i]) / 2000000000.0;
+        }
+        rational_resampler(loopback_in, block_size / 2, signal_input_f, 2, INTERPOLATION);
+    }
+
+	//gather the samples into a time domain array
+	for (i = MAX_BINS/2; i < MAX_BINS; i++, j++)
+    {
+        // for loopback we get just the left side and upsample down in the code
+        if (input_is_48k_stereo)
+            i_sample = signal_input_f[j];
+        else
+            i_sample = (1.0 * signal_input_int[j]) / 2000000000.0;
+
+        q_sample = 0;
+
+        __real__ fft_m[j] = i_sample;
+        __imag__ fft_m[j] = q_sample;
+
+        __real__ fft_in[i]  = i_sample;
+        __imag__ fft_in[i]  = q_sample;
+	}
+
+	//convert to frequency
+	fftw_execute(plan_fwd);
+
+	// NOTE: fft_out holds the fft output (in freq domain) of the
+	// incoming mic samples
+	// the naming is unfortunate
+
+	// apply the filter
+    for (i = 0; i < MAX_BINS; i++)
+		fft_out[i] *= tx_filter->fir_coeff[i];
+
+	// the usb extends from 0 to MAX_BINS/2 - 1,
+	// the lsb extends from MAX_BINS - 1 to MAX_BINS/2 (reverse direction)
+	// zero out the other sideband
+
+	// TBD: Something strange is going on, this should have been the otherway
+	if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].mode == MODE_LSB)
+        memset(fft_out, 0, sizeof(fftw_complex) * (MAX_BINS/2));
+	else
+        memset((void *) fft_out + (MAX_BINS/2 * sizeof(fftw_complex)), 0, sizeof(fftw_complex) * (MAX_BINS/2));
+
+	//now rotate to the tx_bin
+	for (i = 0; i < MAX_BINS; i++)
+    {
+        int b = i + TUNED_BINS;
+        if (b >= MAX_BINS)
+            b = b - MAX_BINS;
+        if (b < 0)
+            b = b + MAX_BINS;
+        fft_freq[b] = fft_out[i];
+	}
+
+	//convert back to time domain
+	fftw_execute(plan_rev);
+
+#if 0 // old cruft
+	float scale = volume;
+	for (i= 0; i < MAX_BINS/2; i++)
+    {
+			double s = creal(fft_time[i+(MAX_BINS/2)]);
+			output_tx[i] = s * scale * tx_amp * alc_level;
+	}
+#endif
+    // TODO: Add the tx calibration gain here!!
+	for (i = 0; i < MAX_BINS / 2; i++)
+    {
+        double s = creal(fft_time[i+(MAX_BINS/2)]);
+        signal_output_int[i] = s;
+	}
 
     memset(output_loopback, 0, block_size * (snd_pcm_format_width(format) / 8));
     memset(output_speaker, 0, block_size * (snd_pcm_format_width(format) / 8));
-
 }
 
 void fft_reset_m_bins(){
@@ -343,11 +451,48 @@ const float i0(float const z)
     const float t = (z*z)/4;
     float sum = 1 + t;
     float term = t;
-    for(int k=2; k<40; k++){
+    for(int k=2; k<40; k++)
+    {
         term *= t/(k*k);
         sum += term;
         if(term < 1e-12 * sum)
             break;
     }
     return sum;
+}
+
+void rational_resampler(double * in, int in_size, double * out, int rate, int interpolation_decimation)
+{
+	if (interpolation_decimation==DECIMATION)
+	{
+		int index=0;
+		for(int i=0;i<in_size;i+=rate)
+		{
+			*(out+index)=*(in+i);
+			index++;
+		}
+	}
+	else if (interpolation_decimation==INTERPOLATION)
+	{
+		for(int i=0;i<in_size-1;i++)
+		{
+			for(int j=0;j<rate;j++)
+			{
+				*(out+i*rate+j)=interpolate_linear(*(in+i),0,*(in+i+1),rate,j);
+			}
+		}
+		for(int j=0;j<rate;j++)
+		{
+			*(out+(in_size-1)*rate+j)=interpolate_linear(*(in+in_size-2),0,*(in+in_size-1),rate,rate+j);
+		}
+	}
+}
+
+double interpolate_linear(double  a,double a_x,double  b,double b_x,double x)
+{
+	double  return_val;
+
+	return_val=a+(b-a)*(x-a_x)/(b_x-a_x);
+
+	return return_val;
 }
