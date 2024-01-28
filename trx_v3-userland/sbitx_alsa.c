@@ -152,6 +152,23 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 
 }
 
+// TODO: rewrite
+void setup_audio_codec()
+{
+
+	//configure all the channels of the mixer
+	sound_mixer(radio_capture_dev, "Input Mux", 0);
+	sound_mixer(radio_capture_dev, "Line", 1);
+	sound_mixer(radio_capture_dev, "Mic", 0);
+	sound_mixer(radio_capture_dev, "Mic Boost", 0);
+	sound_mixer(radio_capture_dev, "Playback Deemphasis", 0);
+
+	sound_mixer(radio_playback_dev, "Master", 10);
+	sound_mixer(radio_playback_dev, "Output Mixer HiFi", 1);
+	sound_mixer(radio_playback_dev, "Output Mixer Mic Sidetone", 0);
+
+}
+
 void sound_mixer(char *card_name, char *element, int make_on)
 {
     // this is alsa-less operation...

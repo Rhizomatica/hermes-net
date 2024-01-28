@@ -34,6 +34,9 @@ void sound_system_shutdown(radio *radio_h, pthread_t *control_tid, pthread_t *ra
 
 
 void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params);
+
+
+void setup_audio_codec();
 void sound_mixer(char *card_name, char *element, int make_on);
 void clear_buffers();
 
