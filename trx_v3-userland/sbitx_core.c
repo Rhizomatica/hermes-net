@@ -335,6 +335,9 @@ void tr_switch(radio *radio_h, bool txrx_state)
 
     if (txrx_state == IN_TX)
     {
+        set_speaker_level(0);
+        set_tx_level(radio_h->profiles[radio_h->profile_active_idx].tx_level);
+
         radio_h->txrx_state = IN_TX;
         lpf_off(radio_h);
         usleep(2000);
@@ -344,6 +347,9 @@ void tr_switch(radio *radio_h, bool txrx_state)
     }
     else
     {
+        set_speaker_level(radio_h->profiles[radio_h->profile_active_idx].speaker_level);
+        set_tx_level(0);
+
         radio_h->txrx_state = IN_RX;
         lpf_off(radio_h);
         usleep(2000);

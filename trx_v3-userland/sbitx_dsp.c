@@ -67,42 +67,43 @@ struct filter *tx_filter;	// tx convolution filter
 // - block_size: number of samples
 void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t *output_tx, uint32_t block_size)
 {
-	double i_sample, q_sample;
+    double i_sample;
 
     int32_t *input_rx = (int32_t *) signal_input;
 
-	//STEP 1: first add the previous M samples to
-	memcpy(fft_in, fft_m, MAX_BINS/2 * sizeof(fftw_complex));
+    //STEP 1: first add the previous M samples to
+    memcpy(fft_in, fft_m, MAX_BINS/2 * sizeof(fftw_complex));
 
-	//STEP 2: then add the new set of samples
-	// m is the index into incoming samples, starting at zero
-	// i is the index into the time samples, picking from
-	// the samples added in the previous step
+    //STEP 2: then add the new set of samples
+    // m is the index into incoming samples, starting at zero
+    // i is the index into the time samples, picking from
+    // the samples added in the previous step
     int i, j = 0;
-	//gather the samples into a time domain array
-	for (i = MAX_BINS / 2; i < MAX_BINS; i++, j++){
-		i_sample = (1.0  * input_rx[j]) / MAX_SAMPLE_VALUE;
-		q_sample = 0;
+    //gather the samples into a time domain array
+    for (i = MAX_BINS / 2; i < MAX_BINS; i++, j++)
+    {
+        i_sample = (1.0  * input_rx[j]) / MAX_SAMPLE_VALUE;
 
-		__real__ fft_m[j] = i_sample;
-		__imag__ fft_m[j] = q_sample;
+        __real__ fft_m[j] = i_sample;
+        __imag__ fft_m[j] = 0;
 
-		__real__ fft_in[i]  = i_sample;
-		__imag__ fft_in[i]  = q_sample;
-	}
+        __real__ fft_in[i]  = i_sample;
+        __imag__ fft_in[i]  = 0;
+    }
 
 	// STEP 3: convert the time domain samples to  frequency domain
 	fftw_execute(plan_fwd);
 
 	//STEP 4: we rotate the bins around by r-tuned_bin
-	for (i = 0; i < MAX_BINS; i++){
-		int b =  i + TUNED_BINS;
-		if (b >= MAX_BINS)
-			b = b - MAX_BINS;
-		if (b < 0)
-			b = b + MAX_BINS;
-		fft_freq[i] = fft_out[b];
-	}
+    for (i = 0; i < MAX_BINS; i++)
+    {
+        int b =  i + TUNED_BINS;
+        if (b >= MAX_BINS)
+            b = b - MAX_BINS;
+        if (b < 0)
+            b = b + MAX_BINS;
+        fft_freq[i] = fft_out[b];
+    }
 
 	// STEP 5:zero out the other sideband
 	if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].mode == MODE_LSB)
@@ -113,11 +114,11 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 	// STEP 6: apply the filter to the signal,
 	// in frequency domain we just multiply the filter
 	// coefficients with the frequency domain samples
-	for (i = 0; i < MAX_BINS; i++)
-		fft_freq[i] *= rx_filter->fir_coeff[i];
+    for (i = 0; i < MAX_BINS; i++)
+        fft_freq[i] *= rx_filter->fir_coeff[i];
 
-	//STEP 7: convert back to time domain
-	fftw_execute(plan_rev);
+    //STEP 7: convert back to time domain
+    fftw_execute(plan_rev);
 
 	//STEP 8 : AGC
     // TODO: re-add me!
@@ -174,7 +175,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 	//first add the previous M samples
 	memcpy(fft_in, fft_m, MAX_BINS/2 * sizeof(fftw_complex));
 
-    double i_sample, q_sample;
+    double i_sample;
     int i, j = 0;
     // prepare data from loopback... 48kHz stereo to 96 kHz mono
     if (input_is_48k_stereo)
@@ -196,13 +197,11 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         else
             i_sample = (1.0 * signal_input_int[j]) / MAX_SAMPLE_VALUE;
 
-        q_sample = 0;
-
         __real__ fft_m[j] = i_sample;
-        __imag__ fft_m[j] = q_sample;
+        __imag__ fft_m[j] = 0;
 
         __real__ fft_in[i]  = i_sample;
-        __imag__ fft_in[i]  = q_sample;
+        __imag__ fft_in[i]  = 0;
 	}
 
 	//convert to frequency
