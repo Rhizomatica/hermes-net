@@ -47,6 +47,9 @@ static radio *radio_h_dsp;
 #define MAX_BINS 2048
 #define TUNED_BINS 512
 
+#define MAX_SAMPLE_VALUE 2147483647.0 // (2 ^ 31) - 1 SIGNED 32 LE
+
+
 fftw_complex *fft_freq;
 fftw_complex *fft_time;
 fftw_complex *fft_out;		// holds the incoming samples in freq domain (for rx as well as tx)
@@ -78,7 +81,7 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     int i, j = 0;
 	//gather the samples into a time domain array
 	for (i = MAX_BINS / 2; i < MAX_BINS; i++, j++){
-		i_sample = (1.0  * input_rx[j]) / 2147483647.0; // (2 ^ 31) - 1
+		i_sample = (1.0  * input_rx[j]) / MAX_SAMPLE_VALUE;
 		q_sample = 0;
 
 		__real__ fft_m[j] = i_sample;
@@ -124,8 +127,7 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     int32_t *output_speaker_int = (int32_t *)output_speaker;
     for (i = 0; i < MAX_BINS / 2; i++)
     {
-        int32_t sample = cimag(fft_time[i+(MAX_BINS/2)]);
-        output_speaker_int[i] = sample;
+        output_speaker_int[i] = (int32_t) (cimag(fft_time[i+(MAX_BINS/2)]) * MAX_SAMPLE_VALUE);
     }
 
     // 96 kHz mono to 48 kHz stereo decimation, L=R
@@ -180,7 +182,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         for (i = 0; i < block_size; i = i + 2)
         {
             // just left channel
-            loopback_in[i/2] = (1.0 * signal_input_int[i]) / 2147483647.0; // (2 ^ 31) - 1
+            loopback_in[i/2] = (1.0 * signal_input_int[i]) / MAX_SAMPLE_VALUE;
         }
         rational_resampler(loopback_in, block_size / 2, signal_input_f, 2, INTERPOLATION);
     }
@@ -192,7 +194,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         if (input_is_48k_stereo)
             i_sample = signal_input_f[j];
         else
-            i_sample = (1.0 * signal_input_int[j]) / 2147483647.0;
+            i_sample = (1.0 * signal_input_int[j]) / MAX_SAMPLE_VALUE;
 
         q_sample = 0;
 
@@ -238,19 +240,10 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 	//convert back to time domain
 	fftw_execute(plan_rev);
 
-#if 0 // old cruft
-	float scale = volume;
-	for (i= 0; i < MAX_BINS/2; i++)
-    {
-			double s = creal(fft_time[i+(MAX_BINS/2)]);
-			output_tx[i] = s * scale * tx_amp * alc_level;
-	}
-#endif
     // TODO: Add the tx calibration gain here!!
 	for (i = 0; i < MAX_BINS / 2; i++)
     {
-        double s = creal(fft_time[i+(MAX_BINS/2)]);
-        signal_output_int[i] = s;
+        signal_output_int[i] = (int32_t) (creal(fft_time[i+(MAX_BINS/2)]) * MAX_SAMPLE_VALUE);
 	}
 
     memset(output_loopback, 0, block_size * (snd_pcm_format_width(format) / 8));

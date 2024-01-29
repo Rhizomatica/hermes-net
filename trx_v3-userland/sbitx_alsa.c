@@ -474,18 +474,10 @@ void *radio_capture_thread(void *device_ptr)
         {
             memcpy(&radio[j*sample_size], &buffer[j * sample_size * channels], sample_size);
             memcpy(&mic[j*sample_size], &buffer[j * sample_size * channels + sample_size], sample_size);
-            // attenuate the mic
-            //int32_t *sample = (int32_t *) &buffer[j * sample_size * channels + sample_size];
-            //*sample /= 15;
-            //memcpy(&mic[j*sample_size], sample, sample_size);
-
-
         }
 
         write_buffer(radio_to_dsp, radio, buffer_size/2);
         write_buffer(mic_to_dsp, mic, buffer_size/2);
-
-        // write to buffers
     }
 
     snd_pcm_hw_params_free(hwparams);
@@ -745,18 +737,6 @@ void *loop_capture_thread(void *device_ptr)
             snd_pcm_prepare (loopback_capture_handle);
             continue;
         }
-
-        // attenuate 10db the loopback
-#if 0 // no changes to input here
-        for (int i = 0; i < loopback_period_size; i++)
-        {
-
-            int32_t *sample1 = (int32_t *) &buffer[i * sample_size * channels];
-            int32_t *sample2 = (int32_t *) &buffer[i * sample_size * channels + sample_size];
-            *sample1 /= 10;
-            *sample2 /= 10;
-        }
-#endif
 
         write_buffer(loopback_to_dsp, buffer, buffer_size);
     }
