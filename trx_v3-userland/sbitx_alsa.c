@@ -280,7 +280,6 @@ void set_tx_level(uint32_t tx_level)
 
     snd_mixer_close(handle);
 
-
     radio_h_snd->profiles[radio_h_snd->profile_active_idx].tx_level = volume;
 }
 
@@ -302,6 +301,10 @@ void setup_audio_codec()
     sound_mixer(radio_ctl, "Output Mixer Line Bypass", 0);
     sound_mixer(radio_ctl, "Store DC Offset", 0);
 
+    set_tx_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].tx_level);
+    set_speaker_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].speaker_level);
+    set_mic_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].mic_level);
+    set_rx_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].rx_level);
 }
 
 void sound_mixer(char *card_name, char *element, int make_on)
