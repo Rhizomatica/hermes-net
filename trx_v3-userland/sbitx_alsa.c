@@ -150,22 +150,32 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
     val = snd_pcm_hw_params_is_monotonic(params);
     printf("is monotonic = %d\n", val);
 
+    val = snd_pcm_hw_params_get_sbits(params);
+    printf("significant bits = %d\n", val);
+
 }
 
 // TODO: rewrite
 void setup_audio_codec()
 {
+	//configure mixer controls
+    sound_mixer(radio_capture_dev, "Line", 1);
+    sound_mixer(radio_capture_dev, "Mic", 0);
+    sound_mixer(radio_capture_dev, "Mic Boost", 0);
+    sound_mixer(radio_capture_dev, "Playback Deemphasis", 0);
+    sound_mixer(radio_capture_dev, "Input Mux", 0);
 
-	//configure all the channels of the mixer
-	sound_mixer(radio_capture_dev, "Input Mux", 0);
-	sound_mixer(radio_capture_dev, "Line", 1);
-	sound_mixer(radio_capture_dev, "Mic", 0);
-	sound_mixer(radio_capture_dev, "Mic Boost", 0);
-	sound_mixer(radio_capture_dev, "Playback Deemphasis", 0);
+    sound_mixer(radio_playback_dev, "ADC High Pass Filter", 0);
+    sound_mixer(radio_playback_dev, "Output Mixer HiFi", 1);
+    sound_mixer(radio_playback_dev, "Master Playback ZC", 0);
+    sound_mixer(radio_playback_dev, "Sidetone", 0);
 
-	sound_mixer(radio_playback_dev, "Master", 10);
-	sound_mixer(radio_playback_dev, "Output Mixer HiFi", 1);
-	sound_mixer(radio_playback_dev, "Output Mixer Mic Sidetone", 0);
+    sound_mixer(radio_playback_dev, "Output Mixer Mic Sidetone", 0);
+    sound_mixer(radio_playback_dev, "Output Mixer Line Bypass", 0);
+    sound_mixer(radio_playback_dev, "Store DC Offset", 0);
+
+//sound_mixer(radio_playback_dev, "Master", 10);
+//sound_mixer(radio_playback_dev, "Capture", 10);
 
 }
 
@@ -180,6 +190,7 @@ void sound_mixer(char *card_name, char *element, int make_on)
     snd_mixer_selem_id_t *sid;
     char *card = card_name;
 
+    // TODO: lets keep these handle open?
     snd_mixer_open(&handle, 0);
     snd_mixer_attach(handle, card);
     snd_mixer_selem_register(handle, NULL, NULL);
@@ -837,6 +848,8 @@ void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_
     radio_h_snd = radio_h;
 
     initialize_buffers();
+
+    // set alsa levels...
 
     pthread_create(radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
     pthread_create(loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
