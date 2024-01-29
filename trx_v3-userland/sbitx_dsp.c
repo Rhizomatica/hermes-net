@@ -78,7 +78,7 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     int i, j = 0;
 	//gather the samples into a time domain array
 	for (i = MAX_BINS / 2; i < MAX_BINS; i++, j++){
-		i_sample = (1.0  * input_rx[j]) / 200000000.0; // TODO: and about this constant?
+		i_sample = (1.0  * input_rx[j]) / 2147483647.0; // (2 ^ 31) - 1
 		q_sample = 0;
 
 		__real__ fft_m[j] = i_sample;
@@ -125,6 +125,7 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     for (i = 0; i < MAX_BINS / 2; i++)
     {
         int32_t sample = cimag(fft_time[i+(MAX_BINS/2)]);
+        printf("sample rx: %d", sample);
         output_speaker_int[i] = sample;
     }
 
@@ -180,7 +181,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         for (i = 0; i < block_size; i = i + 2)
         {
             // just left channel
-            loopback_in[i/2] = (1.0 * signal_input_int[i]) / 2000000000.0;
+            loopback_in[i/2] = (1.0 * signal_input_int[i]) / 2147483647.0; // (2 ^ 31) - 1
         }
         rational_resampler(loopback_in, block_size / 2, signal_input_f, 2, INTERPOLATION);
     }
@@ -192,7 +193,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         if (input_is_48k_stereo)
             i_sample = signal_input_f[j];
         else
-            i_sample = (1.0 * signal_input_int[j]) / 2000000000.0;
+            i_sample = (1.0 * signal_input_int[j]) / 2147483647.0;
 
         q_sample = 0;
 
@@ -251,6 +252,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     {
         double s = creal(fft_time[i+(MAX_BINS/2)]);
         signal_output_int[i] = s;
+        printf("sample tx: %d", signal_output_int[i]);
 	}
 
     memset(output_loopback, 0, block_size * (snd_pcm_format_width(format) / 8));
