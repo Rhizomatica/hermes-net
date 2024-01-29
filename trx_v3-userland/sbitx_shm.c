@@ -428,7 +428,7 @@ void shm_controller_init(radio *radio_h, pthread_t *shm_tid)
 
     if (shm_is_created(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn)))
     {
-        fprintf(stderr, "Connector SHM is already created!\nDestroying it and creating again.\n");
+        fprintf(stderr, "Connector SHM is already created, Destroying it and creating again.\n");
         shm_destroy(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn));
     }
     shm_create(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn));

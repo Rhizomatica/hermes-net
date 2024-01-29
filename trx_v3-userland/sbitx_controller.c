@@ -42,7 +42,6 @@ void exit_radio(int sig)
 {
     printf("Exiting...\n");
     shutdown_ = true;
-
 }
 
 int main(int argc, char* argv[])
@@ -52,7 +51,7 @@ int main(int argc, char* argv[])
     pthread_t hw_tids[2]; // 2 hw thread ids user for IO
     pthread_t web_tid; // websocket thread id
     pthread_t shm_tid; // shared memory interface thread id
-    pthread_t control_tid, radio_capture, radio_playback, loop_capture, loop_playback;
+    pthread_t control_tid, radio_capture, radio_playback, loop_capture, loop_playback; // audio threads
 
    if (argc > 3)
     {
