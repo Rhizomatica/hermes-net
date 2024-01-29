@@ -34,6 +34,7 @@
 #include "sbitx_i2c.h"
 #include "sbitx_gpio.h"
 #include "sbitx_si5351.h"
+#include "sbitx_alsa.h"
 
 extern _Atomic bool shutdown_;
 
@@ -182,6 +183,7 @@ void set_profile(radio *radio_h, uint32_t profile)
 
     radio_h->cfg_user_dirty = true;
 }
+
 void set_speaker_volume(radio *radio_h, uint32_t speaker_level, uint32_t profile)
 {
     _Atomic uint32_t *volume = &radio_h->profiles[profile].speaker_level;
@@ -189,7 +191,7 @@ void set_speaker_volume(radio *radio_h, uint32_t speaker_level, uint32_t profile
     if (*volume == speaker_level)
         return;
 
-    *volume = speaker_level;
+    set_speaker_level(speaker_level);
 
     char tmp1[64]; char tmp2[64];
     sprintf(tmp1, "profile%u:speaker_level", profile);
@@ -396,8 +398,8 @@ void io_tick(radio *radio_h)
                 radio_h->tuning_ticks++;
                 freq += tuning_step;
             }
-            set_dirty_ws = true;
             set_frequency(radio_h, freq, radio_h->profile_active_idx);
+            set_dirty_ws = true;
         }
         else
         {
@@ -428,11 +430,8 @@ void io_tick(radio *radio_h)
                 else
                     volume += 4;
             }
+            set_speaker_volume(radio_h, volume, radio_h->profile_active_idx);
             set_dirty_ws = true;
-            // TODO: put everything on a set_speaker_level()
-            // set_speaker_level(radio_h, volume);
-            radio_h->profiles[radio_h->profile_active_idx].speaker_level = volume;
-            radio_h->cfg_user_dirty = true;
         }
         else
         {

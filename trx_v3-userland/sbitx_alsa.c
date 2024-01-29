@@ -159,15 +159,90 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 }
 
 // this is the radio rx level
-void set_rx_level(uint32_t speaker_level)
+void set_rx_level(uint32_t rx_level)
 {
+    // this is alsa-less operation...
+    if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
+        return;
+
+    long min, max;
+    snd_mixer_t *handle;
+    snd_mixer_selem_id_t *sid;
+
+    // TODO: lets keep these handle open?
+    snd_mixer_open(&handle, 0);
+    snd_mixer_attach(handle, radio_ctl);
+    snd_mixer_selem_register(handle, NULL, NULL);
+    snd_mixer_load(handle);
+
+    snd_mixer_selem_id_alloca(&sid);
+    snd_mixer_selem_id_set_index(sid, 0);
+    snd_mixer_selem_id_set_name(sid, "Capture");
+    snd_mixer_elem_t *elem = snd_mixer_find_selem(handle, sid);
+
+    if (snd_mixer_selem_has_capture_switch(elem))
+    {
+        printf("Have capture switch!\n");
+        snd_mixer_selem_set_capture_switch_all(elem, 1);
+    }
+
+    long volume = rx_level;
+    snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
+
+    // left channel of the audio codec
+    snd_mixer_selem_set_capture_volume(elem, SND_MIXER_SCHN_FRONT_LEFT,  volume * max / 100);
+
+    snd_mixer_close(handle);
+
+    radio_h_snd->profiles[radio_h_snd->profile_active_idx].rx_level = volume;
+
+    // TODO: save to cfg...
+
+    radio_h_snd->cfg_user_dirty = true;
 
 
 }
 
-void set_mic_level(uint32_t speaker_level)
+void set_mic_level(uint32_t mic_level)
 {
+    // this is alsa-less operation...
+    if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
+        return;
 
+    long min, max;
+    snd_mixer_t *handle;
+    snd_mixer_selem_id_t *sid;
+
+    // TODO: lets keep these handle open?
+    snd_mixer_open(&handle, 0);
+    snd_mixer_attach(handle, radio_ctl);
+    snd_mixer_selem_register(handle, NULL, NULL);
+    snd_mixer_load(handle);
+
+    snd_mixer_selem_id_alloca(&sid);
+    snd_mixer_selem_id_set_index(sid, 0);
+    snd_mixer_selem_id_set_name(sid, "Capture");
+    snd_mixer_elem_t *elem = snd_mixer_find_selem(handle, sid);
+
+    if (snd_mixer_selem_has_capture_switch(elem))
+    {
+        printf("Have capture switch!\n");
+        snd_mixer_selem_set_capture_switch_all(elem, 1);
+    }
+
+    long volume = mic_level;
+    snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
+
+    // right channel of the audio codec
+    snd_mixer_selem_set_capture_volume(elem, SND_MIXER_SCHN_FRONT_RIGHT,  volume * max / 100);
+
+    snd_mixer_close(handle);
+
+    radio_h_snd->profiles[radio_h_snd->profile_active_idx].mic_level = volume;
+
+    // TODO: save to cfg...
+
+    radio_h_snd->cfg_user_dirty = true;
 }
 
 void set_speaker_level(uint32_t speaker_level)
@@ -205,9 +280,11 @@ void set_speaker_level(uint32_t speaker_level)
 
     snd_mixer_close(handle);
 
-    // TODO: store value to radio_h struct
+    radio_h_snd->profiles[radio_h_snd->profile_active_idx].speaker_level = volume;
+
     // TODO: save to cfg...
 
+    radio_h_snd->cfg_user_dirty = true;
 }
 
 void set_tx_level(uint32_t tx_level)
@@ -246,7 +323,11 @@ void set_tx_level(uint32_t tx_level)
     snd_mixer_close(handle);
 
 
+    radio_h_snd->profiles[radio_h_snd->profile_active_idx].tx_level = volume;
 
+    // TODO: save to cfg...
+
+    radio_h_snd->cfg_user_dirty = true;
 }
 
 
@@ -266,9 +347,6 @@ void setup_audio_codec()
     sound_mixer(radio_ctl, "Output Mixer Mic Sidetone", 0);
     sound_mixer(radio_ctl, "Output Mixer Line Bypass", 0);
     sound_mixer(radio_ctl, "Store DC Offset", 0);
-
-//sound_mixer(radio_ctl, "Master", 10);
-//sound_mixer(radio_ctl, "Capture", 10);
 
 }
 

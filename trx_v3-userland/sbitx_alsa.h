@@ -37,6 +37,13 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params);
 
 
 void setup_audio_codec();
+
+// individual settings
+void set_rx_level(uint32_t speaker_level);
+void set_mic_level(uint32_t speaker_level);
+void set_speaker_level(uint32_t speaker_level);
+void set_tx_level(uint32_t tx_level);
+
 void sound_mixer(char *card_name, char *element, int make_on);
 void clear_buffers();
 
