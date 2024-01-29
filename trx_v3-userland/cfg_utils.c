@@ -251,7 +251,7 @@ bool init_config_user(radio *radio_h, char *ini_name)
 
         sprintf(profile_field, "%s:agc", profile_name);
         s = iniparser_getstring(ini, profile_field, "OFF");
-        printf("%s:     [%s]\n", profile_field, s);
+        // printf("%s:     [%s]\n", profile_field, s);
         if (!strcmp(s, "OFF"))
             radio_h->profiles[k].agc = AGC_OFF;
         else if (!strcmp(s, "SLOW"))
@@ -263,7 +263,7 @@ bool init_config_user(radio *radio_h, char *ini_name)
 
         sprintf(profile_field, "%s:compressor", profile_name);
         s = iniparser_getstring(ini, profile_field, "OFF");
-        printf("%s:     [%s]\n", profile_field, s);
+        // printf("%s:     [%s]\n", profile_field, s);
         if (!strcmp(s, "OFF"))
             radio_h->profiles[k].compressor = COMPRESSOR_OFF;
         else if (!strcmp(s, "ON"))
@@ -271,27 +271,27 @@ bool init_config_user(radio *radio_h, char *ini_name)
 
         sprintf(profile_field, "%s:bpf_low", profile_name);
         i = iniparser_getint(ini, profile_field, 50);
-        printf("%s:      [%d]\n", profile_field, i);
+        // printf("%s:      [%d]\n", profile_field, i);
         radio_h->profiles[k].bpf_low = (uint32_t) i;
 
         sprintf(profile_field, "%s:bpf_high", profile_name);
         i = iniparser_getint(ini, profile_field, 3000);
-        printf("%s:      [%d]\n", profile_field, i);
+        // printf("%s:      [%d]\n", profile_field, i);
         radio_h->profiles[k].bpf_high = (uint32_t) i;
 
         sprintf(profile_field, "%s:enable_knob_volume", profile_name);
         b = iniparser_getboolean(ini, profile_field, 1);
-        printf("%s:      [%d]\n", profile_field, b);
+        // printf("%s:      [%d]\n", profile_field, b);
         radio_h->profiles[k].enable_knob_volume = (bool) b;
 
         sprintf(profile_field, "%s:enable_knob_frequency", profile_name);
         b = iniparser_getboolean(ini, profile_field, 1);
-        printf("%s:      [%d]\n", profile_field, b);
+        // printf("%s:      [%d]\n", profile_field, b);
         radio_h->profiles[k].enable_knob_frequency = (bool) b;
 
         sprintf(profile_field, "%s:enable_ptt", profile_name);
         b = iniparser_getboolean(ini, profile_field, 1);
-        printf("%s:      [%d]\n", profile_field, b);
+        // printf("%s:      [%d]\n", profile_field, b);
         radio_h->profiles[k].enable_ptt = (bool) b;
 
     }
