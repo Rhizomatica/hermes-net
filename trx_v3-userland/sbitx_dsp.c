@@ -157,7 +157,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
     if (block_size != 1024)
     {
-        fprintf(stderr, "Exploding... n_samples != 1024 in tx_process\n");
+        fprintf(stderr, "This code uses 1024 samples for the fft\n");
         shutdown_ = true;
         return;
     }
