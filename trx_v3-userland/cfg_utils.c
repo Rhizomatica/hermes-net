@@ -100,64 +100,63 @@ bool init_config_core(radio *radio_h, char *ini_name)
         fprintf(stderr, "cannot parse file: %s\n", ini_name);
         return false;
     }
-    iniparser_dump(ini, stderr);
 
     radio_h->cfg_core = ini;
 
     i = iniparser_getint(ini, "main:bfo", 40035000);
-    printf("BFO:      [%d]\n", i);
+    // printf("BFO:      [%d]\n", i);
     radio_h->bfo_frequency = (uint32_t) i;
 
     i = iniparser_getint(ini, "main:bridge_compensation", 100);
-    printf("Bridge Compensation:      [%d]\n", i);
+    // printf("Bridge Compensation:      [%d]\n", i);
     radio_h->bridge_compensation = (uint32_t) i;
 
     i = iniparser_getint(ini, "main:serial_number", -1);
-    printf("Serial Number:      [%d]\n", i);
+    // printf("Serial Number:      [%d]\n", i);
     radio_h->serial_number = (uint32_t) i;
 
     i = iniparser_getint(ini, "main:reflected_threshold", 25);
-    printf("Reflected Threshold:      [%d]\n", i);
+    // printf("Reflected Threshold:      [%d]\n", i);
     radio_h->reflected_threshold = (uint32_t) i;
 
     b = iniparser_getboolean(ini, "main:enable_websocket", 0);
-    printf("Enable Websocket:       [%d]\n", b);
+    // printf("Enable Websocket:       [%d]\n", b);
     radio_h->enable_websocket = (bool) b;
 
     b = iniparser_getboolean(ini, "main:enable_shm_control", 0);
-    printf("Enable Shared Memory Control Interface:       [%d]\n", b);
+    // printf("Enable Shared Memory Control Interface:       [%d]\n", b);
     radio_h->enable_shm_control = (bool) b;
 
     s = iniparser_getstring(ini, "main:i2c_dev", NULL);
-    printf("I2C device:     [%s]\n", s ? s : "UNDEF");
+    // printf("I2C device:     [%s]\n", s ? s : "UNDEF");
     if (s)
         strcpy(radio_h->i2c_device, s);
 
     int sec_count = iniparser_getnsec(ini);
     sec_count--; // -1 to cope with the [main]
-    printf("Number of Sections:     [%d]\n", sec_count);
+    // printf("Number of Sections:     [%d]\n", sec_count);
     radio_h->band_power_count = (uint32_t) sec_count;
 
     for (int k = 0; k < sec_count; k++)
     {
         char band_name[32];
         sprintf(band_name, "tx_band%d", k);
-        if (iniparser_find_entry(ini, band_name))
-            printf("Section exists:     [%s]\n", band_name);
+        // if (iniparser_find_entry(ini, band_name))
+        //     printf("Section exists:     [%s]\n", band_name);
 
         sprintf(band_name, "tx_band%d:f_start", k);
         i = iniparser_getint(ini, band_name, -1);
-        printf("%s:      [%d]\n", band_name, i);
+        // printf("%s:      [%d]\n", band_name, i);
         radio_h->band_power[k].f_start = i;
 
         sprintf(band_name, "tx_band%d:f_stop", k);
         i = iniparser_getint(ini, band_name, -1);
-        printf("%s:      [%d]\n", band_name, i);
+        // printf("%s:      [%d]\n", band_name, i);
         radio_h->band_power[k].f_stop = i;
 
         sprintf(band_name, "tx_band%d:scale", k);
         d = iniparser_getdouble(ini, band_name, 0.0);
-        printf("%s:      [%f]\n", band_name, d);
+        // printf("%s:      [%f]\n", band_name, d);
         radio_h->band_power[k].scale = d;
     }
 
@@ -180,28 +179,27 @@ bool init_config_user(radio *radio_h, char *ini_name)
         fprintf(stderr, "cannot parse file: %s\n", ini_name);
         return false;
     }
-    iniparser_dump(ini, stderr);
     radio_h->cfg_user = ini;
 
     i = iniparser_getint(ini, "main:current_profile", 0);
-    printf("current_profile:      [%d]\n", i);
+    // printf("current_profile:      [%d]\n", i);
     radio_h->profile_active_idx = (uint32_t) i;
 
     i = iniparser_getint(ini, "main:default_profile", 0);
-    printf("default_profile:      [%d]\n", i);
+    // printf("default_profile:      [%d]\n", i);
     radio_h->profile_default_idx = (uint32_t) i;
 
     i = iniparser_getint(ini, "main:default_profile_fallback_timeout", -1);
-    printf("default_profile_fallback_timeout:      [%d]\n", i);
+    // printf("default_profile_fallback_timeout:      [%d]\n", i);
     radio_h->profile_timeout = (int32_t) i;
 
     i = iniparser_getint(ini, "main:step_size", 100);
-    printf("step_size:      [%d]\n", i);
+    // printf("step_size:      [%d]\n", i);
     radio_h->step_size = (uint32_t) i;
 
     int sec_count = iniparser_getnsec(ini);
     sec_count--;
-    printf("Number of Sections:     [%d]\n", sec_count);
+    // printf("Number of Sections:     [%d]\n", sec_count);
     radio_h->profiles_count = sec_count;
 
     for (int k = 0; k < sec_count; k++)
@@ -210,17 +208,17 @@ bool init_config_user(radio *radio_h, char *ini_name)
         char profile_field[64];
 
         sprintf(profile_name, "profile%d", k);
-        if (iniparser_find_entry(ini, profile_name))
-            printf("Section exists:     [%s]\n", profile_name);
+        // if (iniparser_find_entry(ini, profile_name))
+        //     printf("Section exists:     [%s]\n", profile_name);
 
         sprintf(profile_field, "%s:freq", profile_name);
         i = iniparser_getint(ini, profile_field, 7000000);
-        printf("%s:      [%d]\n", profile_field, i);
+        // printf("%s:      [%d]\n", profile_field, i);
         radio_h->profiles[k].freq = (uint32_t) i;
 
         sprintf(profile_field, "%s:mode", profile_name);
         s = iniparser_getstring(ini, profile_field, "USB");
-        printf("%s:     [%s]\n", profile_field, s);
+        // printf("%s:     [%s]\n", profile_field, s);
         if (!strcmp(s, "USB"))
             radio_h->profiles[k].mode = MODE_USB;
         else if (!strcmp(s, "LSB"))
@@ -228,28 +226,28 @@ bool init_config_user(radio *radio_h, char *ini_name)
 
         sprintf(profile_field, "%s:operating_mode", profile_name);
         i = iniparser_getint(ini, profile_field, 1);
-        printf("%s:      [%d]\n", profile_field, i);
+        // printf("%s:      [%d]\n", profile_field, i);
         radio_h->profiles[k].operating_mode = (uint16_t) i;
 
         sprintf(profile_field, "%s:mic_level", profile_name);
         i = iniparser_getint(ini, profile_field, 0);
-        printf("%s:      [%d]\n", profile_field, i);
-        radio_h->profiles[k].mic_level = (uint16_t) i;
+        // printf("%s:      [%d]\n", profile_field, i);
+        radio_h->profiles[k].mic_level = (uint32_t) i;
 
         sprintf(profile_field, "%s:rx_level", profile_name);
         i = iniparser_getint(ini, profile_field, 100);
-        printf("%s:      [%d]\n", profile_field, i);
-        radio_h->profiles[k].rx_level = (uint16_t) i;
+        // printf("%s:      [%d]\n", profile_field, i);
+        radio_h->profiles[k].rx_level = (uint32_t) i;
 
         sprintf(profile_field, "%s:speaker_level", profile_name);
         i = iniparser_getint(ini, profile_field, 0);
-        printf("%s:      [%d]\n", profile_field, i);
-        radio_h->profiles[k].speaker_level = (uint16_t) i;
+        // printf("%s:      [%d]\n", profile_field, i);
+        radio_h->profiles[k].speaker_level = (uint32_t) i;
 
         sprintf(profile_field, "%s:tx_level", profile_name);
         i = iniparser_getint(ini, profile_field, 0);
-        printf("%s:      [%d]\n", profile_field, i);
-        radio_h->profiles[k].tx_level = (uint16_t) i;
+        // printf("%s:      [%d]\n", profile_field, i);
+        radio_h->profiles[k].tx_level = (uint32_t) i;
 
         sprintf(profile_field, "%s:agc", profile_name);
         s = iniparser_getstring(ini, profile_field, "OFF");

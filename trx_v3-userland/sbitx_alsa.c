@@ -101,7 +101,6 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
     snd_pcm_hw_params_get_buffer_size(params, (snd_pcm_uframes_t *) &val);
     printf("buffer size = %d frames\n", val);
 
-
     snd_pcm_hw_params_get_period_time(params, &val, &dir);
     printf("period time = %d us\n", val);
 
@@ -152,9 +151,6 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 
     val = snd_pcm_hw_params_is_monotonic(params);
     printf("is monotonic = %d\n", val);
-
-    val = snd_pcm_hw_params_get_sbits(params);
-    printf("significant bits = %d\n", val);
 
 }
 
