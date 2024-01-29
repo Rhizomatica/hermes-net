@@ -965,6 +965,9 @@ void *control_thread(void *device_ptr)
     output_speaker = malloc(buffer_size);
     output_loopback = malloc(buffer_size);
 
+    uint8_t *buffer_null = malloc(buffer_size);
+    memset(buffer_null, 0, buffer_size);
+
     while (!shutdown_)
     {
         _Atomic bool use_loopback = (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_FULL_LOOPBACK) ? true : false;
@@ -974,8 +977,17 @@ void *control_thread(void *device_ptr)
 
         if (use_loopback)
         {
-            read_buffer(loopback_to_dsp, buffer_loop_to_dsp, buffer_size); // stereo interleaved
-            signal_to_tx = buffer_loop_to_dsp;
+            // in case the alsa loopback device is not started, it will block in the read()
+            if (size_buffer(loopback_to_dsp) >= buffer_size)
+            {
+                read_buffer(loopback_to_dsp, buffer_loop_to_dsp, buffer_size); // stereo interleaved
+                signal_to_tx = buffer_loop_to_dsp;
+            }
+            else
+            {
+                printf("No data from loopback capture device. Skipping.\n");
+                signal_to_tx = buffer_null;
+            }
         }
         else
         {
@@ -997,6 +1009,7 @@ void *control_thread(void *device_ptr)
         write_buffer(dsp_to_speaker, output_speaker, buffer_size); // mono 96 kHz
     }
 
+    free(buffer_null);
     free(output_tx);
     free(output_speaker);
     free(output_loopback);
