@@ -155,7 +155,6 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 
 }
 
-// TODO: rewrite
 void setup_audio_codec()
 {
 	//configure mixer controls
@@ -169,7 +168,6 @@ void setup_audio_codec()
     sound_mixer(radio_playback_dev, "Output Mixer HiFi", 1);
     sound_mixer(radio_playback_dev, "Master Playback ZC", 0);
     sound_mixer(radio_playback_dev, "Sidetone", 0);
-
     sound_mixer(radio_playback_dev, "Output Mixer Mic Sidetone", 0);
     sound_mixer(radio_playback_dev, "Output Mixer Line Bypass", 0);
     sound_mixer(radio_playback_dev, "Store DC Offset", 0);
@@ -849,7 +847,7 @@ void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_
 
     initialize_buffers();
 
-    // set alsa levels...
+    setup_audio_codec();
 
     pthread_create(radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
     pthread_create(loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
