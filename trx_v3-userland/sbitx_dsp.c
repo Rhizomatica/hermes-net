@@ -125,7 +125,6 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     for (i = 0; i < MAX_BINS / 2; i++)
     {
         int32_t sample = cimag(fft_time[i+(MAX_BINS/2)]);
-        printf("sample rx: %d", sample);
         output_speaker_int[i] = sample;
     }
 
@@ -252,7 +251,6 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     {
         double s = creal(fft_time[i+(MAX_BINS/2)]);
         signal_output_int[i] = s;
-        printf("sample tx: %d", signal_output_int[i]);
 	}
 
     memset(output_loopback, 0, block_size * (snd_pcm_format_width(format) / 8));
