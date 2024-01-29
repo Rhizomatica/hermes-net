@@ -35,6 +35,9 @@ char *radio_playback_dev = "hw:0,0";
 char *loop_capture_dev = "hw:2,1";
 char *loop_playback_dev = "hw:1,0";
 
+// mixer device
+char *radio_ctl = "hw:0";
+
 snd_pcm_t *pcm_capture_handle;
 snd_pcm_t *pcm_play_handle;
 snd_pcm_t *loopback_capture_handle;
@@ -155,25 +158,117 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 
 }
 
+// this is the radio rx level
+void set_rx_level(uint32_t speaker_level)
+{
+
+
+}
+
+void set_mic_level(uint32_t speaker_level)
+{
+
+}
+
+void set_speaker_level(uint32_t speaker_level)
+{
+    // this is alsa-less operation...
+    if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
+        return;
+
+    long min, max;
+    snd_mixer_t *handle;
+    snd_mixer_selem_id_t *sid;
+
+    // TODO: lets keep these handle open?
+    snd_mixer_open(&handle, 0);
+    snd_mixer_attach(handle, radio_ctl);
+    snd_mixer_selem_register(handle, NULL, NULL);
+    snd_mixer_load(handle);
+
+    snd_mixer_selem_id_alloca(&sid);
+    snd_mixer_selem_id_set_index(sid, 0);
+    snd_mixer_selem_id_set_name(sid, "Master");
+    snd_mixer_elem_t *elem = snd_mixer_find_selem(handle, sid);
+
+    if (snd_mixer_selem_has_playback_switch(elem))
+    {
+        printf("Have playback switch!\n");
+        snd_mixer_selem_set_playback_switch_all(elem, 1);
+    }
+
+    long volume = speaker_level;
+    snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+
+    // left channel of the audio codec
+    snd_mixer_selem_set_playback_volume(elem, SND_MIXER_SCHN_FRONT_LEFT,  volume * max / 100);
+
+    snd_mixer_close(handle);
+
+    // TODO: store value to radio_h struct
+    // TODO: save to cfg...
+
+}
+
+void set_tx_level(uint32_t tx_level)
+{
+    // this is alsa-less operation...
+    if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
+        return;
+
+    long min, max;
+    snd_mixer_t *handle;
+    snd_mixer_selem_id_t *sid;
+
+    // TODO: lets keep these handle open?
+    snd_mixer_open(&handle, 0);
+    snd_mixer_attach(handle, radio_ctl);
+    snd_mixer_selem_register(handle, NULL, NULL);
+    snd_mixer_load(handle);
+
+    snd_mixer_selem_id_alloca(&sid);
+    snd_mixer_selem_id_set_index(sid, 0);
+    snd_mixer_selem_id_set_name(sid, "Master");
+    snd_mixer_elem_t *elem = snd_mixer_find_selem(handle, sid);
+
+    if (snd_mixer_selem_has_playback_switch(elem))
+    {
+        printf("Have playback switch!\n");
+        snd_mixer_selem_set_playback_switch_all(elem, 1);
+    }
+
+    long volume = tx_level;
+    snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+
+    // right channel of the audio codec
+    snd_mixer_selem_set_playback_volume(elem, SND_MIXER_SCHN_FRONT_RIGHT,  volume * max / 100);
+
+    snd_mixer_close(handle);
+
+
+
+}
+
+
 void setup_audio_codec()
 {
 	//configure mixer controls
-    sound_mixer(radio_capture_dev, "Line", 1);
-    sound_mixer(radio_capture_dev, "Mic", 0);
-    sound_mixer(radio_capture_dev, "Mic Boost", 0);
-    sound_mixer(radio_capture_dev, "Playback Deemphasis", 0);
-    sound_mixer(radio_capture_dev, "Input Mux", 0);
+    sound_mixer(radio_ctl, "Line", 1);
+    sound_mixer(radio_ctl, "Mic", 0);
+    sound_mixer(radio_ctl, "Mic Boost", 0);
+    sound_mixer(radio_ctl, "Playback Deemphasis", 0);
+    sound_mixer(radio_ctl, "Input Mux", 0);
 
-    sound_mixer(radio_playback_dev, "ADC High Pass Filter", 0);
-    sound_mixer(radio_playback_dev, "Output Mixer HiFi", 1);
-    sound_mixer(radio_playback_dev, "Master Playback ZC", 0);
-    sound_mixer(radio_playback_dev, "Sidetone", 0);
-    sound_mixer(radio_playback_dev, "Output Mixer Mic Sidetone", 0);
-    sound_mixer(radio_playback_dev, "Output Mixer Line Bypass", 0);
-    sound_mixer(radio_playback_dev, "Store DC Offset", 0);
+    sound_mixer(radio_ctl, "ADC High Pass Filter", 0);
+    sound_mixer(radio_ctl, "Output Mixer HiFi", 1);
+    sound_mixer(radio_ctl, "Master Playback ZC", 0);
+    sound_mixer(radio_ctl, "Sidetone", 0);
+    sound_mixer(radio_ctl, "Output Mixer Mic Sidetone", 0);
+    sound_mixer(radio_ctl, "Output Mixer Line Bypass", 0);
+    sound_mixer(radio_ctl, "Store DC Offset", 0);
 
-//sound_mixer(radio_playback_dev, "Master", 10);
-//sound_mixer(radio_playback_dev, "Capture", 10);
+//sound_mixer(radio_ctl, "Master", 10);
+//sound_mixer(radio_ctl, "Capture", 10);
 
 }
 
@@ -306,9 +401,11 @@ void *radio_capture_thread(void *device_ptr)
         return NULL;
     }
 
+#ifdef DEBUG_
     printf("============= REPORT RADIO CAPTURE DEVICE %s =================\n", device);
     show_alsa(pcm_capture_handle, hwparams);
     printf("==============================================================\n");
+#endif
 
     int sample_size = snd_pcm_format_width(format) / 8;
     uint32_t buffer_size = hw_period_size * sample_size * channels;
@@ -447,9 +544,11 @@ void *radio_playback_thread(void *device_ptr)
         return NULL;
     }
 
+#ifdef DEBUG_
     printf("============= REPORT RADIO PLAYBACK DEVICE %s ================\n", device);
     show_alsa(pcm_play_handle, hwparams);
     printf("==============================================================\n");
+#endif
 
     int sample_size = snd_pcm_format_width(format) / 8;
     uint32_t buffer_size = hw_period_size * sample_size * channels;
@@ -578,11 +677,12 @@ void *loop_capture_thread(void *device_ptr)
         return NULL;
     }
 
+#ifdef DEBUG_
     printf("============= REPORT LOOPBACK CAPTURE DEVICE %s ==============\n", device);
     show_alsa(loopback_capture_handle, hloop_params);
     printf("==============================================================\n");
-
-    // apply sw parameters... ?
+#endif
+    // TODO: apply sw parameters... ?
 
     int sample_size = snd_pcm_format_width(format) / 8;
     uint32_t buffer_size = loopback_period_size * sample_size * channels;
@@ -712,9 +812,11 @@ void *loop_playback_thread(void *device_ptr)
         return NULL;
     }
 
+#ifdef DEBUG_
     printf("============= REPORT LOOPBACK PLAYBACK DEVICE %s =============\n", device);
     show_alsa(loopback_play_handle, hloop_params);
     printf("==============================================================\n");
+#endif
 
     int sample_size = snd_pcm_format_width(format) / 8;
     uint32_t buffer_size = loopback_period_size * sample_size * channels;
