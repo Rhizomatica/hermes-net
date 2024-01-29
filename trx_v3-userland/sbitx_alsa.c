@@ -176,12 +176,6 @@ void set_rx_level(uint32_t rx_level)
     snd_mixer_selem_id_set_name(sid, "Capture");
     snd_mixer_elem_t *elem = snd_mixer_find_selem(handle, sid);
 
-    if (snd_mixer_selem_has_capture_switch(elem))
-    {
-        printf("Have capture switch!\n");
-        snd_mixer_selem_set_capture_switch_all(elem, 1);
-    }
-
     long volume = rx_level;
     snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
 
@@ -191,12 +185,6 @@ void set_rx_level(uint32_t rx_level)
     snd_mixer_close(handle);
 
     radio_h_snd->profiles[radio_h_snd->profile_active_idx].rx_level = volume;
-
-    // TODO: save to cfg...
-
-    radio_h_snd->cfg_user_dirty = true;
-
-
 }
 
 void set_mic_level(uint32_t mic_level)
@@ -220,12 +208,6 @@ void set_mic_level(uint32_t mic_level)
     snd_mixer_selem_id_set_name(sid, "Capture");
     snd_mixer_elem_t *elem = snd_mixer_find_selem(handle, sid);
 
-    if (snd_mixer_selem_has_capture_switch(elem))
-    {
-        printf("Have capture switch!\n");
-        snd_mixer_selem_set_capture_switch_all(elem, 1);
-    }
-
     long volume = mic_level;
     snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
 
@@ -235,10 +217,6 @@ void set_mic_level(uint32_t mic_level)
     snd_mixer_close(handle);
 
     radio_h_snd->profiles[radio_h_snd->profile_active_idx].mic_level = volume;
-
-    // TODO: save to cfg...
-
-    radio_h_snd->cfg_user_dirty = true;
 }
 
 void set_speaker_level(uint32_t speaker_level)
@@ -262,12 +240,6 @@ void set_speaker_level(uint32_t speaker_level)
     snd_mixer_selem_id_set_name(sid, "Master");
     snd_mixer_elem_t *elem = snd_mixer_find_selem(handle, sid);
 
-    if (snd_mixer_selem_has_playback_switch(elem))
-    {
-        printf("Have playback switch!\n");
-        snd_mixer_selem_set_playback_switch_all(elem, 1);
-    }
-
     long volume = speaker_level;
     snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
 
@@ -277,10 +249,6 @@ void set_speaker_level(uint32_t speaker_level)
     snd_mixer_close(handle);
 
     radio_h_snd->profiles[radio_h_snd->profile_active_idx].speaker_level = volume;
-
-    // TODO: save to cfg...
-
-    radio_h_snd->cfg_user_dirty = true;
 }
 
 void set_tx_level(uint32_t tx_level)
@@ -304,12 +272,6 @@ void set_tx_level(uint32_t tx_level)
     snd_mixer_selem_id_set_name(sid, "Master");
     snd_mixer_elem_t *elem = snd_mixer_find_selem(handle, sid);
 
-    if (snd_mixer_selem_has_playback_switch(elem))
-    {
-        printf("Have playback switch!\n");
-        snd_mixer_selem_set_playback_switch_all(elem, 1);
-    }
-
     long volume = tx_level;
     snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
 
@@ -320,10 +282,6 @@ void set_tx_level(uint32_t tx_level)
 
 
     radio_h_snd->profiles[radio_h_snd->profile_active_idx].tx_level = volume;
-
-    // TODO: save to cfg...
-
-    radio_h_snd->cfg_user_dirty = true;
 }
 
 
@@ -395,7 +353,6 @@ void sound_mixer(char *card_name, char *element, int make_on)
     }
     snd_mixer_close(handle);
 }
-
 
 
 void *radio_capture_thread(void *device_ptr)
@@ -516,11 +473,12 @@ void *radio_capture_thread(void *device_ptr)
         for (int j = 0; j < hw_period_size; j++)
         {
             memcpy(&radio[j*sample_size], &buffer[j * sample_size * channels], sample_size);
+            memcpy(&mic[j*sample_size], &buffer[j * sample_size * channels + sample_size], sample_size);
             // attenuate the mic
-            int32_t *sample = (int32_t *) &buffer[j * sample_size * channels + sample_size];
-            *sample /= 15;
-            memcpy(&mic[j*sample_size], sample, sample_size);
-//            memcpy(&mic[j*sample_size], &buffer[j * sample_size * channels + sample_size], sample_size); // this would be just the copy if we did not need to change the sample
+            //int32_t *sample = (int32_t *) &buffer[j * sample_size * channels + sample_size];
+            //*sample /= 15;
+            //memcpy(&mic[j*sample_size], sample, sample_size);
+
 
         }
 
@@ -789,13 +747,16 @@ void *loop_capture_thread(void *device_ptr)
         }
 
         // attenuate 10db the loopback
+#if 0 // no changes to input here
         for (int i = 0; i < loopback_period_size; i++)
         {
+
             int32_t *sample1 = (int32_t *) &buffer[i * sample_size * channels];
             int32_t *sample2 = (int32_t *) &buffer[i * sample_size * channels + sample_size];
             *sample1 /= 10;
             *sample2 /= 10;
         }
+#endif
 
         write_buffer(loopback_to_dsp, buffer, buffer_size);
     }
