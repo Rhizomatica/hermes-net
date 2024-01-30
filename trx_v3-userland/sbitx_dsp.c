@@ -266,22 +266,22 @@ void dsp_init(radio *radio_h)
         return;
 
     fft_m = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS/2);
-	fft_in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
-	fft_out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
+    fft_in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
+    fft_out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
 
-	//create fft complex arrays to convert the frequency back to time
-	fft_time = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
-	fft_freq = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
+    //create fft complex arrays to convert the frequency back to time
+    fft_time = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
+    fft_freq = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
 
-    memset(fft_m, 0, sizeof(fftw_complex) * MAX_BINS/2);
-	memset(fft_in, 0, sizeof(fftw_complex) * MAX_BINS);
-	memset(fft_out, 0, sizeof(fftw_complex) * MAX_BINS);
+    fft_reset_m_bins();
 
     plan_rev = fftw_plan_dft_1d(MAX_BINS, fft_freq, fft_time, FFTW_BACKWARD, FFTW_ESTIMATE);
-	plan_fwd = fftw_plan_dft_1d(MAX_BINS, fft_in, fft_out, FFTW_FORWARD, FFTW_ESTIMATE);
+    plan_fwd = fftw_plan_dft_1d(MAX_BINS, fft_in, fft_out, FFTW_FORWARD, FFTW_ESTIMATE);
+
+    fft_reset_m_bins();
 
     rx_filter = filter_new(1024, 1025);
-	tx_filter = filter_new(1024, 1025);
+    tx_filter = filter_new(1024, 1025);
 
     dsp_set_filters();
 }
