@@ -193,7 +193,12 @@ void set_speaker_volume(radio *radio_h, uint32_t speaker_level, uint32_t profile
     if (*volume == speaker_level)
         return;
 
-    set_speaker_level(speaker_level);
+    radio_h->profiles[profile].speaker_level = speaker_level;
+
+    if (profile == radio_h->profile_active_idx)
+    {
+        set_speaker_level(speaker_level);
+    }
 
     char tmp1[64]; char tmp2[64];
     sprintf(tmp1, "profile%u:speaker_level", profile);
@@ -316,7 +321,6 @@ void swr_protection_check(radio *radio_h)
     if (peak_removal_counter > REF_PEAK_REMOVAL)
     {
         radio_h->swr_protection_enabled = true;
-        // sound_input(0);
         tr_switch(radio_h, IN_RX);
         peak_removal_counter = 0;
         radio_h->send_ws_update = true;

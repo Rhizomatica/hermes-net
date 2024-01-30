@@ -157,7 +157,6 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 // this is the radio rx level
 void set_rx_level(uint32_t rx_level)
 {
-    // this is alsa-less operation...
     if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
         return;
 
@@ -183,8 +182,6 @@ void set_rx_level(uint32_t rx_level)
     snd_mixer_selem_set_capture_volume(elem, SND_MIXER_SCHN_FRONT_LEFT,  volume * max / 100);
 
     snd_mixer_close(handle);
-
-    radio_h_snd->profiles[radio_h_snd->profile_active_idx].rx_level = volume;
 }
 
 void set_mic_level(uint32_t mic_level)
@@ -214,13 +211,10 @@ void set_mic_level(uint32_t mic_level)
     snd_mixer_selem_set_capture_volume(elem, SND_MIXER_SCHN_FRONT_RIGHT,  volume * max / 100);
 
     snd_mixer_close(handle);
-
-    radio_h_snd->profiles[radio_h_snd->profile_active_idx].mic_level = volume;
 }
 
 void set_speaker_level(uint32_t speaker_level)
 {
-    // this is alsa-less operation...
     if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
         return;
 
@@ -246,13 +240,10 @@ void set_speaker_level(uint32_t speaker_level)
     snd_mixer_selem_set_playback_volume(elem, SND_MIXER_SCHN_FRONT_LEFT,  volume * max / 100);
 
     snd_mixer_close(handle);
-
-    radio_h_snd->profiles[radio_h_snd->profile_active_idx].speaker_level = volume;
 }
 
 void set_tx_level(uint32_t tx_level)
 {
-    // this is alsa-less operation...
     if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
         return;
 
@@ -278,8 +269,6 @@ void set_tx_level(uint32_t tx_level)
     snd_mixer_selem_set_playback_volume(elem, SND_MIXER_SCHN_FRONT_RIGHT,  volume * max / 100);
 
     snd_mixer_close(handle);
-
-    radio_h_snd->profiles[radio_h_snd->profile_active_idx].tx_level = volume;
 }
 
 
@@ -595,7 +584,6 @@ void *radio_playback_thread(void *device_ptr)
 
         for (int j = 0; j < hw_period_size; j++)
         {
-            // int32_t *sample = (int32_t *) &speaker[j * sample_size]; *sample *= 100;
             memcpy(&buffer[j*sample_size*channels], &speaker[j*sample_size], sample_size);
             memcpy(&buffer[j*sample_size*channels + sample_size], &radio[j*sample_size], sample_size);
         }
@@ -883,7 +871,7 @@ void *control_thread(void *device_ptr)
     // we have 96 kHz in the radio soundcard, and 48 kHz in the loopback soundcard
     // we define our block transfer size as the minimum of both, in order to try to reduce latency a bit
     // uint32_t block_size = hw_period_size;
-    // As our DSP code needs 1024 samples window to work... we force 1024
+    // As Farhan's DSP code needs 1024 samples window to work (which we are currently using...) we force 1024
     uint32_t block_size = 1024;
 
     // as we are hardcoding block sizes... this gets false
