@@ -335,6 +335,7 @@ void tr_switch(radio *radio_h, bool txrx_state)
 
     if (txrx_state == IN_TX)
     {
+        printf("IN_TX\n");
         set_speaker_level(0);
         set_tx_level(radio_h->profiles[radio_h->profile_active_idx].tx_level);
 
@@ -347,6 +348,7 @@ void tr_switch(radio *radio_h, bool txrx_state)
     }
     else
     {
+        printf("IN_RX\n");
         set_speaker_level(radio_h->profiles[radio_h->profile_active_idx].speaker_level);
         set_tx_level(0);
 
@@ -357,8 +359,6 @@ void tr_switch(radio *radio_h, bool txrx_state)
         usleep(2000);
         lpf_set(radio_h);
     }
-
-    printf("tr_switch tx: %d\n", radio_h->txrx_state);
 
     radio_h->send_ws_update = true;
 }

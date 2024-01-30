@@ -309,7 +309,7 @@ void setup_audio_codec()
 
 void sound_mixer(char *card_name, char *element, int make_on)
 {
-    // this is alsa-less operation...
+    // alsa-less operation
     if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
         return;
 
