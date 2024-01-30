@@ -248,7 +248,7 @@ void set_mode(radio *radio_h, uint16_t mode, uint32_t profile)
     *radio_mode = mode;
 
     char tmp1[64]; char tmp2[64];
-    sprintf(tmp1, "profile%u:freq", profile);
+    sprintf(tmp1, "profile%u:mode", profile);
     if (mode == MODE_USB)
         sprintf(tmp2, "USB");
     if (mode == MODE_LSB)
