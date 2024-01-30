@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
        shm_controller_init(&radio_h, &shm_tid);
 
    // Control-only mode is only allowed if using just one profile
-   bool disable_sound_system = (radio_h.profiles_count == 1 && radio_h.profiles[0].operating_mode == OPERATING_MODE_CONTROLS_ONLY) ? true : false;
+   bool disable_sound_system = (radio_h.profiles[0].operating_mode == OPERATING_MODE_CONTROLS_ONLY) ? true : false;
    if (!disable_sound_system)
    {
        dsp_init(&radio_h);
