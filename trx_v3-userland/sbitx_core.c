@@ -35,6 +35,7 @@
 #include "sbitx_gpio.h"
 #include "sbitx_si5351.h"
 #include "sbitx_alsa.h"
+#include "sbitx_dsp.h"
 
 extern _Atomic bool shutdown_;
 
@@ -246,6 +247,11 @@ void set_mode(radio *radio_h, uint16_t mode, uint32_t profile)
         return;
 
     *radio_mode = mode;
+
+    if (profile == radio_h->profile_active_idx)
+    {
+        dsp_set_filters();
+    }
 
     char tmp1[64]; char tmp2[64];
     sprintf(tmp1, "profile%u:mode", profile);
