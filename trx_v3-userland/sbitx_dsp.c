@@ -262,6 +262,9 @@ void dsp_init(radio *radio_h)
 {
     radio_h_dsp = radio_h;
 
+    if (radio_h->profiles[radio_h->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
+        return;
+
     fft_m = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS/2);
 	fft_in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
 	fft_out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * MAX_BINS);
@@ -283,8 +286,11 @@ void dsp_init(radio *radio_h)
     dsp_set_filters();
 }
 
-void dsp_free()
+void dsp_free(radio *radio_h)
 {
+    if (radio_h->profiles[radio_h->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
+        return;
+
     fftw_destroy_plan(plan_rev);
     fftw_destroy_plan(plan_fwd);
     fftw_free(fft_m);

@@ -189,7 +189,6 @@ void set_rx_level(uint32_t rx_level)
 
 void set_mic_level(uint32_t mic_level)
 {
-    // this is alsa-less operation...
     if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
         return;
 
@@ -978,6 +977,9 @@ void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_
 {
     radio_h_snd = radio_h;
 
+    if (radio_h->profiles[radio_h->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
+        return;
+
     initialize_buffers();
 
     setup_audio_codec();
@@ -1004,6 +1006,9 @@ void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_
 void sound_system_shutdown(radio *radio_h, pthread_t *control_tid, pthread_t *radio_capture,
                            pthread_t *radio_playback, pthread_t *loop_capture, pthread_t *loop_playback)
 {
+    if (radio_h->profiles[radio_h->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
+        return;
+
     pthread_join(*radio_playback, NULL);
     pthread_join(*loop_playback, NULL);
 

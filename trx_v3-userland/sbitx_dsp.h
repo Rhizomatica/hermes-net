@@ -47,7 +47,7 @@ struct filter
 
 // init and free, for initialization and shutdown procedures
 void dsp_init(radio *radio_h);
-void dsp_free();
+void dsp_free(radio *radio_h);
 
 // main DSP calls
 void dsp_process_rx(uint8_t *buffer_radio_to_dsp, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t * output_tx, uint32_t block_size);

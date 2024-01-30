@@ -109,13 +109,8 @@ int main(int argc, char* argv[])
    if (radio_h.enable_shm_control)
        shm_controller_init(&radio_h, &shm_tid);
 
-   // Control-only mode is only allowed if using just one profile
-   bool disable_sound_system = (radio_h.profiles[0].operating_mode == OPERATING_MODE_CONTROLS_ONLY) ? true : false;
-   if (!disable_sound_system)
-   {
-       dsp_init(&radio_h);
-       sound_system_init(&radio_h, &control_tid, &radio_capture, &radio_playback, &loop_capture, &loop_playback);
-   }
+   dsp_init(&radio_h);
+   sound_system_init(&radio_h, &control_tid, &radio_capture, &radio_playback, &loop_capture, &loop_playback);
 
    // the next call calls pthread_join(), so it blocks until shutdown == true
    hw_shutdown(&radio_h, hw_tids);
@@ -127,11 +122,9 @@ int main(int argc, char* argv[])
    if (radio_h.enable_shm_control)
        shm_controller_shutdown(&shm_tid);
 
-   if (!disable_sound_system)
-   {
-       sound_system_shutdown(&radio_h, &control_tid, &radio_capture, &radio_playback, &loop_capture, &loop_playback);
-       dsp_free();
-   }
+   sound_system_shutdown(&radio_h, &control_tid, &radio_capture, &radio_playback, &loop_capture, &loop_playback);
+   dsp_free(&radio_h);
+
    return EXIT_SUCCESS;
 
 }
