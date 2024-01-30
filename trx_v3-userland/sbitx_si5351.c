@@ -80,6 +80,7 @@ void setup_oscillators(radio *radio_h)
     usleep(200000);
     si5351bx_init();
     usleep(200000);
+    printf("bfo: %d\n", radio_h->bfo_frequency);
     si5351bx_setfreq(1, radio_h->bfo_frequency);
 
     si5351_reset();
