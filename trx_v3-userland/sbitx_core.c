@@ -49,6 +49,8 @@ bool hw_init(radio *radio_h, pthread_t *hw_tids)
     // Si5351 SETUP
     setup_oscillators(radio_h);
 
+
+
     // start hw io monitor thread, ref/pwr readings, volume and freq changes
     pthread_create(&hw_tids[0], NULL, hw_thread, (void *) radio_h);
 

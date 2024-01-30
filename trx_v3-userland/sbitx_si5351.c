@@ -77,13 +77,13 @@ void setup_oscillators(radio *radio_h)
     internal_radio_h = radio_h;
 
     //initialize the SI5351
-    usleep(200000);
+    usleep(100000);
     si5351bx_init();
-    usleep(200000);
-    printf("bfo: %d\n", radio_h->bfo_frequency);
+    usleep(100000);
     si5351bx_setfreq(1, radio_h->bfo_frequency);
-
     si5351_reset();
+    usleep(100000);
+    si5351bx_setfreq(2, radio_h->profiles[radio_h->profile_active_idx].freq + radio_h->bfo_frequency - 24000);
 }
 
 void si5351_reset()
