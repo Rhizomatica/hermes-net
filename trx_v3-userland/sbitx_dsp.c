@@ -399,7 +399,7 @@ int window_filter(int const L,int const M,complex double * const response,double
     // Convert to time domain
     memcpy(buffer, response, N * sizeof(*buffer));
     fftw_execute(rev_filter_plan);
-    fftw_destroy_plan(rev_filter_plan);
+//    fftw_destroy_plan(rev_filter_plan);
 
     double kaiser_window[M];
     make_kaiser(kaiser_window,M,beta);
@@ -420,11 +420,11 @@ int window_filter(int const L,int const M,complex double * const response,double
 
     // Now back to frequency domain
     fftw_execute(fwd_filter_plan);
-    fftw_destroy_plan(fwd_filter_plan);
+//    fftw_destroy_plan(fwd_filter_plan);
 
     memcpy(response,buffer,N*sizeof(*response));
 
-    fftw_free(buffer);
+    // fftw_free(buffer);
     return 0;
 }
 
