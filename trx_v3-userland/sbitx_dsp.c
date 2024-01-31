@@ -165,7 +165,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         return;
     }
 
-#if 0 // TODO: re-add this
+#if 0 // TODO: evaluate if we need this
 	//fix the burst at the start of transmission
 	if (tx_process_restart){
         fft_reset_m_bins();
