@@ -38,8 +38,8 @@
 
 struct filter
 {
-    complex float *fir_coeff;
-    complex float *overlap;
+    complex double *fir_coeff;
+    complex double *overlap;
     int N;
     int L;
     int M;
@@ -58,10 +58,10 @@ void dsp_set_filters();
 
 // by Ashhar Farhan, from https://github.com/afarhan/sbitx/blob/main/fft_filter.c
 struct filter *filter_new(int input_length, int impulse_length);
-int filter_tune(struct filter *f, float const low,float const high,float const kaiser_beta);
-int window_filter(int const L,int const M,complex float * const response,float const beta);
-int make_kaiser(float * const window,unsigned int const M,float const beta);
-const float i0(float const z);
+int filter_tune(struct filter *f, double const low, double const high, double const kaiser_beta);
+int window_filter(int const L,int const M,complex double * const response, double const beta);
+int make_kaiser(double * const window,unsigned int const M, double const beta);
+const double i0(double const z);
 
 // by Fadi Jerji @ Rhizomatica
 void rational_resampler(double * in, int in_size, double * out, int rate, int interpolation_decimation);

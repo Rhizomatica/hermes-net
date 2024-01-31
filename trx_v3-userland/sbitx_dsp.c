@@ -305,8 +305,8 @@ void dsp_free(radio *radio_h)
 
 void dsp_set_filters()
 {
-    float bpf_low = (float) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_low;
-    float bpf_high = (float) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_high;
+    double bpf_low = (double) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_low;
+    double bpf_high = (double) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_high;
 
     if(radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].mode == MODE_LSB)
     {
@@ -327,12 +327,12 @@ struct filter *filter_new(int input_length, int impulse_length)
     f->L = input_length;
     f->M = impulse_length;
     f->N = f->L + f->M - 1;
-    f->fir_coeff = fftwf_alloc_complex(f->N);
+    f->fir_coeff = fftw_alloc_complex(f->N);
 
     return f;
 }
 
-int filter_tune(struct filter *f, float const low, float const high, float const kaiser_beta)
+int filter_tune(struct filter *f, double const low, double const high, double const kaiser_beta)
 {
     if(isnan(low) || isnan(high) || isnan(kaiser_beta))
         return -1;
@@ -340,18 +340,18 @@ int filter_tune(struct filter *f, float const low, float const high, float const
     assert(fabs(low) <= 0.5);
     assert(fabs(high) <= 0.5);
 
-    float gain = 1./((float)f->N);
+    double gain = 1./((float)f->N);
     //printf("# Gain is %lf\n", gain);
 	//printf("# filter elements %d\n", f->N);
 
     for(int n = 0; n < f->N; n++)
     {
-        float s;
+        double s;
         //the first half is +ve frequencies in frequency domain
         if(n <= f->N/2)
-            s = (float)n / f->N;
+            s = (double) n / f->N;
         else	//the second half is -ve frequencies, inverted
-            s = (float)(n-f->N) / f->N;
+            s = (double) (n-f->N) / f->N;
 
         if(s >= low && s <= high)
             f->fir_coeff[n] = gain;
@@ -374,27 +374,27 @@ void filter_print(struct filter *f)
     }
 }
 
-int window_filter(int const L,int const M,complex float * const response,float const beta)
+int window_filter(int const L,int const M,complex double * const response,double const beta)
 {
 
     //total length of the convolving samples
     int const N = L + M - 1;
 
     // fftw_plan can overwrite its buffers, so we're forced to make a temp. Ugh.
-    complex float * const buffer = fftwf_alloc_complex(N);
-    fftwf_plan fwd_filter_plan = fftwf_plan_dft_1d(N,buffer,buffer,FFTW_FORWARD,FFTW_ESTIMATE);
-    fftwf_plan rev_filter_plan = fftwf_plan_dft_1d(N,buffer,buffer,FFTW_BACKWARD,FFTW_ESTIMATE);
+    complex double * const buffer = fftw_alloc_complex(N);
+    fftw_plan fwd_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_FORWARD,FFTW_ESTIMATE);
+    fftw_plan rev_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_BACKWARD,FFTW_ESTIMATE);
 
     // Convert to time domain
     memcpy(buffer, response, N * sizeof(*buffer));
-    fftwf_execute(rev_filter_plan);
-    fftwf_destroy_plan(rev_filter_plan);
+    fftw_execute(rev_filter_plan);
+    fftw_destroy_plan(rev_filter_plan);
 
-    float kaiser_window[M];
+    double kaiser_window[M];
     make_kaiser(kaiser_window,M,beta);
 
     // Round trip through FFT/IFFT scales by N
-    float const gain = 1.;
+    double const gain = 1.;
 
     //shift the buffer to make it causal
     for(int n = M - 1; n >= 0; n--)
@@ -408,32 +408,32 @@ int window_filter(int const L,int const M,complex float * const response,float c
     memset(buffer+M,0,(N-M)*sizeof(*buffer));
 
     // Now back to frequency domain
-    fftwf_execute(fwd_filter_plan);
-    fftwf_destroy_plan(fwd_filter_plan);
+    fftw_execute(fwd_filter_plan);
+    fftw_destroy_plan(fwd_filter_plan);
 
     memcpy(response,buffer,N*sizeof(*response));
 
-    fftwf_free(buffer);
+    fftw_free(buffer);
     return 0;
 }
 
 // Compute an entire Kaiser window
 // More efficient than repeatedly calling kaiser(n,M,beta)
-int make_kaiser(float * const window,unsigned int const M,float const beta)
+int make_kaiser(double * const window,unsigned int const M,double const beta)
 {
     assert(window != NULL);
     if(window == NULL)
         return -1;
     // Precompute unchanging partial values
-    float const numc = M_PI * beta;
-    float const inv_denom = 1. / i0(numc); // Inverse of denominator
-    float const pc = 2.0 / (M-1);
+    double const numc = M_PI * beta;
+    double const inv_denom = 1. / i0(numc); // Inverse of denominator
+    double const pc = 2.0 / (M-1);
 
     // The window is symmetrical, so compute only half of it and mirror
     // this won't compute the middle value in an odd-length sequence
     for(int n = 0; n < M/2; n++)
     {
-        float const p = pc * n  - 1;
+        double const p = pc * n  - 1;
         window[M-1-n] = window[n] = i0(numc * sqrtf(1-p*p)) * inv_denom;
     }
     // If sequence length is odd, middle value is unity
@@ -444,12 +444,12 @@ int make_kaiser(float * const window,unsigned int const M,float const beta)
 }
 
 // Modified Bessel function of the 0th kind, used by the Kaiser window
-const float i0(float const z)
+const double i0(double const z)
 {
-    const float t = (z*z)/4;
-    float sum = 1 + t;
-    float term = t;
-    for(int k=2; k<40; k++)
+    const double t = (z*z)/4;
+    double sum = 1 + t;
+    double term = t;
+    for(int k = 2; k < 40; k++)
     {
         term *= t/(k*k);
         sum += term;
