@@ -55,7 +55,9 @@ fftw_complex *fft_time;
 fftw_complex *fft_out;		// holds the incoming samples in freq domain (for rx as well as tx)
 fftw_complex *fft_in;			// holds the incoming samples in time domain (for rx as well as tx)
 fftw_complex *fft_m;			// holds previous samples for overlap and discard convolution
+fftw_complex *buffer_filter;  // holds filter fft
 fftw_plan plan_fwd, plan_tx, plan_rev;
+fftw_plan fwd_filter_plan, rev_filter_plan;
 
 struct filter *rx_filter;	// rx convolution filter
 struct filter *tx_filter;	// tx convolution filter
@@ -284,6 +286,7 @@ void dsp_init(radio *radio_h)
     rx_filter = filter_new(1024, 1025);
     tx_filter = filter_new(1024, 1025);
 
+    printf("Creating filters FFT plans\n");
     dsp_set_filters();
 }
 
@@ -294,11 +297,14 @@ void dsp_free(radio *radio_h)
 
     fftw_destroy_plan(plan_rev);
     fftw_destroy_plan(plan_fwd);
+    fftw_destroy_plan(rev_filter_plan);
+    fftw_destroy_plan(fwd_filter_plan);
     fftw_free(fft_m);
     fftw_free(fft_in);
     fftw_free(fft_out);
     fftw_free(fft_time);
     fftw_free(fft_freq);
+    fftw_free(buffer_filter);
     free(rx_filter);
     free(tx_filter);
 }
@@ -382,24 +388,24 @@ int window_filter(int const L,int const M,complex double * const response,double
     //total length of the convolving samples
     int const N = L + M - 1;
 
-    static complex double *buffer;
-    static fftw_plan fwd_filter_plan;
-    static fftw_plan rev_filter_plan;
     if (last_N != N)
     {
-        printf("Creating filters FFT plans\n");
-        buffer = fftw_alloc_complex(N);
-        fwd_filter_plan = fftw_plan_dft_1d(N, buffer, buffer, FFTW_FORWARD, FFTW_MEASURE);
-        rev_filter_plan = fftw_plan_dft_1d(N, buffer, buffer, FFTW_BACKWARD, FFTW_MEASURE);
+        if (last_N != 0)
+        {
+            printf("Re-creating filters FFT plans\n");
+            fftw_destroy_plan(rev_filter_plan);
+            fftw_destroy_plan(fwd_filter_plan);
+            fftw_free(buffer_filter);
+        }
+        buffer_filter = fftw_alloc_complex(N);
+        fwd_filter_plan = fftw_plan_dft_1d(N, buffer_filter, buffer_filter, FFTW_FORWARD, FFTW_MEASURE);
+        rev_filter_plan = fftw_plan_dft_1d(N, buffer_filter, buffer_filter, FFTW_BACKWARD, FFTW_MEASURE);
         last_N = N;
     }
-    //fftw_plan fwd_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_FORWARD,FFTW_ESTIMATE);
-    //fftw_plan rev_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_BACKWARD,FFTW_ESTIMATE);
 
     // Convert to time domain
-    memcpy(buffer, response, N * sizeof(*buffer));
+    memcpy(buffer_filter, response, N * sizeof(*buffer_filter));
     fftw_execute(rev_filter_plan);
-//    fftw_destroy_plan(rev_filter_plan);
 
     double kaiser_window[M];
     make_kaiser(kaiser_window,M,beta);
@@ -409,22 +415,20 @@ int window_filter(int const L,int const M,complex double * const response,double
 
     //shift the buffer to make it causal
     for(int n = M - 1; n >= 0; n--)
-        buffer[n] = buffer[ (n-M/2+N) % N];
+        buffer_filter[n] = buffer_filter[ (n-M/2+N) % N];
 
     // apply window and gain
     for(int n = M - 1; n >= 0; n--)
-        buffer[n] = buffer[n] * kaiser_window[n] * gain;
+        buffer_filter[n] = buffer_filter[n] * kaiser_window[n] * gain;
 
     // Pad with zeroes on right side
-    memset(buffer+M,0,(N-M)*sizeof(*buffer));
+    memset(buffer_filter+M,0,(N-M)*sizeof(*buffer_filter));
 
     // Now back to frequency domain
     fftw_execute(fwd_filter_plan);
-//    fftw_destroy_plan(fwd_filter_plan);
 
-    memcpy(response,buffer,N*sizeof(*response));
+    memcpy(response,buffer_filter,N*sizeof(*response));
 
-    // fftw_free(buffer);
     return 0;
 }
 
