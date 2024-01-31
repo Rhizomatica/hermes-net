@@ -275,8 +275,8 @@ void dsp_init(radio *radio_h)
 
     fft_reset_m_bins();
 
-    plan_rev = fftw_plan_dft_1d(MAX_BINS, fft_freq, fft_time, FFTW_BACKWARD, FFTW_ESTIMATE);
-    plan_fwd = fftw_plan_dft_1d(MAX_BINS, fft_in, fft_out, FFTW_FORWARD, FFTW_ESTIMATE);
+    plan_rev = fftw_plan_dft_1d(MAX_BINS, fft_freq, fft_time, FFTW_BACKWARD, FFTW_MEASURE);
+    plan_fwd = fftw_plan_dft_1d(MAX_BINS, fft_in, fft_out, FFTW_FORWARD, FFTW_MEASURE);
 
     fft_reset_m_bins();
 
@@ -382,8 +382,11 @@ int window_filter(int const L,int const M,complex double * const response,double
 
     // fftw_plan can overwrite its buffers, so we're forced to make a temp. Ugh.
     complex double * const buffer = fftw_alloc_complex(N);
-    fftw_plan fwd_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_FORWARD,FFTW_ESTIMATE);
-    fftw_plan rev_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_BACKWARD,FFTW_ESTIMATE);
+    fftw_plan fwd_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_FORWARD, FFTW_MEASURE);
+    fftw_plan rev_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_BACKWARD, FFTW_MEASURE);
+
+    //fftw_plan fwd_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_FORWARD,FFTW_ESTIMATE);
+    //fftw_plan rev_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_BACKWARD,FFTW_ESTIMATE);
 
     // Convert to time domain
     memcpy(buffer, response, N * sizeof(*buffer));
