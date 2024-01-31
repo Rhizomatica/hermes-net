@@ -275,6 +275,7 @@ void dsp_init(radio *radio_h)
 
     fft_reset_m_bins();
 
+    printf("Creating signal FFT plans\n");
     plan_rev = fftw_plan_dft_1d(MAX_BINS, fft_freq, fft_time, FFTW_BACKWARD, FFTW_MEASURE);
     plan_fwd = fftw_plan_dft_1d(MAX_BINS, fft_in, fft_out, FFTW_FORWARD, FFTW_MEASURE);
 
@@ -376,15 +377,22 @@ void filter_print(struct filter *f)
 
 int window_filter(int const L,int const M,complex double * const response,double const beta)
 {
+    static int last_N = 0;
 
     //total length of the convolving samples
     int const N = L + M - 1;
 
-    // fftw_plan can overwrite its buffers, so we're forced to make a temp. Ugh.
-    complex double * const buffer = fftw_alloc_complex(N);
-    fftw_plan fwd_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_FORWARD, FFTW_MEASURE);
-    fftw_plan rev_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_BACKWARD, FFTW_MEASURE);
-
+    static complex double *buffer;
+    static fftw_plan fwd_filter_plan;
+    static fftw_plan rev_filter_plan;
+    if (last_N != N)
+    {
+        printf("Creating filters FFT plans\n");
+        buffer = fftw_alloc_complex(N);
+        fwd_filter_plan = fftw_plan_dft_1d(N, buffer, buffer, FFTW_FORWARD, FFTW_MEASURE);
+        rev_filter_plan = fftw_plan_dft_1d(N, buffer, buffer, FFTW_BACKWARD, FFTW_MEASURE);
+        last_N = N;
+    }
     //fftw_plan fwd_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_FORWARD,FFTW_ESTIMATE);
     //fftw_plan rev_filter_plan = fftw_plan_dft_1d(N,buffer,buffer,FFTW_BACKWARD,FFTW_ESTIMATE);
 
