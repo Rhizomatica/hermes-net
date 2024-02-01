@@ -56,6 +56,9 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 // set the filters according to bpf_low and bpf_high of current profile
 void dsp_set_filters();
 
+// call the agc code
+void dsp_process_agc();
+
 // by Ashhar Farhan, from https://github.com/afarhan/sbitx/blob/main/fft_filter.c
 struct filter *filter_new(int input_length, int impulse_length);
 int filter_tune(struct filter *f, double const low, double const high, double const kaiser_beta);

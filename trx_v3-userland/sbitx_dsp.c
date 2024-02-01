@@ -43,7 +43,6 @@ extern _Atomic bool shutdown_;
 static radio *radio_h_dsp;
 
 
-
 #define MAX_BINS 2048
 #define TUNED_BINS 512
 
@@ -123,8 +122,7 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     fftw_execute(plan_rev);
 
 	//STEP 8 : AGC
-    // TODO: re-add me!
-	// agc2(r);
+    dsp_process_agc();
 
 	//STEP 9: send the output back to where it needs to go
     int32_t *output_speaker_int = (int32_t *)output_speaker;
@@ -508,4 +506,77 @@ double interpolate_linear(double  a,double a_x,double  b,double b_x,double x)
 	return_val=a+(b-a)*(x-a_x)/(b_x-a_x);
 
 	return return_val;
+}
+
+void dsp_process_agc()
+{
+    double signal_strength, agc_gain_should_be;
+    int agc_speed;
+    static double agc_gain = 0.0;
+    static double signal_avg = 0.0;
+    static int agc_loop = 0;
+
+    _Atomic uint16_t agc = radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].agc;
+    switch (agc)
+    {
+    case AGC_OFF:
+        return;
+        break;
+    case AGC_SLOW:
+        agc_speed = 100;
+        break;
+    case AGC_MEDIUM:
+        agc_speed = 33;
+        break;
+    case AGC_FAST:
+        agc_speed = 10;
+        break;
+    default:
+        return;
+    }
+
+    //find the peak signal amplitude
+    signal_strength = 0.0;
+    for (int i = 0; i < MAX_BINS/2; i++)
+    {
+        double s = cimag(fft_time[i+(MAX_BINS/2)]);
+        if (signal_strength < s)
+            signal_strength = s;
+    }
+	//also calculate the moving average of the signal strength
+    signal_avg = (signal_avg * 0.93) + (signal_strength * 0.07);
+        agc_gain_should_be = 10/signal_strength;
+	signal_strength = signal_strength;
+
+    double agc_ramp = 0.0;
+
+    if (agc_gain_should_be < agc_gain)
+    {
+        agc_gain = agc_gain_should_be;
+        agc_loop = agc_speed;
+    }
+    else if (agc_loop <= 0)
+    {
+        agc_ramp = (agc_gain_should_be - agc_gain) / (MAX_BINS/2);
+    }
+
+    if (agc_ramp != 0)
+    {
+        for (int i = 0; i < MAX_BINS/2; i++)
+        {
+            __imag__ (fft_time[i+(MAX_BINS/2)]) *= agc_gain;
+        }
+        agc_gain += agc_ramp;
+    }
+    else
+    {
+        for (int i = 0; i < MAX_BINS/2; i++)
+        {
+            __imag__ (fft_time[i+(MAX_BINS/2)]) *= agc_gain;
+        }
+    }
+
+    agc_loop--;
+
+    return;
 }
