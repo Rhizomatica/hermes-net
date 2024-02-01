@@ -512,8 +512,8 @@ void dsp_process_agc()
 {
     double signal_strength, agc_gain_should_be;
     int agc_speed;
+
     static double agc_gain = 0.0;
-    static double signal_avg = 0.0;
     static int agc_loop = 0;
 
     _Atomic uint16_t agc = radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].agc;
@@ -543,10 +543,7 @@ void dsp_process_agc()
         if (signal_strength < s)
             signal_strength = s;
     }
-	//also calculate the moving average of the signal strength
-    signal_avg = (signal_avg * 0.93) + (signal_strength * 0.07);
-        agc_gain_should_be = 10/signal_strength;
-	signal_strength = signal_strength;
+    agc_gain_should_be = 1.0 / signal_strength;
 
     double agc_ramp = 0.0;
 
