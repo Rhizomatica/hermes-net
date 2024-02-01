@@ -543,7 +543,11 @@ void dsp_process_agc()
         if (signal_strength < s)
             signal_strength = s;
     }
-    agc_gain_should_be = 0.5 / signal_strength;
+
+    if (signal_strength < 0.00001 && signal_strength > -0.00001)
+        agc_gain_should_be = 1;
+    else
+        agc_gain_should_be = 0.5 / signal_strength;
 
     double agc_ramp = 0.0;
 
@@ -557,20 +561,10 @@ void dsp_process_agc()
         agc_ramp = (agc_gain_should_be - agc_gain) / (MAX_BINS/2);
     }
 
-    if (agc_ramp != 0)
+    for (int i = 0; i < MAX_BINS/2; i++)
     {
-        for (int i = 0; i < MAX_BINS/2; i++)
-        {
-            __imag__ (fft_time[i+(MAX_BINS/2)]) *= agc_gain;
-        }
+        __imag__ (fft_time[i+(MAX_BINS/2)]) *= agc_gain;
         agc_gain += agc_ramp;
-    }
-    else
-    {
-        for (int i = 0; i < MAX_BINS/2; i++)
-        {
-            __imag__ (fft_time[i+(MAX_BINS/2)]) *= agc_gain;
-        }
     }
 
     agc_loop--;
