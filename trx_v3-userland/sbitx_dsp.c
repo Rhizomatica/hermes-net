@@ -543,7 +543,7 @@ void dsp_process_agc()
         if (signal_strength < s)
             signal_strength = s;
     }
-    agc_gain_should_be = 1.0 / signal_strength;
+    agc_gain_should_be = 0.5 / signal_strength;
 
     double agc_ramp = 0.0;
 
