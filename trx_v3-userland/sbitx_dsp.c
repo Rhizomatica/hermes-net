@@ -564,8 +564,8 @@ void dsp_process_agc()
     for (int i = 0; i < MAX_BINS/2; i++)
     {
         __imag__ (fft_time[i+(MAX_BINS/2)]) *= agc_gain;
-        agc_gain += agc_ramp;
     }
+    agc_gain += agc_ramp;
 
     agc_loop--;
 
