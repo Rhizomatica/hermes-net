@@ -524,6 +524,7 @@ void io_tick(radio *radio_h)
             if (curr_time > last_time)
             {
                 timeout_counter -= curr_time - last_time;
+                last_time = curr_time;
                 if (timeout_counter <= 0)
                 {
                     set_profile(radio_h, radio_h->profile_default_idx);
