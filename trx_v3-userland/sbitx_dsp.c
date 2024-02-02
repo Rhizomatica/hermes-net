@@ -43,6 +43,10 @@
 #include "sbitx_dsp.h"
 #include "sbitx_core.h"
 
+#ifndef DEBUG_DSP_
+#define DEBUG_DSP_ 1
+#endif
+
  // we read the mode sample format from here
 extern snd_pcm_format_t format;
 
@@ -89,9 +93,26 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     // the samples added in the previous step
     int i, j = 0;
     //gather the samples into a time domain array
+    static double max_i_sample = 0;
+    static double min_i_sample = 0;
     for (i = MAX_BINS / 2; i < MAX_BINS; i++, j++)
     {
         i_sample = (1.0  * input_rx[j]) / MAX_SAMPLE_VALUE;
+
+#if DEBUG_DSP_ == 1
+        if (max_i_sample < i_sample)
+        {
+            max_i_sample = i_sample;
+            printf("input_rx %d\n", input_rx[j]);
+            printf("max_i_sample %f\n", max_i_sample);
+        }
+        if (min_i_sample > i_sample)
+        {
+            min_i_sample = i_sample;
+            printf("input_rx %d\n", input_rx[j]);
+            printf("min_i_sample %f\n", min_i_sample);
+        }
+#endif
 
         __real__ fft_m[j] = i_sample;
         __imag__ fft_m[j] = 0;
