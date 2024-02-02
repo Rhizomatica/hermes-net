@@ -23,7 +23,7 @@
 #include <iniparser.h>
 
 #ifndef DEBUG_CFG_
-#define DEBUG_CFG_ 1
+#define DEBUG_CFG_ 0
 #endif
 
 #include "cfg_utils.h"
