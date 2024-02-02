@@ -57,6 +57,18 @@ bool cfg_shutdown(radio *radio_h, pthread_t *config_tid)
     return true;
 }
 
+#if DEBUG_CFG_ == 1
+#include "sbitx_buffer.h"
+extern buffer *radio_to_dsp;
+extern buffer *dsp_to_radio;
+
+extern buffer *mic_to_dsp;
+extern buffer *dsp_to_speaker;
+
+extern buffer *dsp_to_loopback;
+extern buffer *loopback_to_dsp;
+#endif
+
 void *config_thread(void *radio_h_v)
 {
     radio *radio_h = (radio *) radio_h_v;
@@ -74,8 +86,20 @@ void *config_thread(void *radio_h_v)
             write_config_user(radio_h, CFG_USER_PATH);
             radio_h->cfg_user_dirty = false;
         }
-        // every ~2s we check if the dirty bit is set
+        // every ~2s we check if amu cfg dirty bit is set
         sleep(2);
+
+#if DEBUG_CFG_ == 1
+        printf("radio_to_dsp: %ld B\n", size_buffer(radio_to_dsp));
+        printf("dsp_to_radio: %ld B\n", size_buffer(dsp_to_radio));
+
+        printf("mic_to_dsp: %ld B\n", size_buffer(mic_to_dsp));
+        printf("dsp_to_speaker: %ld B\n", size_buffer(dsp_to_speaker));
+
+        printf("dsp_to_loopback: %ld B\n", size_buffer(dsp_to_loopback));
+        printf("loopback_to_dsp: %ld B\n", size_buffer(loopback_to_dsp));
+#endif
+        // printing some status stuff
     }
 
     return NULL;
