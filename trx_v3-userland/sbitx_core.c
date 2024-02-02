@@ -503,13 +503,11 @@ void io_tick(radio *radio_h)
     if (set_dirty_ws)
         radio_h->send_ws_update = true;
 
-    // in development
-#if 0
-    // TODO: how to stop the timer or reset the timer?
-    static bool timer_reset = false;
+    // the stop watch for reverting to default profile
+    static bool timer_reset = true;
     static time_t last_time = 0;
     static int32_t timeout_counter = 0;
-    // the profile timeout logic
+
     if ( (radio_h->profile_default_idx != radio_h->profile_active_idx) &&
          (radio_h->profile_timeout >= 0) )
     {
@@ -527,17 +525,17 @@ void io_tick(radio *radio_h)
                 timeout_counter -= last_time - curr_time;
                 if (timeout_counter <= 0)
                 {
-                    // TODO: switch to default profile
-                    // set frequency, mode, dsp functions, levels and so on... put this in a function
-                    radio_h->profile_active_idx = radio_h->profile_default_idx;
+                    set_profile(radio_h, radio_h->profile_default_idx);
                     timer_reset = true;
                 }
             }
         }
     }
     else
+    {
         timer_reset = true;
-#endif
+    }
+
 }
 
 
