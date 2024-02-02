@@ -508,6 +508,16 @@ double interpolate_linear(double  a,double a_x,double  b,double b_x,double x)
 	return return_val;
 }
 
+// TODO: We need to define our reference and implement the ALC in the rx alsa input
+//
+// TODO: Add to DSP a de-noise function with libspecbleach
+//       https://github.com/Rhizomatica/libspecbleach/blob/main/example/adenoiser_demo.c
+
+// TODO: re-write me using fastagc_ff [block_size [reference]]
+//       It is a faster AGC that linearly changes the gain, taking the highest amplitude peak in
+//       the buffer into consideration. Its output will never exceed -reference ... reference.
+//       https://github.com/Rhizomatica/csdr
+//
 void dsp_process_agc()
 {
     double signal_strength, agc_gain_should_be;
