@@ -504,9 +504,9 @@ void io_tick(radio *radio_h)
         radio_h->send_ws_update = true;
 
     // the stop watch for reverting to default profile
-    static bool timer_reset = true;
+    static bool timer_reset = true; // TODO: move me to global
     static time_t last_time = 0;
-    static int32_t timeout_counter = 0;
+    static time_t timeout_counter = 0;
 
     if ( (radio_h->profile_default_idx != radio_h->profile_active_idx) &&
          (radio_h->profile_timeout >= 0) )
@@ -520,9 +520,10 @@ void io_tick(radio *radio_h)
         else
         {
             time_t curr_time = time(NULL);
+
             if (curr_time > last_time)
             {
-                timeout_counter -= last_time - curr_time;
+                timeout_counter -= curr_time - last_time;
                 if (timeout_counter <= 0)
                 {
                     set_profile(radio_h, radio_h->profile_default_idx);
