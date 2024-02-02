@@ -32,6 +32,14 @@
 #include <fftw3.h>
 #include <math.h>
 
+
+#define USE_FFTW
+#define LIBCSDR_GPL
+#include <fft_fftw.h>
+#include <libcsdr.h>
+#include <libcsdr_gpl.h>
+
+
 #include "sbitx_dsp.h"
 #include "sbitx_core.h"
 
@@ -519,6 +527,38 @@ double interpolate_linear(double  a,double a_x,double  b,double b_x,double x)
 //       https://github.com/Rhizomatica/csdr
 //
 void dsp_process_agc()
+{
+    static bool fist_call = true;
+    static fastagc_ff_t input;
+    static float* agc_output_buffer;
+
+    if (fist_call)
+    {
+        input.input_size = MAX_BINS/2;
+
+        input.reference=0.5;
+
+        input.buffer_1=(float*)calloc(input.input_size,sizeof(float));
+        input.buffer_2=(float*)calloc(input.input_size,sizeof(float));
+        input.buffer_input=(float*)malloc(sizeof(float)*input.input_size);
+        agc_output_buffer=(float*)malloc(sizeof(float)*input.input_size);
+
+        fist_call = false;
+    }
+
+    for (int i = 0; i < MAX_BINS / 2; i++)
+    {
+        input.buffer_input[i] = (float) cimag(fft_time[i + (MAX_BINS / 2)]);
+    }
+    fastagc_ff(&input, agc_output_buffer);
+    for (int i = 0; i < MAX_BINS / 2; i++)
+    {
+        __imag__ (fft_time[i + (MAX_BINS / 2)]) = (double) agc_output_buffer[i];
+    }
+
+}
+
+void dsp_process_agc_old()
 {
     double signal_strength, agc_gain_should_be;
     int agc_speed;

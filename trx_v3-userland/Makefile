@@ -22,8 +22,8 @@
 uname_p := $(shell uname -m)
 
 CC=gcc
-LDFLAGS=-liniparser -li2c -lssl -lcrypto -lpthread -lasound -lm -lfftw3
-CFLAGS=-Ofast -Wall -std=gnu11 -fstack-protector -I/usr/include/iniparser
+LDFLAGS=-liniparser -li2c -lssl -lcrypto -lpthread -lasound -lm -lfftw3 -lcsdr
+CFLAGS=-Ofast -Wall -std=gnu11 -fstack-protector -I/usr/include/iniparser -I/usr/include/csdr
 
 ifeq (${uname_p},aarch64)
 # aarch64 Raspberry Pi 4 or better
