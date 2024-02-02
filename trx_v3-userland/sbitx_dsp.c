@@ -130,7 +130,8 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     fftw_execute(plan_rev);
 
 	//STEP 8 : AGC
-    dsp_process_agc();
+	if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].agc != AGC_OFF)
+        dsp_process_agc();
 
 	//STEP 9: send the output back to where it needs to go
     int32_t *output_speaker_int = (int32_t *)output_speaker;
