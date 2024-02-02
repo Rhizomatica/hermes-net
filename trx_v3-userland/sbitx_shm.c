@@ -69,7 +69,6 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
        }
        else if (radio_h->txrx_state == IN_RX)
        {
-           // TODO: sound_input(1);
            tr_switch(radio_h, IN_TX);
            response[0] = CMD_RESP_ACK;
        }
@@ -87,7 +86,6 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
        }
        else if (radio_h->txrx_state == IN_TX)
        {
-           // TODO: sound_input(0);
            tr_switch(radio_h, IN_RX);
            response[0] = CMD_RESP_ACK;
        }

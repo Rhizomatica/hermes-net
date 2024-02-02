@@ -175,13 +175,33 @@ void set_profile(radio *radio_h, uint32_t profile)
 
     radio_h->profile_active_idx = profile;
 
+    // set the frequency and mode
+    set_frequency(radio_h, radio_h->profiles[profile].freq, profile);
+    set_mode(radio_h, radio_h->profiles[profile].mode, profile);
+
+    // this sets the bpf
+    dsp_set_filters();
+
+    // and now the alsa levels
+    if (radio_h->txrx_state == IN_TX)
+    {
+        set_speaker_level(0);
+        set_tx_level(radio_h->profiles[profile].tx_level);
+    }
+    else
+    {
+        set_speaker_level(radio_h->profiles[profile].speaker_level);
+        set_tx_level(0);
+    }
+    set_mic_level(radio_h->profiles[profile].mic_level);
+    set_rx_level(radio_h->profiles[profile].rx_level);
+
+    // and save the new current_profile
     char tmp[64];
     sprintf(tmp, "%u", radio_h->profile_active_idx);
     int rc = cfg_set(radio_h, radio_h->cfg_user, "main:current_profile", tmp);
     if (rc != 0)
         printf("Error modifying config file\n");
-
-    // TODO: we need a function to switch profile... frequency, mode, agc, compressor, etc...
 
     radio_h->cfg_user_dirty = true;
 }

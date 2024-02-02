@@ -316,7 +316,6 @@ void dsp_free(radio *radio_h)
     free(tx_filter);
 }
 
-
 void dsp_set_filters()
 {
     double bpf_low = (double) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_low;
@@ -508,7 +507,7 @@ void rational_resampler(double * in, int in_size, double * out, int rate, int in
 	}
 }
 
-double interpolate_linear(double  a,double a_x,double  b,double b_x,double x)
+double interpolate_linear(double  a,double a_x,double b,double b_x,double x)
 {
 	double  return_val;
 
@@ -522,17 +521,55 @@ double interpolate_linear(double  a,double a_x,double  b,double b_x,double x)
 // TODO: Add to DSP a de-noise function with libspecbleach
 //       https://github.com/Rhizomatica/libspecbleach/blob/main/example/adenoiser_demo.c
 
-// TODO: re-write me using fastagc_ff [block_size [reference]]
-//       It is a faster AGC that linearly changes the gain, taking the highest amplitude peak in
-//       the buffer into consideration. Its output will never exceed -reference ... reference.
-//       https://github.com/Rhizomatica/csdr
-//
 void dsp_process_agc()
+{
+    static bool fist_call = true;
+
+    static float *input_buffer;
+    static float *output_buffer;
+
+    int block_size = MAX_BINS / 2;
+
+    // TODO: this is just a test... move these init stuff to appropriate _init and _free functions...
+    if (fist_call)
+    {
+        input_buffer = (float *) calloc (block_size, sizeof(float));
+        output_buffer = (float *) calloc (block_size, sizeof(float));
+        fist_call = false;
+    }
+
+    // TODO: define the SLOW, MEDIUM and FAST AGCs
+    short hang_time=400; // in frames
+    float reference=0.2; // reference level
+    float attack_rate=0.02;
+    float decay_rate=0.0002;
+    float max_gain=20; // in db
+    short attack_wait=0;
+    float filter_alpha=0.999;//0.001;
+
+    static float last_gain=1.0;
+
+    for (int i = 0; i < MAX_BINS / 2; i++)
+    {
+        input_buffer[i] = (float) cimag(fft_time[i + (MAX_BINS / 2)]);
+    }
+
+    last_gain = agc_ff(input_buffer, output_buffer, block_size, reference, attack_rate, decay_rate, max_gain, hang_time, attack_wait, filter_alpha, last_gain);
+
+    for (int i = 0; i < MAX_BINS / 2; i++)
+    {
+        __imag__ (fft_time[i + (MAX_BINS / 2)]) = (double) output_buffer[i];
+    }
+
+}
+
+void dsp_process_agc_fastagc()
 {
     static bool fist_call = true;
     static fastagc_ff_t input;
     static float* agc_output_buffer;
 
+    // TODO: this is just a test... move these init stuff to appropriate _init and _free functions...
     if (fist_call)
     {
         input.input_size = MAX_BINS/2;

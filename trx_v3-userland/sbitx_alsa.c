@@ -289,8 +289,16 @@ void setup_audio_codec()
     sound_mixer(radio_ctl, "Output Mixer Line Bypass", 0);
     sound_mixer(radio_ctl, "Store DC Offset", 0);
 
-    set_tx_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].tx_level);
-    set_speaker_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].speaker_level);
+    if (radio_h_snd->txrx_state == IN_TX)
+    {
+        set_speaker_level(0);
+        set_tx_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].tx_level);
+    }
+    else
+    {
+        set_speaker_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].speaker_level);
+        set_tx_level(0);
+    }
     set_mic_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].mic_level);
     set_rx_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].rx_level);
 }
@@ -871,7 +879,7 @@ void *control_thread(void *device_ptr)
     // we have 96 kHz in the radio soundcard, and 48 kHz in the loopback soundcard
     // we define our block transfer size as the minimum of both, in order to try to reduce latency a bit
     // uint32_t block_size = hw_period_size;
-    // As Farhan's DSP code needs 1024 samples window to work (which we are currently using...) we force 1024
+    // As Farhan's DSP code needs 1024 samples window to work (which we are currently using) we force 1024
     uint32_t block_size = 1024;
 
     // as we are hardcoding block sizes... this gets false
