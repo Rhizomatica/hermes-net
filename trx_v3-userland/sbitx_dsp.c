@@ -92,9 +92,12 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     // i is the index into the time samples, picking from
     // the samples added in the previous step
     int i, j = 0;
-    //gather the samples into a time domain array
+
+#if DEBUG_DSP_ == 1
     static double max_i_sample = 0;
     static double min_i_sample = 0;
+#endif
+    //gather the samples into a time domain array
     for (i = MAX_BINS / 2; i < MAX_BINS; i++, j++)
     {
         i_sample = (1.0  * input_rx[j]) / MAX_SAMPLE_VALUE;
@@ -110,7 +113,7 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         {
             min_i_sample = i_sample;
             printf("input_rx %d\n", input_rx[j]);
-            printf("min_i_sample %f\n", min_i_sample);
+            printf("min_i_sample %f\n\n", min_i_sample);
         }
 #endif
 
@@ -218,6 +221,11 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         rational_resampler(loopback_in, block_size / 2, signal_input_f, 2, INTERPOLATION);
     }
 
+#if DEBUG_DSP_ == 1
+    static double max_i_sample = 0;
+    static double min_i_sample = 0;
+#endif
+
 	//gather the samples into a time domain array
 	for (i = MAX_BINS/2; i < MAX_BINS; i++, j++)
     {
@@ -226,6 +234,21 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
             i_sample = signal_input_f[j];
         else
             i_sample = (1.0 * signal_input_int[j]) / MAX_SAMPLE_VALUE;
+
+#if DEBUG_DSP_ == 1
+        if (max_i_sample < i_sample)
+        {
+            max_i_sample = i_sample;
+            printf("input_tx %d\n", signal_input_int[j]);
+            printf("max_i_sample %f\n", max_i_sample);
+        }
+        if (min_i_sample > i_sample)
+        {
+            min_i_sample = i_sample;
+            printf("input_tx %d\n", signal_input_int[j]);
+            printf("min_i_sample %f\n\n", min_i_sample);
+        }
+#endif
 
         __real__ fft_m[j] = i_sample;
         __imag__ fft_m[j] = 0;
