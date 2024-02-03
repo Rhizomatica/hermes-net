@@ -345,8 +345,8 @@ void swr_protection_check(radio *radio_h)
 
     if (peak_removal_counter > REF_PEAK_REMOVAL)
     {
-        radio_h->swr_protection_enabled = true;
         tr_switch(radio_h, IN_RX);
+        radio_h->swr_protection_enabled = true;
         peak_removal_counter = 0;
         radio_h->send_ws_update = true;
     }
