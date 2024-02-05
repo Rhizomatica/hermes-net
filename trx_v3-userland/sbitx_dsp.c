@@ -43,6 +43,7 @@
 #include "sbitx_dsp.h"
 #include "sbitx_core.h"
 
+// set 0 for production
 #ifndef DEBUG_DSP_
 #define DEBUG_DSP_ 1
 #endif
@@ -58,7 +59,7 @@ static radio *radio_h_dsp;
 #define MAX_BINS 2048
 #define TUNED_BINS 512
 
-#define MAX_SAMPLE_VALUE 2147483647.0 // (2 ^ 31) - 1 SIGNED 32 LE
+#define MAX_SAMPLE_VALUE 8388607.0 // (2 ^ 23) - 1,  signed(?) 24 bits packed in a SIGNED 32 LE
 
 
 fftw_complex *fft_freq;
@@ -100,7 +101,8 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     //gather the samples into a time domain array
     for (i = MAX_BINS / 2; i < MAX_BINS; i++, j++)
     {
-        i_sample = (1.0  * input_rx[j]) / MAX_SAMPLE_VALUE;
+        // 24 bit audio samples are packed in MSB in the 32 bit word
+        i_sample = (1.0  * (input_rx[j] >> 8)) / MAX_SAMPLE_VALUE;
 
 #if DEBUG_DSP_ == 1
         if (max_i_sample < i_sample)
@@ -162,6 +164,8 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     for (i = 0; i < MAX_BINS / 2; i++)
     {
         output_speaker_int[i] = (int32_t) (cimag(fft_time[i+(MAX_BINS/2)]) * MAX_SAMPLE_VALUE);
+        // we shift 8 bit right to revert to wm8731 sample format
+        output_speaker_int[i] <<= 8;
     }
 
     // 96 kHz mono to 48 kHz stereo decimation, L=R
@@ -216,9 +220,16 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         for (i = 0; i < block_size; i = i + 2)
         {
             // just left channel
-            loopback_in[i/2] = (1.0 * signal_input_int[i]) / MAX_SAMPLE_VALUE;
+            loopback_in[i/2] = (1.0 * (signal_input_int[j] >> 8)) / MAX_SAMPLE_VALUE;
         }
         rational_resampler(loopback_in, block_size / 2, signal_input_f, 2, INTERPOLATION);
+    }
+    else // mic input from wm8731
+    {
+        for (i = 0; i < block_size; i = i + 2)
+        {
+            signal_input_f[i] = (1.0 * (signal_input_int[j] >> 8)) / MAX_SAMPLE_VALUE;
+        }
     }
 
 #if DEBUG_DSP_ == 1
@@ -229,11 +240,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 	//gather the samples into a time domain array
 	for (i = MAX_BINS/2; i < MAX_BINS; i++, j++)
     {
-        // for loopback we get just the left side and upsample down in the code
-        if (input_is_48k_stereo)
-            i_sample = signal_input_f[j];
-        else
-            i_sample = (1.0 * signal_input_int[j]) / MAX_SAMPLE_VALUE;
+        i_sample = signal_input_f[j];
 
 #if DEBUG_DSP_ == 1
         if (max_i_sample < i_sample)
@@ -295,7 +302,8 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     // TODO: Add the tx calibration gain here!!
 	for (i = 0; i < MAX_BINS / 2; i++)
     {
-        signal_output_int[i] = (int32_t) (creal(fft_time[i+(MAX_BINS/2)]) * 400000.0);
+        signal_output_int[i] = (int32_t) (creal(fft_time[i+(MAX_BINS/2)]) * 400000.0); // TODO: why not MAX_SAMPLE_VALUE?
+        signal_output_int[i] <<= 8;
     }
 
     memset(output_loopback, 0, block_size * (snd_pcm_format_width(format) / 8));
