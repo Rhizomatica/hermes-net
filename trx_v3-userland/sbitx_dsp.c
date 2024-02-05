@@ -109,7 +109,7 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         {
             max_i_sample = i_sample;
             printf("input_rx %d\n", input_rx[j]);
-            printf("max_i_sample %f\n", max_i_sample);
+            printf("max_i_sample %f\n\n", max_i_sample);
         }
         if (min_i_sample > i_sample)
         {
@@ -247,13 +247,13 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         {
             max_i_sample = i_sample;
             printf("input_tx %d\n", signal_input_int[j]);
-            printf("max_i_sample %f\n", max_i_sample);
+            printf("max_tx_sample %f\n\n", max_i_sample);
         }
         if (min_i_sample > i_sample)
         {
             min_i_sample = i_sample;
             printf("input_tx %d\n", signal_input_int[j]);
-            printf("min_i_sample %f\n\n", min_i_sample);
+            printf("min_tx_sample %f\n\n", min_i_sample);
         }
 #endif
 
