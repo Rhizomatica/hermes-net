@@ -407,7 +407,6 @@ void io_tick(radio *radio_h)
 
     ticks++;
 
-    // TODO: all DSP and ALSA calls here or tr_switch?
     if (last_key_state != radio_h->key_down)
     {
         if (radio_h->key_down)
