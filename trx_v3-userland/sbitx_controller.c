@@ -64,7 +64,8 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-   int cpu_nr = -1;
+   // hermes default is 3
+   int cpu_nr = 3;
    int opt;
    while ((opt = getopt(argc, argv, "hc:")) != -1)
    {

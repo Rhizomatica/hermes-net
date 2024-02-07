@@ -95,8 +95,8 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     int i, j = 0;
 
 #if DEBUG_DSP_ == 1
-    static double max_i_sample = 0;
-    static double min_i_sample = 0;
+    static double max_i_sample = -100000000;
+    static double min_i_sample = 100000000;
 #endif
     //gather the samples into a time domain array
     for (i = MAX_BINS / 2; i < MAX_BINS; i++, j++)
@@ -220,21 +220,21 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         for (i = 0; i < block_size; i = i + 2)
         {
             // just left channel
-            loopback_in[i/2] = (1.0 * (signal_input_int[j] >> 8)) / MAX_SAMPLE_VALUE;
+            loopback_in[i/2] = (1.0 * (signal_input_int[i] >> 8)) / MAX_SAMPLE_VALUE;
         }
         rational_resampler(loopback_in, block_size / 2, signal_input_f, 2, INTERPOLATION);
     }
     else // mic input from wm8731
     {
-        for (i = 0; i < block_size; i = i + 2)
+        for (i = 0; i < block_size; i++)
         {
-            signal_input_f[i] = (1.0 * (signal_input_int[j] >> 8)) / MAX_SAMPLE_VALUE;
+            signal_input_f[i] = (1.0 * (signal_input_int[i] >> 8)) / MAX_SAMPLE_VALUE;
         }
     }
 
 #if DEBUG_DSP_ == 1
-    static double max_i_sample = 0;
-    static double min_i_sample = 0;
+    static double max_i_sample = -100000000;
+    static double min_i_sample = 100000000;
 #endif
 
 	//gather the samples into a time domain array
@@ -286,7 +286,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         memset((void *) fft_out + (MAX_BINS/2 * sizeof(fftw_complex)), 0, sizeof(fftw_complex) * (MAX_BINS/2));
 
 	//now rotate to the tx_bin
-	for (i = 0; i < MAX_BINS; i++)
+    for (i = 0; i < MAX_BINS; i++)
     {
         int b = i + TUNED_BINS;
         if (b >= MAX_BINS)

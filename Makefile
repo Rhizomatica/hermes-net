@@ -18,6 +18,11 @@
 # Boston, MA 02110-1301, USA.
 #
 
+# TODO: add the v3 here...
+# TODO: fix uucpd and the include mess (just harmonize the call numbers)
+# really quit on ctrl+c for sbitx_controller after some seconds
+#
+
 .PHONY: clean install install_gateway install_v1 install_v2 trx_v1-firmware trx_v1-userland trx_v2-userland uuxcomp uucpd uucpd-v1 uucpd-v1 v1 v2
 
 prefix=/usr

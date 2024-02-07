@@ -364,6 +364,7 @@ void tr_switch(radio *radio_h, bool txrx_state)
         return;
     }
 
+    // TODO: put down the rx_level on tx
     if (txrx_state == IN_TX)
     {
         printf("IN_TX\n");
