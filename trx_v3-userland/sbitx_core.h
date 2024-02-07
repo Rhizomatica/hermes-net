@@ -170,7 +170,7 @@ typedef struct
     _Atomic bool key_down; // this is the ptt button
     _Atomic bool dash_down;
 
-    // raw values from read from the ATTiny 10bit ADC over I2C
+    // raw values read from the ATTiny 10bit ADC over I2C
     _Atomic uint32_t fwd_power;
     _Atomic uint32_t ref_power;
 

@@ -217,7 +217,14 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     double i_sample;
     int i, j = 0;
     // prepare data from loopback... 48kHz stereo to 96 kHz mono
-    if (input_is_48k_stereo)
+    if (radio_h_dsp->tone_generation)
+    {
+        for (i = 0; i < block_size; i++)
+        {
+            signal_input_f[i] = (1.0 * vfo_read(&tone)) / 65536.0;
+        }
+    }
+    else if (input_is_48k_stereo)
     {
         for (i = 0; i < block_size; i = i + 2)
         {
@@ -352,8 +359,7 @@ void dsp_init(radio *radio_h)
 
     // init vfo for tone generation
     vfo_init_phase_table();
-    // TODO: We will inject the samples before or after the fft?
-    vfo_start(&tone, 25000, 0); // this is after...
+    vfo_start(&tone, 1000, 0);
 }
 
 void dsp_free(radio *radio_h)
