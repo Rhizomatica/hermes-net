@@ -302,7 +302,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     // TODO: Add the tx calibration gain here!!
 	for (i = 0; i < MAX_BINS / 2; i++)
     {
-        signal_output_int[i] = (int32_t) (creal(fft_time[i+(MAX_BINS/2)]) * 400000.0); // TODO: why not MAX_SAMPLE_VALUE?
+        signal_output_int[i] = (int32_t) (creal(fft_time[i+(MAX_BINS/2)]) * 4000.0); // we just chose an appropriate level...
         signal_output_int[i] <<= 8;
     }
 

@@ -59,12 +59,12 @@ int main(int argc, char* argv[])
         fprintf(stderr, "Usage modes: \n%s\n%s -c [cpu_nr]\n", argv[0], argv[0]);
         fprintf(stderr, "%s -h\n", argv[0]);
         fprintf(stderr, "\nOptions:\n");
-        fprintf(stderr, " -c [cpu_nr]                Run on CPU [cpu_br].\n");
+        fprintf(stderr, " -c [cpu_nr]                Run on CPU [cpu_br]. Defaults to CPU 3. Use -1 to disable CPU selection\n");
         fprintf(stderr, " -h                         Prints this help.\n");
         return EXIT_FAILURE;
     }
 
-   // hermes default is 3
+   // hermes defaults is 3
    int cpu_nr = 3;
    int opt;
    while ((opt = getopt(argc, argv, "hc:")) != -1)
