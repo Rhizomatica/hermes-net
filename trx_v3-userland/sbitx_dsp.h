@@ -45,6 +45,13 @@ struct filter
     int M;
 };
 
+struct vfo {
+	int freq_hz;
+	int phase;
+	int phase_increment;
+};
+
+
 // init and free, for initialization and shutdown procedures
 void dsp_init(radio *radio_h);
 void dsp_free(radio *radio_h);
@@ -65,6 +72,11 @@ int filter_tune(struct filter *f, double const low, double const high, double co
 int window_filter(int const L,int const M,complex double * const response, double const beta);
 int make_kaiser(double * const window,unsigned int const M, double const beta);
 const double i0(double const z);
+
+// https://github.com/afarhan/sbitx/blob/main/vfo.c
+void vfo_init_phase_table();
+void vfo_start(struct vfo *v, int frequency_hz, int start_phase);
+int vfo_read(struct vfo *v);
 
 // by Fadi Jerji @ Rhizomatica
 void rational_resampler(double * in, int in_size, double * out, int rate, int interpolation_decimation);

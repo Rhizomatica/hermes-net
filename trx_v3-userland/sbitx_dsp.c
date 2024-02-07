@@ -74,6 +74,8 @@ fftw_plan fwd_filter_plan, rev_filter_plan;
 struct filter *rx_filter;	// rx convolution filter
 struct filter *tx_filter;	// tx convolution filter
 
+struct vfo tone; // vfo
+
 // - signal_input: 96 kHz mono from radio, get the "slice" between 24 kHz and 27 kHz (USB) or 21 kHz to 24 kHz (LSB), and bring this slice to 0 and 3 kHz
 // - out output_speaker: 96 kHz mono output for speaker
 // - out output_loopback: 48 kHz stereo for loopback input
@@ -347,6 +349,11 @@ void dsp_init(radio *radio_h)
 
     printf("Creating filters FFT plans\n");
     dsp_set_filters();
+
+    // init vfo for tone generation
+    vfo_init_phase_table();
+    // TODO: We will inject the samples before or after the fft?
+    vfo_start(&tone, 25000, 0); // this is after...
 }
 
 void dsp_free(radio *radio_h)
@@ -615,7 +622,7 @@ void dsp_process_agc()
 
 }
 
-void dsp_process_agc_fastagc()
+void dsp_process_agc_old_fastagc()
 {
     static bool fist_call = true;
     static fastagc_ff_t input;
@@ -648,6 +655,49 @@ void dsp_process_agc_fastagc()
 
 }
 
+//we define one more than needed to cover the boundary of quadrature
+#define MAX_PHASE_COUNT (16385)
+static int	phase_table[MAX_PHASE_COUNT];
+int sampling_freq = 96000;
+
+void vfo_init_phase_table()
+{
+    for (int i = 0; i < MAX_PHASE_COUNT; i++)
+    {
+        double d = (M_PI/2) * ((double)i)/((double)MAX_PHASE_COUNT);
+        phase_table[i] = (int)(sin(d) * 1073741824.0);
+    }
+}
+
+void vfo_start(struct vfo *v, int frequency_hz, int start_phase)
+{
+    v->phase_increment = (frequency_hz * 65536) / sampling_freq;
+    v->phase = start_phase;
+    v->freq_hz = frequency_hz;
+}
+
+int vfo_read(struct vfo *v)
+{
+    int i = 0;
+    if (v->phase < 16384)
+        i = phase_table[v->phase];
+    else if (v->phase < 32768)
+        i = phase_table[32767 - v->phase];
+    else if (v->phase < 49152)
+        i =  -phase_table[v->phase - 32768];
+    else
+        i = -phase_table[65535- v->phase];
+
+//increment the phase and modulo-65536
+    v->phase += v->phase_increment;
+    v->phase &= 0xffff;
+
+    return i;
+}
+
+
+// old tests for AGC
+#if 0
 void dsp_process_agc_old()
 {
     double signal_strength, agc_gain_should_be;
@@ -711,3 +761,5 @@ void dsp_process_agc_old()
 
     return;
 }
+
+#endif
