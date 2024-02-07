@@ -221,7 +221,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     {
         for (i = 0; i < block_size; i++)
         {
-            signal_input_f[i] = (1.0 * vfo_read(&tone)) / 65536.0;
+            signal_input_f[i] = (1.0 * vfo_read(&tone)) / 4800000000.0;
         }
     }
     else if (input_is_48k_stereo)
