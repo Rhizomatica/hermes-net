@@ -279,19 +279,18 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         set_speaker_volume(radio_h, speaker_level, profile);
         break;
 
+   case CMD_GET_TONE: // GET_TONE
+       response[0] = CMD_RESP_GET_TONE_ACK;
+       memcpy(response+1, &radio_h->tone_generation, 1);
+       break;
+
+   case CMD_SET_TONE: // SET_TONE
+       response[0] = CMD_RESP_ACK;
+       memcpy(&radio_h->tone_generation, cmd, 1);
+       break;
+
 // TODO: finish implementig the remaining commands
 #if 0
-
-    case CMD_GET_TONE: // GET_TONE
-        response[0] = CMD_RESP_GET_TONE_ACK;
-        memcpy(response+1, &tone_generation, 1);
-        break;
-
-    case CMD_SET_TONE: // SET_TONE
-        memcpy(&tone_generation, cmd, 1);
-        response[0] = CMD_RESP_SET_TONE_ACK;
-        break;
-
     case CMD_SET_RADIO_DEFAULTS: // SET RADIO DEFAULTS
         save_user_settings(1);
         save_hw_settings();

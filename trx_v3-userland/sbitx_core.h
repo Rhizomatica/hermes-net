@@ -152,6 +152,7 @@ typedef struct
     _Atomic bool txrx_state; // IN_RX or IN_TX
     _Atomic uint32_t reflected_threshold; // vswr * 10
     _Atomic bool swr_protection_enabled;
+    _Atomic bool tone_generation;
 
     // front panel controls and status
     encoder enc_a;
