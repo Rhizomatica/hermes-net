@@ -410,10 +410,13 @@ void io_tick(radio *radio_h)
 
     if (last_key_state != radio_h->key_down)
     {
-        if (radio_h->key_down)
-            tr_switch(radio_h, IN_TX);
-        else
-            tr_switch(radio_h, IN_RX);
+        if (radio_h->profiles[radio_h->profile_active_idx].enable_ptt)
+        {
+            if (radio_h->key_down)
+                tr_switch(radio_h, IN_TX);
+            else
+                tr_switch(radio_h, IN_RX);
+        }
         last_key_state = radio_h->key_down;
     }
 
