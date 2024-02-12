@@ -92,6 +92,8 @@
 #define CMD_SET_TONE 0x29
 #define CMD_GET_TONE 0x2a
 
+#define CMD_TIMEOUT_RESET 0x2b
+
 // radio responses
 // 5 bytes responses
 #define CMD_RESP_TIMEOUT 0x00

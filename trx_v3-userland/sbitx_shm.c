@@ -111,6 +111,11 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
        radio_h->send_ws_update = true;
        break;
 
+   case CMD_TIMEOUT_RESET: // RESET TIMEOUT
+       response[0] = CMD_RESP_ACK;
+       timer_reset = true;
+       break;
+
    case CMD_GET_PROTECTION_STATUS: // GET PROTECTION STATUS
        if (radio_h->swr_protection_enabled)
            response[0] = CMD_RESP_GET_PROTECTION_ON;

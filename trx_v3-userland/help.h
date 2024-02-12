@@ -135,6 +135,10 @@ const char format_str[] = "* ptt_on\n"
 "  * No Argument\n"
 "  * Resp: OK | ERROR\n\n"
 
+"* reset_timeout\n"
+"  * No Argument\n"
+"  * Resp: OK | ERROR\n\n"
+
 "* set_ref_threshold\n"
 "  * Reflected Threshold Level For Protection Activation (0 - 1023)\n"
 "  * Resp: OK | ERROR\n\n"

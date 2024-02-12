@@ -245,6 +245,10 @@ int main(int argc, char *argv[])
     {
         srv_cmd[4] = CMD_RESET_PROTECTION;
     }
+    else if (!strcmp(command, "reset_timeout"))
+    {
+        srv_cmd[4] = CMD_TIMEOUT_RESET;
+    }
     else if (!strcmp(command, "set_ref_threshold"))
     {
         if (argument_set == false)
