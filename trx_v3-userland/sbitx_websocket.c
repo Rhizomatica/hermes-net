@@ -40,6 +40,8 @@ struct mg_mgr mgr;  // Event manager
 extern _Atomic bool send_ws_update;
 extern _Atomic bool shutdown_;
 
+extern time_t timeout_counter;
+
 char request[200];
 int request_index = 0;
 
@@ -186,6 +188,8 @@ void *webserver_thread_function(void *radio_h_v)
                     sprintf(buff+strlen(buff), "\"led\": %s,\n", radio_h->system_is_ok ? "true":"false");
                     sprintf(buff+strlen(buff), "\"connection\": %s,\n", radio_h->system_is_connected ? "true":"false");
                     sprintf(buff+strlen(buff), "\"profile\": %u,\n", radio_h->profile_active_idx);
+                    sprintf(buff+strlen(buff), "\"timeout\": %ld,\n", timeout_counter);
+
                     for (int i = 0; i < radio_h->profiles_count; i++)
                     {
                         radio_profile *curr_prof = &radio_h->profiles[i];

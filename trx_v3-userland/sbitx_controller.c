@@ -42,6 +42,10 @@ void exit_radio(int sig)
 {
     printf("Exiting...\n");
     shutdown_ = true;
+
+    // we just exit anyway if the shutdown producedure gets stuck somewhere
+    sleep(4);
+    exit(EXIT_FAILURE);
 }
 
 int main(int argc, char* argv[])

@@ -48,6 +48,9 @@ extern _Atomic bool shutdown_;
 
 static controller_conn *connector_local;
 
+extern bool timer_reset;
+extern time_t timeout_counter;
+
 // local radio handle pointer used for simplifying the function prototypes
 static radio *radio_h_shm;
 

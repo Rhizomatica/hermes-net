@@ -19,6 +19,14 @@
 # Boston, MA 02110-1301, USA.
 #
 
+## TODO:
+## - fix the exit
+## - install v3 (will it become back v2) by default, change the installer
+## - make ptt, freq, mode, step, etc change reset radio timeout
+## - mexer nos script em bash do caller
+## - mandar o timeout pelo websocket
+## - chamada para resetar o timeout
+
 uname_p := $(shell uname -m)
 
 CC=gcc

@@ -39,6 +39,10 @@
 
 extern _Atomic bool shutdown_;
 
+bool timer_reset = true; // TODO: move me to global
+time_t timeout_counter = 0;
+
+
 bool hw_init(radio *radio_h, pthread_t *hw_tids)
 {
     // I2C SETUP
@@ -457,18 +461,18 @@ void io_tick(radio *radio_h)
             while (radio_h->volume_ticks > 0)
             {
                 radio_h->volume_ticks--;
-                if (volume < 5)
+                if (volume < 3)
                     volume = 0;
                 else
-                    volume -= 4;
+                    volume -= 2;
             }
             while (radio_h->volume_ticks < 0)
             {
                 radio_h->volume_ticks++;
-                if (volume > 95)
+                if (volume > 97)
                     volume = 100;
                 else
-                    volume += 4;
+                    volume += 2;
             }
             set_speaker_volume(radio_h, volume, radio_h->profile_active_idx);
             set_dirty_ws = true;
@@ -507,9 +511,7 @@ void io_tick(radio *radio_h)
         radio_h->send_ws_update = true;
 
     // the stop watch for reverting to default profile
-    static bool timer_reset = true; // TODO: move me to global
     static time_t last_time = 0;
-    static time_t timeout_counter = 0;
 
     if ( (radio_h->profile_default_idx != radio_h->profile_active_idx) &&
          (radio_h->profile_timeout >= 0) )
@@ -539,6 +541,7 @@ void io_tick(radio *radio_h)
     else
     {
         timer_reset = true;
+        timeout_counter = radio_h->profile_timeout;
     }
 
 }
