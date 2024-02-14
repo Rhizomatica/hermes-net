@@ -22,7 +22,6 @@
 ## TODO:
 ## - install v3 (will it become back v2) by default, change the installer
 ## - mexer nos script em bash do caller
-## - fix the mess in uucpd
 
 uname_p := $(shell uname -m)
 
