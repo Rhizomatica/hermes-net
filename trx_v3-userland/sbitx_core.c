@@ -30,6 +30,7 @@
 #include <errno.h>
 
 #include "cfg_utils.h"
+#include "sbitx_shm.h"
 #include "sbitx_core.h"
 #include "sbitx_i2c.h"
 #include "sbitx_gpio.h"

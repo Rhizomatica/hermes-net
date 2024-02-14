@@ -1,6 +1,7 @@
-/* ubitx_controller
- * Copyright (C) 2021-2022 Rhizomatica
- * Author: Rafael Diniz <rafael@riseup.net>
+/* sBitx controller shm interface
+ *
+ * Copyright (C) 2023-2024 Rhizomatica
+ * Author: Rafael Diniz <rafael@rhizomatica.org>
  *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,18 +20,18 @@
  *
  */
 
-#ifndef HAVE_SBITX_SHM_H__
-#define HAVE_SBITX_SHM_H__
+
+#ifndef SBITX_IO_H_
+#define SBITX_IO_H_
 
 #include <stdint.h>
-#include <stdatomic.h>
-#include <pthread.h>
+#include <stdbool.h>
 
-#include "sbitx_core.h"
 #include "sbitx_controller.h"
 
-void shm_controller_init(radio *radio_h, pthread_t *shm_tid);
-void shm_controller_shutdown(pthread_t *shm_tid);
+// returns true is response was received
+// response is copied to response... so pass a valid 5 bytes pointer
+bool radio_cmd(controller_conn *connector, uint8_t *srv_cmd, uint8_t *response);
 
 
-#endif // HAVE_SBITX_SHM_H__
+#endif // SBITX_IO_H_

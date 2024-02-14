@@ -38,9 +38,9 @@
 #include "uuardopd.h"
 #include "serial.h"
 
-#include "../trx_v1-userland/ubitx_controller.h"
-#include "../trx_v1-userland/ubitx_io.h"
-#include "../include/radio_cmds.h"
+#include "sbitx_controller.h"
+#include "sbitx_io.h"
+#include "radio_cmds.h"
 
 extern controller_conn *radio_conn;
 

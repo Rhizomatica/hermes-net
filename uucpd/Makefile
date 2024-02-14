@@ -22,13 +22,14 @@ uname_p := $(shell uname -m)
 
 prefix=/usr
 CC=gcc
+CFLAGS=-O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -I../include
 
 ifeq (${uname_p},aarch64)
 # aarch64 Raspberry Pi 4 or better
-	CFLAGS=-O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -moutline-atomics -march=armv8-a+crc
+	CFLAGS+=-moutline-atomics -march=armv8-a+crc
 else
 # x86_64 with SSE 4.2 level or better
-	CFLAGS=-O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -march=x86-64-v2
+	CFLAGS+=-march=x86-64-v2
 endif
 
 ifeq ($(IS_SBITX), 0)
