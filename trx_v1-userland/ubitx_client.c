@@ -309,20 +309,7 @@ int main(int argc, char *argv[])
 
         switch(response[0])
         {
-        case CMD_RESP_PTT_ON_ACK:
-        case CMD_RESP_PTT_OFF_ACK:
-        case CMD_RESP_SET_FREQ_ACK:
-        case CMD_RESP_SET_MODE_ACK:
-        case CMD_RESP_SET_MASTERCAL_ACK:
-        case CMD_RESP_SET_BFO_ACK:
-        case CMD_RESP_SET_LED_STATUS_ACK:
-        case CMD_RESP_SET_CONNECTED_STATUS_ACK:
-        case CMD_RESP_SET_SERIAL_ACK:
-        case CMD_RESP_RESET_PROTECTION_ACK:
-        case CMD_RESP_SET_REF_THRESHOLD_ACK:
-        case CMD_RESP_SET_RADIO_DEFAULTS_ACK:
-        case CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK:
-        case CMD_RESP_GPS_CALIBRATE_ACK:
+        case CMD_RESP_ACK:
             printf("OK\n");
             break;
         case CMD_RESP_PTT_ON_NACK:

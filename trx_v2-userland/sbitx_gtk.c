@@ -180,7 +180,6 @@ char*mode_name[MAX_MODES] = {
 _Atomic uint8_t tone_generation = 0;
 static atomic_int tuning_step = 1000;
 static atomic_int tx_mode = MODE_USB;
-static _Atomic uint16_t operating_mode = OPERATING_MODE_DIGITAL;
 
 #define BAND80M	0
 #define BAND40M	1
@@ -1148,7 +1147,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         {
             sound_input(1);
             tx_on(TX_SOFT);
-            response[0] = CMD_RESP_PTT_ON_ACK;
+            response[0] = CMD_RESP_ACK;
         }
         else
         {
@@ -1166,7 +1165,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         {
             sound_input(0);
             tx_off();
-            response[0] = CMD_RESP_PTT_OFF_ACK;
+            response[0] = CMD_RESP_ACK;
         }
         else
         {
@@ -1189,7 +1188,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         set_field("r1:freq", command);
         set_field("#vfo_a_freq", command);
 
-        response[0] = CMD_RESP_SET_FREQ_ACK;
+        response[0] = CMD_RESP_ACK;
         save_user_settings(1);
         break;
 
@@ -1217,7 +1216,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
             set_field("r1:mode", "CW");
         }
 
-        response[0] = CMD_RESP_SET_MODE_ACK;
+        response[0] = CMD_RESP_ACK;
         save_user_settings(1);
         break;
 
@@ -1231,7 +1230,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         break;
 
     case CMD_RESET_PROTECTION: // RESET PROTECTION
-        response[0] = CMD_RESP_RESET_PROTECTION_ACK;
+        response[0] = CMD_RESP_ACK;
         is_swr_protect_enabled = false;
         send_ws_update = true;
         break;
@@ -1250,7 +1249,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
 
     case CMD_SET_MASTERCAL: // SET MASTER CAL
         memcpy(&frequency_offset, cmd, 4);
-        response[0] = CMD_RESP_SET_MASTERCAL_ACK;
+        response[0] = CMD_RESP_ACK;
         save_user_settings(1);
         break;
 
@@ -1261,7 +1260,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
 
     case CMD_SET_BFO: // SET BFO
         memcpy(&bfo_freq, cmd, 4);
-        response[0] = CMD_RESP_SET_BFO_ACK;
+        response[0] = CMD_RESP_ACK;
         save_user_settings(1);
         break;
 
@@ -1284,7 +1283,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
 
     case CMD_SET_LED_STATUS: // SET LED STATUS
         led_status = cmd[0];
-        response[0] = CMD_RESP_SET_LED_STATUS_ACK;
+        response[0] = CMD_RESP_ACK;
         break;
 
     case CMD_GET_CONNECTED_STATUS: // GET CONNECTED STATUS
@@ -1296,7 +1295,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
 
     case CMD_SET_CONNECTED_STATUS: // SET CONNECTED STATUS
         connected_status = cmd[0];
-        response[0] = CMD_RESP_SET_CONNECTED_STATUS_ACK;
+        response[0] = CMD_RESP_ACK;
         break;
 
     case CMD_GET_SERIAL: // GET SERIAL NUMBER
@@ -1306,7 +1305,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
 
     case CMD_SET_SERIAL: // SET SERIAL NUMBER
         memcpy(&serial_number, cmd, 4);
-        response[0] = CMD_RESP_SET_SERIAL_ACK;
+        response[0] = CMD_RESP_ACK;
         save_user_settings(1);
         break;
 
@@ -1317,13 +1316,13 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
 
     case CMD_SET_STEPHZ: // CMD_SET_STEPHZ
         memcpy(&tuning_step, cmd, 4);
-        response[0] = CMD_RESP_SET_STEPHZ_ACK;
+        response[0] = CMD_RESP_ACK;
         save_user_settings(1);
         break;
 
     case CMD_SET_REF_THRESHOLD: // CMD_SET_REF_THRESHOLD
         memcpy(&reflected_threshold, cmd, 2);
-        response[0] = CMD_RESP_SET_REF_THRESHOLD_ACK;
+        response[0] = CMD_RESP_ACK;
         save_user_settings(1);
         break;
 
@@ -1342,7 +1341,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
         if (rx_vol < 0) rx_vol = 0; if (rx_vol > 100) rx_vol = 100;
         sprintf(command, "%d", rx_vol);
         set_field("r1:volume", command);
-        response[0] = CMD_RESP_SET_VOLUME_ACK;
+        response[0] = CMD_RESP_ACK;
         save_user_settings(1);
         break;
 
@@ -1353,7 +1352,7 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
 
     case CMD_SET_TONE: // SET_TONE
         memcpy(&tone_generation, cmd, 1);
-        response[0] = CMD_RESP_SET_TONE_ACK;
+        response[0] = CMD_RESP_ACK;
         break;
 
 #if 0
@@ -1414,13 +1413,13 @@ void processCATCommand(uint8_t *cmd, uint8_t *response)
     case CMD_SET_RADIO_DEFAULTS: // SET RADIO DEFAULTS
         save_user_settings(1);
         save_hw_settings();
-        response[0] = CMD_RESP_SET_RADIO_DEFAULTS_ACK;
+        response[0] = CMD_RESP_ACK;
         break;
 
     case CMD_RESTORE_RADIO_DEFAULTS: // RESTORE RADIO DEFAULTS
         load_user_settings();
         read_hw_ini();
-        response[0] = CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK;
+        response[0] = CMD_RESP_ACK;
         break;
     case CMD_RADIO_RESET: // RADIO RESET
         exit(-1);

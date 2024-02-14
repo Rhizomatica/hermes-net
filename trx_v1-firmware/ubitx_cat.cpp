@@ -63,7 +63,7 @@ void processCATCommand(byte* cmd)
         }
         else if (!inTx)
         {
-            response[0] = CMD_RESP_PTT_ON_ACK;
+            response[0] = CMD_RESP_ACK;
             startTx();
         } else
         {
@@ -79,7 +79,7 @@ void processCATCommand(byte* cmd)
         }
         else if (inTx)
         {
-            response[0] = CMD_RESP_PTT_OFF_ACK;
+            response[0] = CMD_RESP_ACK;
             stopTx();
         }
         else
@@ -90,7 +90,7 @@ void processCATCommand(byte* cmd)
         break;
 
     case CMD_RESET_PROTECTION: // RESET PROTECTION
-        response[0] = CMD_RESP_RESET_PROTECTION_ACK;
+        response[0] = CMD_RESP_ACK;
         triggerProtectionReset();
         Serial.write(response,1);
         break;
@@ -105,7 +105,7 @@ void processCATCommand(byte* cmd)
         memcpy(&frequency, cmd, 4);
         setFrequency(frequency);
         saveVFOs();
-        response[0] = CMD_RESP_SET_FREQ_ACK;
+        response[0] = CMD_RESP_ACK;
         Serial.write(response,1);
         break;
 
@@ -118,7 +118,7 @@ void processCATCommand(byte* cmd)
         saveVFOs();
         setFrequency(frequency);
 
-        response[0] = CMD_RESP_SET_MODE_ACK;
+        response[0] = CMD_RESP_ACK;
         Serial.write(response, 1);
         break;
 
@@ -155,7 +155,7 @@ void processCATCommand(byte* cmd)
     case CMD_SET_MASTERCAL: // SET MASTER CAL
         memcpy(&calibration, cmd, 4);
         setMasterCal(calibration);
-        response[0] = CMD_RESP_SET_MASTERCAL_ACK;
+        response[0] = CMD_RESP_ACK;
         Serial.write(response,1);
         break;
 
@@ -168,7 +168,7 @@ void processCATCommand(byte* cmd)
     case CMD_SET_BFO: // SET BFO
         memcpy(&usbCarrier, cmd, 4);
         setBFO(usbCarrier);
-        response[0] = CMD_RESP_SET_BFO_ACK;
+        response[0] = CMD_RESP_ACK;
         Serial.write(response,1);
         break;
 
@@ -194,7 +194,7 @@ void processCATCommand(byte* cmd)
 
     case CMD_SET_LED_STATUS: // SET LED STATUS
         setLed(cmd[0]);
-        response[0] = CMD_RESP_SET_LED_STATUS_ACK;
+        response[0] = CMD_RESP_ACK;
         Serial.write(response,1);
         break;
 
@@ -208,7 +208,7 @@ void processCATCommand(byte* cmd)
 
     case CMD_SET_CONNECTED_STATUS: // SET CONNECTED STATUS
         setConnected(cmd[0]);
-        response[0] = CMD_RESP_SET_CONNECTED_STATUS_ACK;
+        response[0] = CMD_RESP_ACK;
         Serial.write(response,1);
         break;
 
@@ -221,14 +221,14 @@ void processCATCommand(byte* cmd)
     case CMD_SET_SERIAL: // SET SERIAL NUMBER
         memcpy(&serial, cmd, 4);
         setSerial(serial);
-        response[0] = CMD_RESP_SET_SERIAL_ACK;
+        response[0] = CMD_RESP_ACK;
         Serial.write(response,1);
         break;
 
     case CMD_SET_REF_THRESHOLD: // SET REF THRESHOLD
         memcpy(&reflected_threshold, cmd, 2);
         save_reflected_threshold();
-        response[0] = CMD_RESP_SET_REF_THRESHOLD_ACK;
+        response[0] = CMD_RESP_ACK;
         Serial.write(response,1);
         break;
 
@@ -242,7 +242,7 @@ void processCATCommand(byte* cmd)
 #if RADUINO_VER > 0
         if (calibration_enabled == false)
             enable_calibration();
-        response[0] = CMD_RESP_GPS_CALIBRATE_ACK;
+        response[0] = CMD_RESP_ACK;
 #else
         response[0] = CMD_RESP_GPS_NOT_PRESENT;
 #endif
@@ -257,13 +257,13 @@ void processCATCommand(byte* cmd)
 
     case CMD_SET_RADIO_DEFAULTS: // SET RADIO DEFAULTS
         set_radio_defaults();
-        response[0] = CMD_RESP_SET_RADIO_DEFAULTS_ACK;
+        response[0] = CMD_RESP_ACK;
         Serial.write(response,1);
         break;
 
     case CMD_RESTORE_RADIO_DEFAULTS: // RESTORE RADIO DEFAULTS
         restore_radio_defaults();
-        response[0] = CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK;
+        response[0] = CMD_RESP_ACK;
         Serial.write(response,1);
         break;
 

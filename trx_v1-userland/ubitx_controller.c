@@ -170,35 +170,22 @@ int cat_rcv(void *arg)
             {
 	    // 1 byte responses
 		// ptt responses
-            case CMD_RESP_PTT_ON_ACK:
+            case CMD_RESP_ACK:
             case CMD_RESP_PTT_ON_NACK:
-            case CMD_RESP_PTT_OFF_ACK:
             case CMD_RESP_PTT_OFF_NACK:
             case CMD_ALERT_PROTECTION_ON:
 
 		// all other responses
-            case CMD_RESP_SET_FREQ_ACK:
-            case CMD_RESP_SET_MODE_ACK:
             case CMD_RESP_GET_MODE_USB:
             case CMD_RESP_GET_MODE_LSB:
             case CMD_RESP_GET_TXRX_INTX:
             case CMD_RESP_GET_TXRX_INRX:
             case CMD_RESP_GET_PROTECTION_ON:
             case CMD_RESP_GET_PROTECTION_OFF:
-            case CMD_RESP_SET_MASTERCAL_ACK:
-            case CMD_RESP_SET_BFO_ACK:
             case CMD_RESP_GET_LED_STATUS_ON:
             case CMD_RESP_GET_LED_STATUS_OFF:
-            case CMD_RESP_SET_LED_STATUS_ACK:
             case CMD_RESP_GET_CONNECTED_STATUS_ON:
             case CMD_RESP_GET_CONNECTED_STATUS_OFF:
-            case CMD_RESP_SET_CONNECTED_STATUS_ACK:
-            case CMD_RESP_SET_SERIAL_ACK:
-            case CMD_RESP_RESET_PROTECTION_ACK:
-            case CMD_RESP_SET_REF_THRESHOLD_ACK:
-            case CMD_RESP_SET_RADIO_DEFAULTS_ACK:
-            case CMD_RESP_RESTORE_RADIO_DEFAULTS_ACK:
-            case CMD_RESP_GPS_CALIBRATE_ACK:
             case CMD_RESP_GPS_NOT_PRESENT:
             case CMD_RESP_WRONG_COMMAND:
                 conn->response_service[0] = buf[0];
