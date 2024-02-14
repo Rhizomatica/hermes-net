@@ -39,9 +39,8 @@
 
 extern _Atomic bool shutdown_;
 
-bool timer_reset = true; // TODO: move me to global
-time_t timeout_counter = 0;
-
+_Atomic bool timer_reset = true; // TODO: move me to global
+_Atomic time_t timeout_counter = 0;
 
 bool hw_init(radio *radio_h, pthread_t *hw_tids)
 {
@@ -420,6 +419,8 @@ void io_tick(radio *radio_h)
                 tr_switch(radio_h, IN_TX);
             else
                 tr_switch(radio_h, IN_RX);
+
+            timer_reset = true; // reset the profile timer
         }
         last_key_state = radio_h->key_down;
     }
@@ -444,6 +445,7 @@ void io_tick(radio *radio_h)
             }
             set_frequency(radio_h, freq, radio_h->profile_active_idx);
             set_dirty_ws = true;
+            timer_reset = true; // reset the profile timer
         }
         else
         {
@@ -476,6 +478,7 @@ void io_tick(radio *radio_h)
             }
             set_speaker_volume(radio_h, volume, radio_h->profile_active_idx);
             set_dirty_ws = true;
+            timer_reset = true; // reset the profile timer
         }
         else
         {
