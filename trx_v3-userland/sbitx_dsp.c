@@ -303,14 +303,14 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         if (b < 0)
             b = b + MAX_BINS;
         fft_freq[b] = fft_out[i];
-	}
+    }
 
-	//convert back to time domain
-	fftw_execute(plan_rev);
+    //convert back to time domain
+    fftw_execute(plan_rev);
 
     // TODO: Add the tx calibration gain here!!
     double multiplier = get_band_multiplier();
-	for (i = 0; i < MAX_BINS / 2; i++)
+    for (i = 0; i < MAX_BINS / 2; i++)
     {
         signal_output_int[i] = (int32_t) (creal(fft_time[i+(MAX_BINS/2)]) * 4000.0 * multiplier); // we just chose an appropriate level...
         signal_output_int[i] <<= 8;

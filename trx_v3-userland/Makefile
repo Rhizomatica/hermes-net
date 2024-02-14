@@ -125,4 +125,4 @@ install_new:
 	install -D web/* /etc/sbitx/web/
 
 clean:
-	rm -f sbitx_controller *.o gpiolib/*.o
+	rm -f sbitx_controller sbitx_client *.o gpiolib/*.o
