@@ -33,7 +33,7 @@ ifeq (${uname_p},aarch64)
 # aarch64 Raspberry Pi 4 or better
 	CFLAGS+=-moutline-atomics -march=armv8-a+crc -I/usr/include/iniparser
 # for Pi 5 use:
-#	CFLAGS=-march=armv8.2-a+crypto+fp16+rcpc+dotprod
+#	CFLAGS+=-march=armv8.2-a+crypto+fp16+rcpc+dotprod
 else
 # x86_64 with SSE 4.2 level or better
 	CFLAGS+=-march=x86-64-v2
