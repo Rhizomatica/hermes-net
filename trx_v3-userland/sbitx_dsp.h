@@ -66,6 +66,9 @@ void dsp_set_filters();
 // call the agc code
 void dsp_process_agc();
 
+// the the tx band multiplier
+double get_band_multiplier();
+
 // by Ashhar Farhan, from https://github.com/afarhan/sbitx/blob/main/fft_filter.c
 struct filter *filter_new(int input_length, int impulse_length);
 int filter_tune(struct filter *f, double const low, double const high, double const kaiser_beta);

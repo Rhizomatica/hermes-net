@@ -131,9 +131,6 @@ typedef struct {
     bool enable_knob_frequency;
     bool enable_ptt;
 
-    // do we need this?
-    bool is_default;
-
 } radio_profile;
 
 

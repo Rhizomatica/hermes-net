@@ -309,15 +309,45 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 	fftw_execute(plan_rev);
 
     // TODO: Add the tx calibration gain here!!
+    double multiplier = get_band_multiplier();
 	for (i = 0; i < MAX_BINS / 2; i++)
     {
-        signal_output_int[i] = (int32_t) (creal(fft_time[i+(MAX_BINS/2)]) * 4000.0); // we just chose an appropriate level...
+        signal_output_int[i] = (int32_t) (creal(fft_time[i+(MAX_BINS/2)]) * 4000.0 * multiplier); // we just chose an appropriate level...
         signal_output_int[i] <<= 8;
     }
 
     memset(output_loopback, 0, block_size * (snd_pcm_format_width(format) / 8));
     memset(output_speaker, 0, block_size * (snd_pcm_format_width(format) / 8));
 }
+
+double get_band_multiplier()
+{
+    static uint32_t freq_last = 0;
+    static double multiplier = 0;
+
+    if (freq_last != radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].freq)
+    {
+        freq_last = radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].freq;
+        multiplier = 0;
+
+        for (int k = 0; k < radio_h_dsp->band_power_count; k++)
+        {
+            if (freq_last >= radio_h_dsp->band_power[k].f_start && freq_last < radio_h_dsp->band_power[k].f_stop)
+            {
+                multiplier = radio_h_dsp->band_power[k].scale;
+                break;
+            }
+        }
+
+        if (multiplier == 0)
+        {
+            fprintf(stderr, "Error finding band gain!\n");
+        }
+    }
+
+    return multiplier;
+}
+
 
 void fft_reset_m_bins(){
 	//zero up the previous 'M' bins
