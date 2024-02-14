@@ -18,11 +18,6 @@
 # Boston, MA 02110-1301, USA.
 #
 
-# TODO: add the v3 here...
-# TODO: fix uucpd and the include mess (just harmonize the call numbers)
-# really quit on ctrl+c for sbitx_controller after some seconds
-#
-
 .PHONY: clean install install_gateway install_v1 install_v2 trx_v1-firmware trx_v1-userland trx_v2-userland uuxcomp uucpd uucpd-v1 uucpd-v1 v1 v2
 
 prefix=/usr
@@ -70,8 +65,12 @@ install_v2:
 	install -D system_scripts/compression/decompress_audio.sh $(DESTDIR)$(prefix)/bin/decompress_audio.sh
 	install -D system_scripts/email/mailkill.sh $(DESTDIR)$(prefix)/bin/mailkill.sh
 	install -D system_scripts/email/mail_size_enforcement.sh $(DESTDIR)$(prefix)/bin/mail_size_enforcement.sh
-	install -D system_scripts/uucpd/vara_watchdog.sh $(DESTDIR)$(prefix)/bin
-
+	mkdir -p $(DESTDIR)/etc/sbitx
+	install -D trx_v2-userland/config/core.ini $(DESTDIR)/etc/sbitx/core.ini
+	install -D trx_v2-userland/config/user.ini $(DESTDIR)/etc/sbitx/user.ini
+	mkdir -p $(DESTDIR)/etc/sbitx/web
+	install -D trx_v2-userland/web/* $(DESTDIR)/etc/sbitx/web/
+#	install -D system_scripts/uucpd/vara_watchdog.sh $(DESTDIR)$(prefix)/bin
 
 
 install_v1:

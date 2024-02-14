@@ -1,6 +1,5 @@
-/* sBitx controller shm interface
- *
- * Copyright (C) 2023-2024 Rhizomatica
+/* sbitx_io
+ * Copyright (C) 2023 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
@@ -28,7 +27,7 @@
 #include <stdlib.h>
 
 #include "sbitx_io.h"
-#include "radio_cmds.h"
+#include "../include/radio_cmds.h"
 
 bool radio_cmd(controller_conn *connector, uint8_t *srv_cmd, uint8_t *response)
 {

@@ -38,13 +38,12 @@
 #include <threads.h>
 #include <pthread.h>
 
-#include "sbitx_shm.h"
+#include "sbitx_controller.h"
 #include "sbitx_io.h"
-#include "shm_utils.h"
+#include "../include/radio_cmds.h"
 
+#include "shm.h"
 #include "help.h"
-
-#include "radio_cmds.h"
 
 controller_conn *tmp_connector = NULL;
 
@@ -66,7 +65,6 @@ int main(int argc, char *argv[])
     controller_conn *connector = NULL;
     char command[64];
     char command_argument[64];
-    uint8_t profile = 0; // this is the default profile, if not set
     uint8_t srv_cmd[5];
     uint8_t response[5];
     bool argument_set = false;
@@ -79,7 +77,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "\nOptions:\n");
         fprintf(stderr, " -c command                 Runs the specified command\n");
         fprintf(stderr, " -a command_argument        Runs the specified command\n");
-        fprintf(stderr, " -p profile_number          Set the property in specified profile\n");
         fprintf(stderr, " -h                         Prints this help.\n");
         fprintf(stderr, "\nList of commands, arguments and responses (respectivelly):\n\n");
         fprintf(stderr, format_str);
@@ -87,7 +84,7 @@ int main(int argc, char *argv[])
     }
 
     int opt;
-    while ((opt = getopt(argc, argv, "hc:a:p:")) != -1)
+    while ((opt = getopt(argc, argv, "hc:a:")) != -1)
     {
         switch (opt)
         {
@@ -101,10 +98,6 @@ int main(int argc, char *argv[])
             strcpy(command_argument, optarg);
             argument_set = true;
             break;
-        case 'p':
-            profile = (uint8_t) atoi(optarg);
-            break;
-
         default:
             goto manual;
         }
@@ -120,21 +113,9 @@ int main(int argc, char *argv[])
     {
         srv_cmd[4] = CMD_PTT_OFF;
     }
-    else if(!strcmp(command, "get_profile"))
-    {
-        srv_cmd[4] = CMD_GET_PROFILE;
-    }
-    else if(!strcmp(command, "set_profile"))
-    {
-        if (argument_set == false)
-            goto manual;
-
-        srv_cmd[0] = (uint8_t) atoi(command_argument);
-        srv_cmd[4] = CMD_SET_PROFILE;
-    }
     else if (!strcmp(command, "get_frequency"))
     {
-        srv_cmd[4] = CMD_GET_FREQ | (profile << 6);
+        srv_cmd[4] = CMD_GET_FREQ;
     }
     else if (!strcmp(command, "set_frequency"))
     {
@@ -143,11 +124,11 @@ int main(int argc, char *argv[])
 
         uint32_t freq = (uint32_t) atoi(command_argument);
         memcpy(srv_cmd, &freq, 4);
-        srv_cmd[4] = CMD_SET_FREQ | (profile << 6);
+        srv_cmd[4] = CMD_SET_FREQ;
     }
     else if (!strcmp(command, "get_mode"))
     {
-        srv_cmd[4] = CMD_GET_MODE | (profile << 6);
+        srv_cmd[4] = CMD_GET_MODE;
     }
     else if (!strcmp(command, "set_mode"))
     {
@@ -163,7 +144,7 @@ int main(int argc, char *argv[])
         if (!strcmp(command_argument, "cw") || !strcmp(command_argument, "CW"))
             srv_cmd[0] = 0x04;
 
-        srv_cmd[4] = CMD_SET_MODE | (profile << 6);
+        srv_cmd[4] = CMD_SET_MODE;
     }
     else if (!strcmp(command, "get_txrx_status"))
     {
@@ -172,6 +153,19 @@ int main(int argc, char *argv[])
     else if (!strcmp(command, "get_protection_status"))
     {
         srv_cmd[4] = CMD_GET_PROTECTION_STATUS;
+    }
+    else if (!strcmp(command, "get_mastercal"))
+    {
+        srv_cmd[4] = CMD_GET_MASTERCAL;
+    }
+    else if (!strcmp(command, "set_mastercal"))
+    {
+        if (argument_set == false)
+            goto manual;
+
+        int32_t freq = atoi(command_argument);
+        memcpy(srv_cmd, &freq, 4);
+        srv_cmd[4] = CMD_SET_MASTERCAL;
     }
     else if (!strcmp(command, "get_bfo"))
     {
@@ -245,10 +239,6 @@ int main(int argc, char *argv[])
     {
         srv_cmd[4] = CMD_RESET_PROTECTION;
     }
-    else if (!strcmp(command, "reset_timeout"))
-    {
-        srv_cmd[4] = CMD_TIMEOUT_RESET;
-    }
     else if (!strcmp(command, "set_ref_threshold"))
     {
         if (argument_set == false)
@@ -277,7 +267,7 @@ int main(int argc, char *argv[])
     }
     else if (!strcmp(command, "get_volume"))
     {
-        srv_cmd[4] = CMD_GET_VOLUME | (profile << 6);
+        srv_cmd[4] = CMD_GET_VOLUME;
     }
     else if (!strcmp(command, "set_volume"))
     {
@@ -286,7 +276,7 @@ int main(int argc, char *argv[])
 
         int volume = (uint32_t) atoi(command_argument);
         memcpy(srv_cmd, &volume, 4);
-        srv_cmd[4] = CMD_SET_VOLUME | (profile << 6);
+        srv_cmd[4] = CMD_SET_VOLUME;
     }
     else if (!strcmp(command, "get_tone"))
     {
@@ -305,9 +295,17 @@ int main(int argc, char *argv[])
     {
         srv_cmd[4] = CMD_SET_RADIO_DEFAULTS;
     }
+    else if (!strcmp(command, "gps_calibrate"))
+    {
+        srv_cmd[4] = CMD_GPS_CALIBRATE;
+    }
     else if (!strcmp(command, "restore_radio_defaults"))
     {
         srv_cmd[4] = CMD_RESTORE_RADIO_DEFAULTS;
+    }
+    else if (!strcmp(command, "get_status"))
+    {
+        srv_cmd[4] = CMD_GET_STATUS;
     }
     else if (!strcmp(command, "radio_reset"))
     {
@@ -332,7 +330,6 @@ int main(int argc, char *argv[])
     connector = shm_attach(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn));
     tmp_connector = connector;
 
-    memset(response, 0, 5);
     bool cmd_resp = radio_cmd(connector, srv_cmd, response);
 
     if (srv_cmd[4] == CMD_RADIO_RESET)
@@ -350,7 +347,7 @@ int main(int argc, char *argv[])
         uint32_t freqstep;
         uint32_t serial;
         uint16_t measure;
-        uint8_t tone, profile;
+        uint8_t tone;
 
 
         switch(response[0])
@@ -398,11 +395,18 @@ int main(int argc, char *argv[])
         case CMD_RESP_GET_CONNECTED_STATUS_OFF:
             printf("LED_OFF\n");
             break;
-         case CMD_RESP_GET_FREQ_ACK:
+        case CMD_RESP_GPS_NOT_PRESENT:
+            printf("NO_GPS\n");
+            break;
+        case CMD_RESP_GET_FREQ_ACK:
             memcpy (&freq, connector->response_service+1, 4);
             printf("%u\n", freq);
             break;
-         case CMD_RESP_GET_SERIAL_ACK:
+        case CMD_RESP_GET_MASTERCAL_ACK:
+            memcpy (&freq, connector->response_service+1, 4);
+            printf("%d\n", freq);
+            break;
+        case CMD_RESP_GET_SERIAL_ACK:
             memcpy (&serial, connector->response_service+1, 4);
             printf("%u\n", serial);
             break;
@@ -434,14 +438,17 @@ int main(int argc, char *argv[])
             memcpy (&measure, connector->response_service+1, 2);
             printf("%hu\n", measure);
             break;
-        case CMD_RESP_GET_PROFILE:
-            memcpy (&profile, connector->response_service+1, 1);
-            printf("%hhu\n", profile);
-            break;
-
-            // this happens when there is no anwser from daemon
-        case CMD_RESP_TIMEOUT:
-            printf("TIMEOUT\n");
+        case CMD_RESP_GET_STATUS_ACK:
+            memcpy (&status, connector->response_service+1, 4);
+            bool pps_status = (status >> 20) & 0x1;
+            bool offset_adjustment_status = (status >> 21) & 0x1;
+            int32_t offset = status & 0x7ffffL;
+            bool offset_neg_sign = (status >> 19) & 0x1;
+            if (offset_neg_sign)
+                offset = -offset;
+            printf("PPS_STATUS %s\n", pps_status ? "OK":"FAIL");
+            printf("OFFSET_CAL_STATUS %s\n", offset_adjustment_status ? "OK":"FAIL");
+            printf("LATEST_OFFSET_CAL %d\n", offset);
             break;
 
         case CMD_RESP_WRONG_COMMAND:

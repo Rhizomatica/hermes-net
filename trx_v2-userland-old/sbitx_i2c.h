@@ -1,4 +1,4 @@
-/* sBitx core
+/* sBitx controller
  * Copyright (C) 2023 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
@@ -28,12 +28,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "sbitx_core.h"
+int read_pwr_levels(uint8_t *response);
+void i2cSendRegister(uint8_t reg, uint8_t val);
 
-bool i2c_open(radio *radio_h);
-bool i2c_close(radio *radio_h);
 
-int i2c_read_pwr_levels(radio *radio_h, uint8_t *response);
-void i2c_write_si5351(radio *radio_h, uint8_t reg, uint8_t val);
+bool open_i2c(char *device);
+bool close_i2c();
+
 
 #endif // SBITX_I2C_H_

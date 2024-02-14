@@ -1,5 +1,5 @@
-/* sBitx controller
- * Copyright (C) 2023 Rhizomatica
+/* HERMES sbitx controller
+ * Copyright (C) 2023-2024 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
@@ -37,21 +37,21 @@
 #include <stdbool.h>
 #include <pthread.h>
 
+#include "sbitx_core.h"
 #include "sbitx_i2c.h"
 
-static int bus;
-static pthread_mutex_t i2c_mutex;
+extern _Atomic bool shutdown_;
 
-int read_pwr_levels(uint8_t *response)
+int i2c_read_pwr_levels(radio *radio_h, uint8_t *response)
 {
     int ret_value = -1;
 
-    pthread_mutex_lock(&i2c_mutex);
+    pthread_mutex_lock(&radio_h->i2c_mutex);
 
-    if (ioctl(bus, I2C_SLAVE, ATTINY85_I2C) == 0)
-        ret_value = read(bus, response, 4);
+    if (ioctl(radio_h->i2c_bus, I2C_SLAVE, ATTINY85_I2C) == 0)
+        ret_value = read(radio_h->i2c_bus, response, 4);
 
-    pthread_mutex_unlock(&i2c_mutex);
+    pthread_mutex_unlock(&radio_h->i2c_mutex);
 
     if (ret_value != 4)
         ret_value = -1;
@@ -59,29 +59,34 @@ int read_pwr_levels(uint8_t *response)
     return ret_value;
 }
 
-void i2cSendRegister(uint8_t reg, uint8_t val){
+void i2c_write_si5351(radio *radio_h, uint8_t reg, uint8_t val){
 
-    pthread_mutex_lock(&i2c_mutex);
+    pthread_mutex_lock(&radio_h->i2c_mutex);
 
-    if (ioctl(bus, I2C_SLAVE, SI5351_I2C) == 0)
-        i2c_smbus_write_byte_data(bus, reg, val);
+    if (ioctl(radio_h->i2c_bus, I2C_SLAVE, SI5351_I2C) == 0)
+        i2c_smbus_write_byte_data(radio_h->i2c_bus, reg, val);
 
-    pthread_mutex_unlock(&i2c_mutex);
+    pthread_mutex_unlock(&radio_h->i2c_mutex);
 }
 
-bool open_i2c(char *device)
+bool i2c_open(radio *radio_h)
 {
-    pthread_mutex_init(&i2c_mutex, NULL);
-    bus = open(device, O_RDWR);
-    if (bus < 0)
-        return false; // failure
-    return true; // all good
+    pthread_mutex_init(&radio_h->i2c_mutex, NULL);
+
+    radio_h->i2c_bus = open(radio_h->i2c_device, O_RDWR);
+
+    if (radio_h->i2c_bus < 0)
+    {
+        shutdown_ = true;
+        return false;
+    }
+    return true;
 }
 
-bool close_i2c(char *device)
+bool i2c_close(radio *radio_h)
 {
-    if (close(bus) >= 0)
-        return true; // all good
+    if (close(radio_h->i2c_bus) >= 0)
+        return true;
     else
-        return false; // failure
+        return false;
 }

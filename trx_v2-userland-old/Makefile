@@ -1,0 +1,68 @@
+# Rhizomatica's sBitx tools
+#
+# Copyright (C) 2023-2024 Rhizomatica
+# Author: Rafael Diniz <rafael@riseup.net>
+#
+# This is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3, or (at your option)
+# any later version.
+#
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this software; see the file COPYING.  If not, write to
+# the Free Software Foundation, Inc., 51 Franklin Street,
+# Boston, MA 02110-1301, USA.
+#
+
+uname_p := $(shell uname -m)
+
+CC=gcc
+prefix=/usr
+
+
+ifeq (${uname_p},aarch64)
+# aarch64 Raspberry Pi 4 or better
+	CFLAGS=`pkg-config --cflags gtk+-3.0` -O3 -funroll-loops -march=armv8-a+crc -moutline-atomics -Wall -Wno-deprecated-declarations -std=gnu11 -pthread -DMG_ENABLE_OPENSSL -DMG_ARCH=1
+else
+# x86_64 with SSE 4.2 level or better
+	CFLAGS=`pkg-config --cflags gtk+-3.0` -O3 -funroll-loops -march=x86-64-v2 -Wall -Wno-deprecated-declarations -std=gnu11 -pthread -DMG_ENABLE_OPENSSL -DMG_ARCH=1
+endif
+
+LDFLAGS=`pkg-config --libs glib-2.0` -lwiringPi -lasound -lm -lfftw3 -lfftw3f -pthread -lssl -lcrypto -li2c
+
+all: sbitx_controller sbitx_client
+
+# SOURCES=vfo.c sbitx_sound.c fft_filter.c sbitx_gtk.c i2cbb.c si5351v2.c ini.c queue.c mongoose.c webserver.c sbitx.c sbitx_alsa.c sbitx_controller.c shm.c
+SOURCES=vfo.c fft_filter.c sbitx_gtk.c sbitx_i2c.c si5351v2.c ini.c queue.c mongoose.c webserver.c sbitx.c sbitx_alsa.c sbitx_dsp.c sbitx_controller.c shm.c buffer.c ring_buffer.c interpolation.c fir_filter.c
+
+OBJ=$(SOURCES:.c=.o)
+
+.c.o:
+	$(CC) -c $(CFLAGS) $< -o $@
+
+sbitx_controller: $(OBJ) sbitx_controller.h shm.h ../include/radio_cmds.h
+	$(CC) -o $@ $(OBJ) $(LDFLAGS)
+
+sbitx_client: sbitx_client.c shm.c sbitx_io.c sbitx_controller.h sbitx_io.h shm.h help.h ../include/radio_cmds.h
+	$(CC) $(CFLAGS) sbitx_client.c sbitx_io.c shm.c -o sbitx_client
+
+.PHONY: clean install
+clean:
+	rm -f *.o sbitx_client sbitx_controller
+
+install: sbitx_controller sbitx_client
+	install -D sbitx_client $(DESTDIR)$(prefix)/bin/sbitx_client
+# ugly hack for backward compatibility
+	install -D sbitx_client $(DESTDIR)$(prefix)/bin/ubitx_client
+	install -D sbitx_controller $(DESTDIR)$(prefix)/bin/sbitx_controller
+	mkdir -p /etc/sbitx/web
+	install -D web/* /etc/sbitx/web/
+	install -D data/user_settings.ini /etc/sbitx/user_settings.ini
+	install -D data/hw_settings.ini /etc/sbitx/hw_settings.ini
+	mkdir -p /etc/sbitx/audio
+	install -m 644 -D ../system_services/init/sbitx.service $(DESTDIR)/etc/systemd/system/sbitx.service

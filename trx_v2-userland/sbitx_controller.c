@@ -1,6 +1,7 @@
-/* ubitx_controller
- * Copyright (C) 2023 Rhizomatica
- * Author: Rafael Diniz <rafael@rhizomatica.org>
+/* HERMES sbitx controller
+ *
+ * Copyright (C) 2023-2024 Rhizomatica
+ * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,169 +20,116 @@
  *
  */
 
-#include <stdint.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
+#define _GNU_SOURCE
+
 #include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <signal.h>
-#include <poll.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
+#include <sched.h>
 
-#include <dirent.h>
-#include <ctype.h>
-#include <errno.h>
-#include <threads.h>
-#include <pthread.h>
-#include <glib.h>
+#include "sbitx_alsa.h"
+#include "sbitx_shm.h"
+#include "sbitx_core.h"
+#include "sbitx_websocket.h"
+#include "sbitx_dsp.h"
+#include "cfg_utils.h"
 
-#include "sbitx_controller.h"
-#include "../include/radio_cmds.h"
+_Atomic bool shutdown_ = false;
 
-#include "shm.h"
+void exit_radio(int sig)
+{
+    printf("Exiting...\n");
+    shutdown_ = true;
 
-static bool running;
-
-extern void g_main_loop_quit ();
-extern GMainLoop *loop_g;
-
-extern void processCATCommand(uint8_t *cmd, uint8_t *response);
-extern void tx_off();
-
-void finish(int s){
-    fprintf(stderr, "\nExiting...\n");
-
-    tx_off();
-
-    running = false;
-    g_main_loop_quit (loop_g);
-    sleep(1);
-
-    // do some house cleaning here.... or somewhere else?
-    exit(EXIT_SUCCESS);
+    // we just exit anyway if the shutdown producedure gets stuck somewhere
+    sleep(4);
+    exit(EXIT_FAILURE);
 }
 
-
-int cat_tx(void *arg)
+int main(int argc, char* argv[])
 {
-    controller_conn *conn = arg;
+    radio radio_h; // radio handler
+    pthread_t cfg_tid; // configuration subsystem thread id
+    pthread_t hw_tids[2]; // 2 hw thread ids user for IO
+    pthread_t web_tid; // websocket thread id
+    pthread_t shm_tid; // shared memory interface thread id
+    pthread_t control_tid, radio_capture, radio_playback, loop_capture, loop_playback; // audio threads
 
-    pthread_mutex_lock(&conn->cmd_mutex);
-
-    while(running)
+   if (argc > 3)
     {
-
-        pthread_cond_wait(&conn->cmd_condition, &conn->cmd_mutex);
-
-        processCATCommand(conn->service_command, conn->response_service);
-
-        if (conn->service_command[4] == CMD_RADIO_RESET)
-        {
-            running = false;
-            pthread_mutex_unlock(&conn->cmd_mutex);
-            fprintf(stderr,"\nReset command. Exiting\n");
-            exit(EXIT_SUCCESS);
-        }
-        conn->response_available = true;
-
+    manual:
+        fprintf(stderr, "Usage modes: \n%s\n%s -c [cpu_nr]\n", argv[0], argv[0]);
+        fprintf(stderr, "%s -h\n", argv[0]);
+        fprintf(stderr, "\nOptions:\n");
+        fprintf(stderr, " -c [cpu_nr]                Run on CPU [cpu_br]. Defaults to CPU 3. Use -1 to disable CPU selection\n");
+        fprintf(stderr, " -h                         Prints this help.\n");
+        return EXIT_FAILURE;
     }
 
-    pthread_mutex_unlock(&conn->cmd_mutex);
+   // hermes defaults is 3
+   int cpu_nr = 3;
+   int opt;
+   while ((opt = getopt(argc, argv, "hc:")) != -1)
+   {
+       switch (opt)
+       {
+       case 'c':
+           if(optarg)
+               cpu_nr = atoi(optarg);
+           break;
+       case 'h':
+       default:
+           goto manual;
+       }
+   }
 
-    fprintf(stderr,"Sent to the radio:  0x%hhx\n", conn->service_command[4]);
+   // our shutdown handling...
+   signal(SIGINT, exit_radio);
+   signal(SIGQUIT, exit_radio);
+   signal(SIGTERM, exit_radio);
+    // Catch SIGPIPE
+   signal(SIGPIPE, SIG_IGN); // and ignores SIGPIPE...
 
-    return EXIT_SUCCESS;
-}
+   memset(&radio_h, 0, sizeof(radio));
 
-bool initialize_message(controller_conn *connector)
-{
-    // init mutexes
-    pthread_mutex_t *mutex_ptr = (pthread_mutex_t *) & connector->cmd_mutex;
+   if (cpu_nr != -1)
+   {
+       cpu_set_t mask;
+       CPU_ZERO(&mask);
+       CPU_SET(cpu_nr, &mask);
+       sched_setaffinity(0, sizeof(mask), &mask);
+       printf("RUNNING ON CPU Nr %d\n", sched_getcpu());
+   }
 
-    pthread_mutexattr_t attr;
-    if (pthread_mutexattr_init(&attr)) {
-        perror("pthread_mutexattr_init");
-        return false;
-    }
-    if (pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED)) {
-        perror("pthread_mutexattr_setpshared");
-        return false;
-    }
+   /* Call in order... cfg, hw, shm, sound, shutdown in reverse order */
+   cfg_init(&radio_h, CFG_CORE_PATH, CFG_USER_PATH, &cfg_tid);
 
-    if (pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST)){
-        perror("pthread_mutexattr_setrobust");
-        return false;
-    }
+   hw_init(&radio_h, hw_tids);
 
-    if (pthread_mutex_init(mutex_ptr, &attr)) {
-        perror("pthread_mutex_init");
-        return false;
-    }
+   if (radio_h.enable_websocket)
+       websocket_init(&radio_h, CFG_WEBSOCKET_PATH, &web_tid);
 
-    mutex_ptr = (pthread_mutex_t *) & connector->response_mutex;
+   if (radio_h.enable_shm_control)
+       shm_controller_init(&radio_h, &shm_tid);
 
-    if (pthread_mutex_init(mutex_ptr, &attr)) {
-        perror("pthread_mutex_init");
-        return false;
-    }
+   dsp_init(&radio_h);
+   sound_system_init(&radio_h, &control_tid, &radio_capture, &radio_playback, &loop_capture, &loop_playback);
 
-    if (pthread_mutexattr_destroy(&attr)) {
-        perror("pthread_mutexattr_destroy");
-        return false;
-    }
+   // the next call calls pthread_join(), so it blocks until shutdown == true
+   hw_shutdown(&radio_h, hw_tids);
+   cfg_shutdown(&radio_h, &cfg_tid);
 
-    // init the cond
-    pthread_cond_t *cond_ptr = (pthread_cond_t *) & connector->cmd_condition;
-    pthread_condattr_t cond_attr;
-    if (pthread_condattr_init(&cond_attr)) {
-        perror("pthread_condattr_init");
-        return false;
-    }
-    if (pthread_condattr_setpshared(&cond_attr, PTHREAD_PROCESS_SHARED)) {
-        perror("pthread_condattr_setpshared");
-        return false;
-    }
+   if (radio_h.enable_websocket)
+       websocket_shutdown(&web_tid);
 
-    if (pthread_cond_init(cond_ptr, &cond_attr)) {
-        perror("pthread_cond_init");
-        return false;
-    }
+   if (radio_h.enable_shm_control)
+       shm_controller_shutdown(&shm_tid);
 
-    if (pthread_condattr_destroy(&cond_attr)) {
-        perror("pthread_condattr_destroy");
-        return false;
-    }
+   sound_system_shutdown(&radio_h, &control_tid, &radio_capture, &radio_playback, &loop_capture, &loop_playback);
+   dsp_free(&radio_h);
 
-    connector->response_available = false;
+   return EXIT_SUCCESS;
 
-    return EXIT_SUCCESS;
-}
-
-void sbitx_controller()
-{
-    controller_conn *connector;
-
-    if (shm_is_created(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn)))
-    {
-        fprintf(stderr, "Connector SHM is already created!\nDestroying it and creating again.\n");
-        shm_destroy(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn));
-    }
-    shm_create(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn));
-
-    connector = shm_attach(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn));
-
-    initialize_message(connector);
-
-
-    signal (SIGINT, finish);
-    signal (SIGQUIT, finish);
-    signal (SIGTERM, finish);
-
-    running = true;
-
-    thrd_t cat_thread;
-    thrd_create(&cat_thread, cat_tx, connector);
 }

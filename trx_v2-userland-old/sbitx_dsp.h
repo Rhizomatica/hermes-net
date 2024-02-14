@@ -1,6 +1,6 @@
-/* sBitx core
+/* sBitx controller
  * Copyright (C) 2023 Rhizomatica
- * Author: Rafael Diniz <rafael@riseup.net>
+ * Author: Rafael Diniz <rafael@rhizomatica.org>
  *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,21 +19,17 @@
  *
  */
 
-#ifndef SBITX_I2C_H_
-#define SBITX_I2C_H_
 
-#define ATTINY85_I2C 0x08
-#define SI5351_I2C 0x60
+#ifndef SBITX_DSP_H_
+#define SBITX_DSP_H_
 
-#include <stdbool.h>
 #include <stdint.h>
+#include <stdbool.h>
 
-#include "sbitx_core.h"
+void dsp_process_rx(uint8_t *buffer_radio_to_dsp, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t * output_tx, uint32_t block_size);
 
-bool i2c_open(radio *radio_h);
-bool i2c_close(radio *radio_h);
+void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t *output_tx, uint32_t block_size, bool input_is_48k_stereo);
 
-int i2c_read_pwr_levels(radio *radio_h, uint8_t *response);
-void i2c_write_si5351(radio *radio_h, uint8_t reg, uint8_t val);
+void dsp_start();
 
-#endif // SBITX_I2C_H_
+#endif // SBITX_DSP_H_
