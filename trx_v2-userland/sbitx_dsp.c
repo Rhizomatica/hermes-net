@@ -163,19 +163,17 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
 	//STEP 9: send the output back to where it needs to go
     int32_t *output_speaker_int = (int32_t *)output_speaker;
-    for (i = 0; i < MAX_BINS / 2; i++)
+    int32_t *output_loopback_int = (int32_t *) output_loopback;
+    for (i = 0; i < block_size; i++)
     {
         output_speaker_int[i] = (int32_t) (cimag(fft_time[i+(MAX_BINS/2)]) * MAX_SAMPLE_VALUE);
-        // we shift 8 bit right to revert to wm8731 sample format
+        if ((i % 2) == 0)
+        {
+            output_loopback_int[i] = output_speaker_int[i] << 4; // we give a small gain here for the loopback
+            output_loopback_int[i + 1] = output_loopback_int[i];     // 96 kHz mono to 48 kHz stereo decimation, L=R        }
+        }
+        // we shift 8 bit right to revert to wm8731 32-bit sample format (only 24-bit MSB valid)
         output_speaker_int[i] <<= 8;
-    }
-
-    // 96 kHz mono to 48 kHz stereo decimation, L=R
-    int32_t *output_loopback_int = (int32_t *) output_loopback;
-    for(i = 0; i < block_size; i += 2)
-    {
-        output_loopback_int[i] = output_speaker_int[i];
-        output_loopback_int[i + 1] = output_speaker_int[i];
     }
 
     memset(output_tx, 0, block_size * (snd_pcm_format_width(format) / 8));
@@ -184,8 +182,8 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 // - signal_input: 96 kHz mono input from mic or 48 kHz stereo input from loopback
 // - output_speaker: NULL buffer
 // - output_loopback: NULL buffer
-// - output_tx: get baseband (0 to 3 kHz) and upconvert to LSB or USB as above
-// - block_size: number of samples
+// - output_tx: output to tx with the input baseband (eg. 0 to 3 kHz) upconverted to passband in LSB or USB
+// - block_size: number of samples, hardcoded to 1024 for now
 // - input_is_48k_stereo: if true, input is 48 kHz stereo (loopback), otherwise, 96 kHz mono (mic)
 void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t *output_tx, uint32_t block_size, bool input_is_48k_stereo)
 {
