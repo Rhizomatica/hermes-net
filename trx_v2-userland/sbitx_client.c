@@ -78,10 +78,10 @@ int main(int argc, char *argv[])
         fprintf(stderr, "%s -h\n", argv[0]);
         fprintf(stderr, "\nOptions:\n");
         fprintf(stderr, " -c command                 Runs the specified command\n");
-        fprintf(stderr, " -a command_argument        Runs the specified command\n");
-        fprintf(stderr, " -p profile_number          Set the property in specified profile\n");
+        fprintf(stderr, " -a command_argument        Argument of the command\n");
+        fprintf(stderr, " -p profile_number          Select the profile to apply the command (only selected commands)\n");
         fprintf(stderr, " -h                         Prints this help.\n");
-        fprintf(stderr, "\nList of commands, arguments and responses (respectivelly):\n\n");
+        fprintf(stderr, "\nList of commands, followed by the need for profile indication, arguments and responses (respectivelly):\n\n");
         fprintf(stderr, format_str);
         exit(EXIT_FAILURE);
     }

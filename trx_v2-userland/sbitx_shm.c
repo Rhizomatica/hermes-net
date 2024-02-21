@@ -219,7 +219,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
        break;
 
    case CMD_RADIO_RESET: // RADIO RESET
-       response[0] = CMD_RESP_WRONG_COMMAND;
+       response[0] = CMD_RESP_WRONG_COMMAND; // we just exit here... no point of response
        shutdown_ = true;
        break;
 
