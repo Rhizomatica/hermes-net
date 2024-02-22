@@ -45,7 +45,7 @@
 
 // set 0 for production
 #ifndef DEBUG_DSP_
-#define DEBUG_DSP_ 1
+#define DEBUG_DSP_ 0
 #endif
 
  // we read the mode sample format from here
