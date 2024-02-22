@@ -22,6 +22,7 @@
  * Boston, MA 02110-1301, USA.
  *
  * Based on https://github.com/afarhan/sbitx/blob/main/sbitx.c and Jerji's
+ * code
  */
 
 #include <stdint.h>
@@ -609,86 +610,6 @@ double interpolate_linear(double  a,double a_x,double b,double b_x,double x)
 	return return_val;
 }
 
-// TODO: We need to define our reference and implement the ALC in the rx alsa input
-//
-// TODO: Add to DSP a de-noise function with libspecbleach
-//       https://github.com/Rhizomatica/libspecbleach/blob/main/example/adenoiser_demo.c
-
-void dsp_process_agc()
-{
-    static bool fist_call = true;
-
-    static float *input_buffer;
-    static float *output_buffer;
-
-    int block_size = MAX_BINS / 2;
-
-    // TODO: this is just a test... move these init stuff to appropriate _init and _free functions...
-    if (fist_call)
-    {
-        input_buffer = (float *) calloc (block_size, sizeof(float));
-        output_buffer = (float *) calloc (block_size, sizeof(float));
-        fist_call = false;
-    }
-
-    // TODO: define the SLOW, MEDIUM and FAST AGCs
-    short hang_time=400; // in frames
-    float reference=0.2; // reference level
-    float attack_rate=0.02;
-    float decay_rate=0.0002;
-    float max_gain=20; // in db
-    short attack_wait=0;
-    float filter_alpha=0.999;//0.001;
-
-    static float last_gain=1.0;
-
-    for (int i = 0; i < MAX_BINS / 2; i++)
-    {
-        input_buffer[i] = (float) cimag(fft_time[i + (MAX_BINS / 2)]);
-    }
-
-    last_gain = agc_ff(input_buffer, output_buffer, block_size, reference, attack_rate, decay_rate, max_gain, hang_time, attack_wait, filter_alpha, last_gain);
-
-    for (int i = 0; i < MAX_BINS / 2; i++)
-    {
-        __imag__ (fft_time[i + (MAX_BINS / 2)]) = (double) output_buffer[i];
-    }
-
-}
-
-void dsp_process_agc_old_fastagc()
-{
-    static bool fist_call = true;
-    static fastagc_ff_t input;
-    static float* agc_output_buffer;
-
-    // TODO: this is just a test... move these init stuff to appropriate _init and _free functions...
-    if (fist_call)
-    {
-        input.input_size = MAX_BINS/2;
-
-        input.reference=0.5;
-
-        input.buffer_1=(float*)calloc(input.input_size,sizeof(float));
-        input.buffer_2=(float*)calloc(input.input_size,sizeof(float));
-        input.buffer_input=(float*)malloc(sizeof(float)*input.input_size);
-        agc_output_buffer=(float*)malloc(sizeof(float)*input.input_size);
-
-        fist_call = false;
-    }
-
-    for (int i = 0; i < MAX_BINS / 2; i++)
-    {
-        input.buffer_input[i] = (float) cimag(fft_time[i + (MAX_BINS / 2)]);
-    }
-    fastagc_ff(&input, agc_output_buffer);
-    for (int i = 0; i < MAX_BINS / 2; i++)
-    {
-        __imag__ (fft_time[i + (MAX_BINS / 2)]) = (double) agc_output_buffer[i];
-    }
-
-}
-
 //we define one more than needed to cover the boundary of quadrature
 #define MAX_PHASE_COUNT (16385)
 static int	phase_table[MAX_PHASE_COUNT];
@@ -730,8 +651,79 @@ int vfo_read(struct vfo *v)
 }
 
 
+// TODO: We need to define our reference and implement the ALC in the rx alsa input
+//
+// TODO: Add to DSP a de-noise function with libspecbleach
+//       https://github.com/Rhizomatica/libspecbleach/blob/main/example/adenoiser_demo.c
+
+void dsp_process_agc()
+{
+    static float input_buffer[1024]; // block_size == 1024
+    static float output_buffer[1024]; // block_size == 1024
+
+    int block_size = MAX_BINS / 2;
+
+    // TODO: define the SLOW, MEDIUM and FAST AGCs
+    short hang_time=400; // in frames
+    float reference=0.2; // reference level
+    float attack_rate=0.02;
+    float decay_rate=0.0002;
+    float max_gain=20; // in db
+    short attack_wait=0;
+    float filter_alpha=0.999;//0.001;
+
+    static float last_gain=1.0;
+
+    for (int i = 0; i < MAX_BINS / 2; i++)
+    {
+        input_buffer[i] = (float) cimag(fft_time[i + (MAX_BINS / 2)]);
+    }
+
+    last_gain = agc_ff(input_buffer, output_buffer, block_size, reference, attack_rate, decay_rate, max_gain, hang_time, attack_wait, filter_alpha, last_gain);
+
+    for (int i = 0; i < MAX_BINS / 2; i++)
+    {
+        __imag__ (fft_time[i + (MAX_BINS / 2)]) = (double) output_buffer[i];
+    }
+
+}
+
 // old tests for AGC
 #if 0
+
+void dsp_process_agc_old_fastagc()
+{
+    static bool first_call = true;
+    static fastagc_ff_t input;
+    static float* agc_output_buffer;
+
+    // TODO: this is just a test... move these init stuff to appropriate _init and _free functions...
+    if (first_call)
+    {
+        input.input_size = MAX_BINS/2;
+
+        input.reference = 0.2;
+
+        input.buffer_1 = (float*) calloc(input.input_size,sizeof(float));
+        input.buffer_2 = (float*) calloc(input.input_size,sizeof(float));
+        input.buffer_input = (float*) malloc(sizeof(float)*input.input_size);
+        agc_output_buffer = (float*) malloc(sizeof(float)*input.input_size);
+
+        first_call = false;
+    }
+
+    for (int i = 0; i < MAX_BINS / 2; i++)
+    {
+        input.buffer_input[i] = (float) cimag(fft_time[i + (MAX_BINS / 2)]);
+    }
+    fastagc_ff(&input, agc_output_buffer);
+    for (int i = 0; i < MAX_BINS / 2; i++)
+    {
+        __imag__ (fft_time[i + (MAX_BINS / 2)]) = (double) agc_output_buffer[i];
+    }
+
+}
+
 void dsp_process_agc_old()
 {
     double signal_strength, agc_gain_should_be;
