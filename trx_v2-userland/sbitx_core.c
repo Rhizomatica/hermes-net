@@ -493,6 +493,16 @@ void io_tick(radio *radio_h)
         update_power_measurements(radio_h);
         swr_protection_check(radio_h);
     }
+    if ( !(ticks % 3) && radio_h->txrx_state == IN_RX )
+    {
+        // we hold the power values in case of high-swr protection enabled
+        if (radio_h->swr_protection_enabled != true)
+        {
+            radio_h->ref_power = 0;
+            radio_h->fwd_power = 0;
+        }
+    }
+
 
     // we are not using the button presses for nothing up to now
 #if 0
