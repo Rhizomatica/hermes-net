@@ -54,14 +54,18 @@ do
         #	      echo "current time ${current_hour}h ${current_minute}min"
         #	      echo "start time ${start_time_hour}h ${start_time_minute}min"
         #	      echo "end time ${end_time_hour}h ${end_time_minute}min"
-
-	      if [[ ${current_hour} -eq ${start_time_hour} &&
-		            ${current_minute} -ge ${start_time_minute} ]] ||
-             [[ ${current_hour} -gt ${start_time_hour} &&
-		              ${current_hour} -lt ${end_time_hour} ]] ||
-             [[ ${current_hour} -eq ${end_time_hour} &&
-                  ${current_minute} -le ${end_time_minute} ]]
-
+	      if [[ ${current_hour}   -eq ${start_time_hour} &&
+                ${current_hour}   -eq ${end_time_hour} &&
+                ${current_minute} -ge ${start_time_minute} &&
+                ${current_minute} -le ${end_time_minute} ]] ||
+             [[ ${current_hour}   -eq ${start_time_hour} &&
+                ${current_hour}   -lt ${end_time_hour} &&
+                ${current_minute} -ge ${start_time_minute} ]] ||
+             [[ ${current_hour}   -gt ${start_time_hour} &&
+                ${current_hour}   -eq ${end_time_hour} &&
+                ${current_minute} -le ${end_time_minute} ]] ||
+             [[ ${current_hour}   -gt ${start_time_hour} &&
+		        ${current_hour}   -lt ${end_time_hour} ]]
         then
             run_at_least_once=1
             for t in ${hosts[*]}; do
