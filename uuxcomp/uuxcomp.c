@@ -326,19 +326,25 @@ int main (int argc, char *argv[])
     if (encoding_type == ENC_TYPE_NONE)
         goto compress;
 
-    original_filename = strstr(char_ptr2, "Content-Disposition:");
+    original_filename = strstr(char_ptr, "Content-Disposition:");
     if (original_filename == NULL)
     {
         encoding_type = ENC_TYPE_NONE;
         goto compress;
     }
 
-    char_ptr3 = strstr(char_ptr2, "Content-Transfer-Encoding: base64");
+    char_ptr3 = strstr(char_ptr, "Content-Transfer-Encoding: base64");
     if (char_ptr3 == NULL)
     {
         encoding_type = ENC_TYPE_NONE;
         goto compress;
     }
+
+    // cope with headers re-ordering...
+    if ((original_filename > char_ptr2) && (original_filename > char_ptr3))
+        char_ptr3 = original_filename;
+    if ((char_ptr2 > original_filename) && (char_ptr2 > char_ptr3))
+        char_ptr3 = original_filename;
 
     char_ptr4 = strstr(char_ptr3, "\n\n");
 
