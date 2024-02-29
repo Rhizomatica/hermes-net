@@ -412,6 +412,9 @@ void dsp_free(radio *radio_h)
 
 void dsp_set_filters()
 {
+    if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
+        return;
+
     double bpf_low = (double) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_low;
     double bpf_high = (double) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].bpf_high;
 

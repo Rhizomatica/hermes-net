@@ -58,6 +58,8 @@ uint32_t channels = 2;
 static radio *radio_h_snd;
 extern _Atomic bool shutdown_;
 
+// should we allow level control even in IO-ONLY mode?
+#define ALLOW_ALSA_LEVELS_IN_IO_ONLY 1
 
 void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 {
@@ -157,8 +159,10 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 // this is the radio rx level
 void set_rx_level(uint32_t rx_level)
 {
+#if ALLOW_ALSA_LEVELS_IN_IO_ONLY == 0
     if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
         return;
+#endif
 
     long min, max;
     snd_mixer_t *handle;
@@ -186,8 +190,10 @@ void set_rx_level(uint32_t rx_level)
 
 void set_mic_level(uint32_t mic_level)
 {
+#if ALLOW_ALSA_LEVELS_IN_IO_ONLY == 0
     if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
         return;
+#endif
 
     long min, max;
     snd_mixer_t *handle;
@@ -215,8 +221,10 @@ void set_mic_level(uint32_t mic_level)
 
 void set_speaker_level(uint32_t speaker_level)
 {
+#if ALLOW_ALSA_LEVELS_IN_IO_ONLY == 0
     if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
         return;
+#endif
 
     long min, max;
     snd_mixer_t *handle;
@@ -244,8 +252,10 @@ void set_speaker_level(uint32_t speaker_level)
 
 void set_tx_level(uint32_t tx_level)
 {
+#if ALLOW_ALSA_LEVELS_IN_IO_ONLY == 0
     if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
         return;
+#endif
 
     long min, max;
     snd_mixer_t *handle;
@@ -274,7 +284,12 @@ void set_tx_level(uint32_t tx_level)
 
 void setup_audio_codec()
 {
-	//configure mixer controls
+#if ALLOW_ALSA_LEVELS_IN_IO_ONLY == 0
+    if (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
+        return;
+#endif
+
+    //configure mixer controls
     sound_mixer(radio_ctl, "Line", 1);
     sound_mixer(radio_ctl, "Mic", 0);
     sound_mixer(radio_ctl, "Mic Boost", 0);
@@ -973,12 +988,12 @@ void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_
 {
     radio_h_snd = radio_h;
 
+    setup_audio_codec();
+
     if (radio_h->profiles[radio_h->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
         return;
 
     initialize_buffers();
-
-    setup_audio_codec();
 
     pthread_create(radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
     pthread_create(loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
