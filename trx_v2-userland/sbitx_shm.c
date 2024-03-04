@@ -41,6 +41,7 @@
 #include "sbitx_core.h"
 #include "shm_utils.h"
 #include "sbitx_shm.h"
+#include "sbitx_io.h"
 
 #include "radio_cmds.h"
 

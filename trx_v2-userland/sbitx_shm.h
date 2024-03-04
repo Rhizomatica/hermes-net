@@ -27,7 +27,6 @@
 #include <pthread.h>
 
 #include "sbitx_core.h"
-#include "sbitx_controller.h"
 
 void shm_controller_init(radio *radio_h, pthread_t *shm_tid);
 void shm_controller_shutdown(pthread_t *shm_tid);

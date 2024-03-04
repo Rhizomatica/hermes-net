@@ -38,7 +38,6 @@
 #include "uuardopd.h"
 #include "serial.h"
 
-#include "sbitx_controller.h"
 #include "sbitx_io.h"
 #include "radio_cmds.h"
 

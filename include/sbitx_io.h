@@ -26,12 +26,43 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdatomic.h>
+#include <pthread.h>
 
-#include "sbitx_controller.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define MAX_MODEM_PATH 4096
+#define MAX_BUF_SIZE 4096
+
+#define SYSV_SHM_CONTROLLER_KEY_STR 66650 // key for the controller_conn struct
+
+typedef struct
+{
+
+    uint8_t service_command[5];
+    pthread_mutex_t cmd_mutex;
+    pthread_cond_t cmd_condition;
+
+    pthread_mutex_t response_mutex;
+
+    uint8_t response_service[5];
+    atomic_bool response_available;
+
+    int radio_fd;
+
+} controller_conn;
+
 
 // returns true is response was received
 // response is copied to response... so pass a valid 5 bytes pointer
 bool radio_cmd(controller_conn *connector, uint8_t *srv_cmd, uint8_t *response);
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // SBITX_IO_H_
