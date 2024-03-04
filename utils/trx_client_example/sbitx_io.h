@@ -28,7 +28,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 
-// some boilerplace for C/C++ interoperability
+// boilerplate for C/C++ atomic type interoperability
 #ifdef __cplusplus
 #include <atomic>
 using namespace std;
