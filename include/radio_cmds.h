@@ -1,5 +1,5 @@
 /* Rhizomatica HERMES transceiver serial commands
- * Copyright (C) 2021-2022 Rhizomatica
+ * Copyright (C) 2021-2024 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify

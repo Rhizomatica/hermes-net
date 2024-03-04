@@ -47,6 +47,4 @@ typedef struct{
 
 } controller_conn;
 
-void sbitx_controller();
-
 #endif // HAVE_UBITXCONTROLLER_H__
