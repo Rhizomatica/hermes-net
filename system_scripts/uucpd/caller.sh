@@ -71,7 +71,7 @@ do
             for t in ${hosts[*]}; do
                 echo "Calling gateway ${EMAIL_SERVER}."
                 uucico -D -S ${EMAIL_SERVER}
-                sleep ${DELAY}
+                # sleep ${DELAY}
 
                 # mode/frequency setting stuff
                 api_freqmode_call=$(curl -s https://localhost/api/frequency/alias/${t} -k)

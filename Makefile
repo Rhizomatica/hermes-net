@@ -96,6 +96,6 @@ install_gateway:
 clean:
 	$(MAKE) -C trx_v2-userland clean
 	$(MAKE) -C trx_v1-userland clean
-	$(MAKE) -C trx_v1-firmware clean
+#	$(MAKE) -C trx_v1-firmware clean
 	$(MAKE) -C uuxcomp clean
 	$(MAKE) -C uucpd clean
