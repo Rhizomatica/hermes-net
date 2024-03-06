@@ -41,7 +41,6 @@ int main(int argc, char *argv[])
 
     if (cmd_resp == false)
         fprintf(stderr, "ERROR\n");
-
     // ================== KEY ON ENDS =============
 
     sleep(5);
@@ -53,8 +52,70 @@ int main(int argc, char *argv[])
 
     if (cmd_resp == false)
         fprintf(stderr, "ERROR\n");
-
     // ================== KEY OFF ENDS ============
+
+    sleep(5);
+
+    // =============== GET T/R INFORMATION ========
+    srv_cmd[4] = CMD_GET_TXRX_STATUS;
+
+    cmd_resp = radio_cmd(connector, srv_cmd, response);
+
+    if (cmd_resp == false)
+        fprintf(stderr, "ERROR\n");
+
+    if (response[0] == CMD_RESP_GET_TXRX_INTX)
+        printf("TX\n");
+
+    if (response[0] == CMD_RESP_GET_TXRX_INRX)
+        printf("RX\n");
+    // =============== GET T/R INFORMATION ENDS ===
+
+    sleep(5);
+
+    // ================== GET FREQUENCY ===========
+    srv_cmd[4] = CMD_GET_FREQ;
+
+    cmd_resp = radio_cmd(connector, srv_cmd, response);
+
+    if (cmd_resp == false)
+        fprintf(stderr, "ERROR\n");
+
+    uint32_t freq;
+    memcpy (&freq, response+1, 4);
+    printf("%u\n", freq);
+    // ================== GET FREQUENCY ENDS ======
+
+    sleep(5);
+
+    // ================== GET FWD =================
+    srv_cmd[4] = CMD_GET_FWD;
+
+    cmd_resp = radio_cmd(connector, srv_cmd, response);
+
+    if (cmd_resp == false)
+        fprintf(stderr, "ERROR\n");
+
+    uint16_t fwd;
+    memcpy (&fwd, response+1, 2);
+    printf("%hu\n", fwd); // Power in Watt * 10 (eg. 213 == 21.3W)
+    // ================== GET FWD END =============
+
+    sleep(5);
+
+    // ================== GET SWR =================
+    srv_cmd[4] = CMD_GET_REF;
+
+    cmd_resp = radio_cmd(connector, srv_cmd, response);
+
+    if (cmd_resp == false)
+        fprintf(stderr, "ERROR\n");
+
+    uint16_t swr;
+    memcpy (&swr, response+1, 2);
+    printf("%hu\n", swr); // VSWR * 10 (eg. 14 == 1.4:1)
+    // ================== GET SWR END =============
+
 
     return EXIT_SUCCESS;
 }
