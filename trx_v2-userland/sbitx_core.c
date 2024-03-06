@@ -247,9 +247,10 @@ void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile)
 
     if (profile == radio_h->profile_active_idx)
     {
-        // Were we are not setting the real frequency of the radio (in USB, which is the current setup)
-        // We add 24 kHz offset in order to use Farhan's DSP code (just "- 24000")
-        si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 24000);
+        if (radio_h->profiles[radio_h->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
+            si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency); // here we set the real frequency of the radio (in USB, which is the current setup)
+        else
+            si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 24000); // 24 kHz offset to provide the user the "real" dial frequency after the DSP processing (just "- 24000")
     }
 
     char tmp1[64]; char tmp2[64];
