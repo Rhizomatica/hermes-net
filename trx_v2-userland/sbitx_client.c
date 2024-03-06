@@ -399,43 +399,43 @@ int main(int argc, char *argv[])
             printf("LED_OFF\n");
             break;
          case CMD_RESP_GET_FREQ_ACK:
-            memcpy (&freq, connector->response_service+1, 4);
+            memcpy (&freq, response+1, 4);
             printf("%u\n", freq);
             break;
          case CMD_RESP_GET_SERIAL_ACK:
-            memcpy (&serial, connector->response_service+1, 4);
+            memcpy (&serial, response+1, 4);
             printf("%u\n", serial);
             break;
         case CMD_RESP_GET_STEPHZ_ACK:
-            memcpy (&freqstep, connector->response_service+1, 4);
+            memcpy (&freqstep, response+1, 4);
             printf("%u\n", freqstep);
             break;
         case CMD_RESP_GET_VOLUME_ACK:
-            memcpy (&status, connector->response_service+1, 4);
+            memcpy (&status, response+1, 4);
             printf("%u\n", status);
             break;
         case CMD_RESP_GET_TONE_ACK:
-            memcpy (&tone, connector->response_service+1, 1);
+            memcpy (&tone, response+1, 1);
             printf("%hhu\n", tone);
             break;
         case CMD_RESP_GET_BFO_ACK:
-            memcpy (&freq, connector->response_service+1, 4);
+            memcpy (&freq, response+1, 4);
             printf("%u\n", freq);
             break;
         case CMD_RESP_GET_FWD_ACK:
-            memcpy (&measure, connector->response_service+1, 2);
+            memcpy (&measure, response+1, 2);
             printf("%hu\n", measure);
             break;
         case CMD_RESP_GET_REF_ACK:
-            memcpy (&measure, connector->response_service+1, 2);
+            memcpy (&measure, response+1, 2);
             printf("%hu\n", measure);
             break;
         case CMD_RESP_GET_REF_THRESHOLD_ACK:
-            memcpy (&measure, connector->response_service+1, 2);
+            memcpy (&measure, response+1, 2);
             printf("%hu\n", measure);
             break;
         case CMD_RESP_GET_PROFILE:
-            memcpy (&profile, connector->response_service+1, 1);
+            memcpy (&profile, response+1, 1);
             printf("%hhu\n", profile);
             break;
 
