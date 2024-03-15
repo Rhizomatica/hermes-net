@@ -1,0 +1,25 @@
+
+[main]
+current_profile                = 0
+default_profile                = 0
+default_profile_fallback_timeout = 600
+step_size                      = 100
+
+
+[profile0]
+freq                           = 6960000
+mode                           = USB
+operating_mode                 = 2
+mic_level                      = 0
+rx_level                       = 74
+speaker_level                  = 0
+tx_level                       = 96
+agc                            = OFF
+compressor                     = OFF
+bpf_low                        = 100
+bpf_high                       = 3000
+enable_knob_volume             = 1
+enable_knob_frequency          = 0
+enable_ptt                     = 0
+
+
