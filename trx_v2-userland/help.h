@@ -1,5 +1,5 @@
-/* ubitx_client help
- * Copyright (C) 2022 Rhizomatica
+/* sbitx_client help
+ * Copyright (C) 2022-2024 Rhizomatica
  * Author: Rafael Diniz <rafael@rhizomatica.org>
  *
  * This is free software; you can redistribute it and/or modify
@@ -148,6 +148,16 @@ const char format_str[] =
 "* reset_timeout\n"
 "  * Do not specify profile\n"
 "  * No Argument\n"
+"  * Resp: OK | ERROR\n\n"
+
+"* set_timeout\n"
+"  * Do not specify profile\n"
+"  * Set timeout (in seconds) for changing to default profile (-1 disables timeout)\n"
+"  * Resp: OK | ERROR\n\n"
+
+"* get_timeout\n"
+"  * Do not specify profile\n"
+"  * Get timeout (in seconds) for changing to default profile (-1 means disabled timeout)\n"
 "  * Resp: OK | ERROR\n\n"
 
 "* set_ref_threshold\n"

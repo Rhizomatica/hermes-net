@@ -74,15 +74,15 @@ int main(int argc, char *argv[])
     if (argc < 3)
     {
     manual:
-        fprintf(stderr, "Usage modes: \n%s -c command [-a command_argument]\n", argv[0]);
-        fprintf(stderr, "%s -h\n", argv[0]);
-        fprintf(stderr, "\nOptions:\n");
-        fprintf(stderr, " -c command                 Runs the specified command\n");
-        fprintf(stderr, " -a command_argument        Argument of the command\n");
-        fprintf(stderr, " -p profile_number          Select the profile to apply the command (only selected commands)\n");
-        fprintf(stderr, " -h                         Prints this help.\n");
-        fprintf(stderr, "\nList of commands, followed by the need for profile indication, arguments and responses (respectivelly):\n\n");
-        fprintf(stderr, format_str);
+        printf("Usage modes: \n%s -c command [-a command_argument] [-p profile_number]\n", argv[0]);
+        printf("%s -h\n", argv[0]);
+        printf("\nOptions:\n");
+        printf(" -c command                 Runs the specified command\n");
+        printf(" -a command_argument        Argument of the command\n");
+        printf(" -p profile_number          Select the profile to apply the command (only selected commands)\n");
+        printf(" -h                         Prints this help.\n");
+        printf("\nList of commands, followed by the need for profile indication, arguments and responses (respectivelly):\n\n");
+        printf(format_str);
         exit(EXIT_FAILURE);
     }
 
@@ -249,6 +249,19 @@ int main(int argc, char *argv[])
     {
         srv_cmd[4] = CMD_TIMEOUT_RESET;
     }
+    else if(!strcmp(command, "set_timeout"))
+    {
+        if (argument_set == false)
+            goto manual;
+
+        int32_t timeout = (int32_t) atoi(command_argument);
+        memcpy(srv_cmd, &timeout, 4);
+        srv_cmd[4] = CMD_SET_TIMEOUT;
+    }
+    else if(!strcmp(command, "get_timeout"))
+    {
+        srv_cmd[4] = CMD_GET_TIMEOUT;
+    }
     else if (!strcmp(command, "set_ref_threshold"))
     {
         if (argument_set == false)
@@ -348,6 +361,7 @@ int main(int argc, char *argv[])
         uint32_t status;
         uint32_t freq;
         uint32_t freqstep;
+        int32_t timeout;
         uint32_t serial;
         uint16_t measure;
         uint8_t tone, profile;
@@ -437,6 +451,10 @@ int main(int argc, char *argv[])
         case CMD_RESP_GET_PROFILE:
             memcpy (&profile, response+1, 1);
             printf("%hhu\n", profile);
+            break;
+        case CMD_RESP_GET_TIMEOUT_ACK:
+            memcpy(&timeout, response+1, 4);
+            printf("%d\n", timeout);
             break;
 
             // this happens when there is no anwser from daemon

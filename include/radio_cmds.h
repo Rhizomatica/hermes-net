@@ -26,7 +26,7 @@
 // We don't care about endianess (little endian assumed)
 // IT MIGHT NOT WORK ON BIG ENDIAN MACHINES RIGHT NOW!
 
-
+// ================================= //
 // per profile (2 upper bits for profile, 6 bits for the command itself), so commands only from 0 to 0x3F only!
 #define CMD_GET_FREQ 0x01
 #define CMD_SET_FREQ 0x02
@@ -101,9 +101,13 @@
 
 #define CMD_TIMEOUT_RESET 0x2f
 
+#define CMD_SET_TIMEOUT 0x30
+#define CMD_GET_TIMEOUT 0x31
+// ================================= //
 
+
+// ================================= //
 // radio responses
-// 5 bytes responses
 #define CMD_RESP_TIMEOUT 0x00
 #define CMD_RESP_GET_FREQ_ACK 0x01
 #define CMD_RESP_GET_BFO_ACK 0x02
@@ -127,7 +131,6 @@
 #define CMD_RESP_GET_MASTERCAL_ACK 0x13
 // legacy stuff/
 
-// 1 byte responses
 #define CMD_RESP_ACK 0x14 // general ACK
 #define CMD_RESP_PTT_ON_NACK 0x15
 #define CMD_RESP_PTT_OFF_NACK 0x16
@@ -148,6 +151,8 @@
 #define CMD_RESP_GET_CONNECTED_STATUS_ON 0x20
 #define CMD_RESP_GET_CONNECTED_STATUS_OFF 0x21
 
-#define CMD_RESP_WRONG_COMMAND 0x22
+#define CMD_RESP_GET_TIMEOUT_ACK 0x22
+
+#define CMD_RESP_WRONG_COMMAND 0x23
 
 #endif // HAVE_CMDS_H__

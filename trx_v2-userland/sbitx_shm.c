@@ -288,6 +288,16 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
         set_speaker_volume(radio_h, speaker_level, profile);
         break;
 
+    case CMD_GET_TIMEOUT: // GET_TIMEOUT
+        response[0] = CMD_RESP_GET_TIMEOUT_ACK;
+        memcpy(response+1, &radio_h->profile_timeout, 4);
+        break;
+
+    case CMD_SET_TIMEOUT: // SET_TIMEOUT
+        response[0] = CMD_RESP_ACK;
+        memcpy(&radio_h->profile_timeout, cmd, 4);
+        break;
+
    case CMD_GET_TONE: // GET_TONE
        response[0] = CMD_RESP_GET_TONE_ACK;
        memcpy(response+1, &radio_h->tone_generation, 1);
