@@ -179,8 +179,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
 
    case CMD_SET_SERIAL: // SET SERIAL NUMBER
        response[0] = CMD_RESP_ACK;
-       memcpy(&radio_h->serial_number, cmd, 4);
-       radio_h->cfg_core_dirty = true;
+       set_serial(radio_h, *(uint32_t *)cmd);
        break;
 
    case CMD_GET_STEPHZ: // CMD_GET_STEPHZ
@@ -295,7 +294,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
 
     case CMD_SET_TIMEOUT: // SET_TIMEOUT
         response[0] = CMD_RESP_ACK;
-        memcpy(&radio_h->profile_timeout, cmd, 4);
+        set_profile_timeout(radio_h, *(int32_t *) cmd);
         break;
 
    case CMD_GET_TONE: // GET_TONE

@@ -234,7 +234,37 @@ void set_speaker_volume(radio *radio_h, uint32_t speaker_level, uint32_t profile
     radio_h->cfg_user_dirty = true;
 }
 
+void set_serial(radio *radio_h, uint32_t serial)
+{
+    if (serial == radio_h->serial_number)
+        return;
 
+    radio_h->serial_number = serial;
+
+    char tmp[64];
+    sprintf(tmp, "%u", radio_h->serial_number);
+    int rc = cfg_set(radio_h, radio_h->cfg_core, "main:serial_number", tmp);
+    if (rc != 0)
+        printf("Error modifying config file\n");
+
+    radio_h->cfg_core_dirty = true;
+}
+
+void set_profile_timeout(radio *radio_h, int32_t timeout)
+{
+    if (timeout == radio_h->profile_timeout)
+        return;
+
+    radio_h->profile_timeout = timeout;
+
+    char tmp[64];
+    sprintf(tmp, "%d", radio_h->profile_timeout);
+    int rc = cfg_set(radio_h, radio_h->cfg_user, "main:default_profile_fallback_timeout", tmp);
+    if (rc != 0)
+        printf("Error modifying config file\n");
+
+    radio_h->cfg_user_dirty = true;
+}
 
 void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile)
 {
