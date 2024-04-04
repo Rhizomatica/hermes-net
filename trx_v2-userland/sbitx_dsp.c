@@ -43,6 +43,7 @@
 
 #include "sbitx_dsp.h"
 #include "sbitx_core.h"
+#include "sbitx_alsa.h"
 
 // set 0 for production
 #ifndef DEBUG_DSP_
@@ -77,6 +78,9 @@ struct filter *tx_filter;	// tx convolution filter
 
 struct vfo tone; // vfo
 
+_Atomic bool tx_starting = false;
+_Atomic bool rx_starting = false;
+
 // - signal_input: 96 kHz mono from radio, get the "slice" between 24 kHz and 27 kHz (USB) or 21 kHz to 24 kHz (LSB), and bring this slice to 0 and 3 kHz
 // - out output_speaker: 96 kHz mono output for speaker
 // - out output_loopback: 48 kHz stereo for loopback input
@@ -87,6 +91,14 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     double i_sample;
 
     int32_t *input_rx = (int32_t *) signal_input;
+
+    //fix the burst at the start of transmission
+    if (rx_starting)
+    {
+        fft_reset_m_bins();
+        clear_buffers();
+        rx_starting = false;
+    }
 
     //STEP 1: first add the previous M samples to
     memcpy(fft_in, fft_m, MAX_BINS/2 * sizeof(fftw_complex));
@@ -201,14 +213,13 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         return;
     }
 
-#if 0 // TODO: evaluate if we need this
 	//fix the burst at the start of transmission
-	if (tx_process_restart){
+    if (tx_starting)
+    {
         fft_reset_m_bins();
         clear_buffers();
-		tx_process_restart = 0;
-	}
-#endif
+        tx_starting = false;
+    }
 
 	//first add the previous M samples
 	memcpy(fft_in, fft_m, MAX_BINS/2 * sizeof(fftw_complex));
@@ -347,14 +358,15 @@ double get_band_multiplier()
     return multiplier;
 }
 
+//zero up the previous 'M' bins
+void fft_reset_m_bins()
+{
 
-void fft_reset_m_bins(){
-	//zero up the previous 'M' bins
-	memset(fft_in, 0, sizeof(fftw_complex) * MAX_BINS);
-	memset(fft_out, 0, sizeof(fftw_complex) * MAX_BINS);
-	memset(fft_m, 0, sizeof(fftw_complex) * MAX_BINS/2);
-	memset(fft_time, 0, sizeof(fftw_complex) * MAX_BINS);
-	memset(fft_freq, 0, sizeof(fftw_complex) * MAX_BINS);
+    memset(fft_in, 0, sizeof(fftw_complex) * MAX_BINS);
+    memset(fft_out, 0, sizeof(fftw_complex) * MAX_BINS);
+    memset(fft_m, 0, sizeof(fftw_complex) * MAX_BINS/2);
+    memset(fft_time, 0, sizeof(fftw_complex) * MAX_BINS);
+    memset(fft_freq, 0, sizeof(fftw_complex) * MAX_BINS);
 }
 
 void dsp_init(radio *radio_h)

@@ -60,6 +60,9 @@ void dsp_free(radio *radio_h);
 void dsp_process_rx(uint8_t *buffer_radio_to_dsp, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t * output_tx, uint32_t block_size);
 void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *output_loopback, uint8_t *output_tx, uint32_t block_size, bool input_is_48k_stereo);
 
+// zero fft previous bins
+void fft_reset_m_bins();
+
 // set the filters according to bpf_low and bpf_high of current profile
 void dsp_set_filters();
 

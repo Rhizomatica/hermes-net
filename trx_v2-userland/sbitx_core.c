@@ -39,6 +39,9 @@
 #include "sbitx_dsp.h"
 
 extern _Atomic bool shutdown_;
+extern _Atomic bool tx_starting;
+extern _Atomic bool rx_starting;
+
 
 _Atomic bool timer_reset = true; // TODO: move me to global
 _Atomic time_t timeout_counter = 0;
@@ -402,29 +405,36 @@ void tr_switch(radio *radio_h, bool txrx_state)
     // TODO: put down the rx_level on tx
     if (txrx_state == IN_TX)
     {
-        printf("IN_TX\n");
+        // printf("IN_TX\n");
+        tx_starting = true;
+        radio_h->txrx_state = IN_TX;
+
         set_speaker_level(0);
         set_tx_level(radio_h->profiles[radio_h->profile_active_idx].tx_level);
 
-        radio_h->txrx_state = IN_TX;
         lpf_off(radio_h);
         usleep(2000);
         set_drive(TX_LINE, DRIVE_HIGH);
-        usleep(2000);
+        usleep(6000);
         lpf_set(radio_h);
     }
     else
     {
-        printf("IN_RX\n");
+        // printf("IN_RX\n");
+        usleep(8000);
+
         set_speaker_level(radio_h->profiles[radio_h->profile_active_idx].speaker_level);
         set_tx_level(0);
 
-        radio_h->txrx_state = IN_RX;
+        usleep(1000);
         lpf_off(radio_h);
-        usleep(2000);
+        usleep(1000);
         set_drive(TX_LINE, DRIVE_LOW);
-        usleep(2000);
+        usleep(1000);
         lpf_set(radio_h);
+
+        rx_starting = true;
+        radio_h->txrx_state = IN_RX;
     }
 
     radio_h->send_ws_update = true;
