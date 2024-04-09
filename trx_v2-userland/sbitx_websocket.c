@@ -190,6 +190,10 @@ void *webserver_thread_function(void *radio_h_v)
                     sprintf(buff+strlen(buff), "\"profile\": %u,\n", radio_h->profile_active_idx);
                     sprintf(buff+strlen(buff), "\"timeout\": %ld,\n", timeout_counter);
 
+                    time_t t = time(NULL);
+                    struct tm tm = *localtime(&t);
+                    sprintf(buff+strlen(buff), "\"datetime\": \"%02d/%02d/%d %02d:%02d:%02d\",\n", tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
                     for (int i = 0; i < radio_h->profiles_count; i++)
                     {
                         radio_profile *curr_prof = &radio_h->profiles[i];
