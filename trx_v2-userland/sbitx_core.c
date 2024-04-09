@@ -276,6 +276,9 @@ void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile)
     if (*radio_freq == frequency)
         return;
 
+    if ( (frequency > 30000000) || (frequency < 500000) )
+        return;
+
     *radio_freq = frequency;
 
     if (profile == radio_h->profile_active_idx)
@@ -421,7 +424,7 @@ void tr_switch(radio *radio_h, bool txrx_state)
     else
     {
         // printf("IN_RX\n");
-        usleep(8000);
+        usleep(10000);
 
         set_speaker_level(radio_h->profiles[radio_h->profile_active_idx].speaker_level);
         set_tx_level(0);
