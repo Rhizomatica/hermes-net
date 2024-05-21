@@ -363,7 +363,7 @@ void lpf_set(radio *radio_h)
 
     if (*radio_freq < 5700000)
         lpf = LPF_D;
-    else if (*radio_freq < 10500000)
+    else if (*radio_freq < 8000000)
         lpf = LPF_C;
     else if (*radio_freq < 18500000)
         lpf = LPF_B;
