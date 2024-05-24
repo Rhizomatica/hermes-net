@@ -43,7 +43,8 @@ do
     run_at_least_once=0
 
     for (( c=0; c<${#timers_start[@]}; c++ )); do
-	      is_enabled=($(curl -s https://localhost/api/caller/ -k | jq --raw-output '.[${c}] | select( .enable | contains(1))' 2> /dev/null))
+	      tmp="curl -s https://localhost/api/caller -k | jq --raw-output '.[${c}] | select( .enable | contains(1)) | .starttime' 2> /dev/null"
+	      is_enabled=$(bash -c "${tmp}")
 
 	      if [[ -z ${is_enabled} ]]
 	      then
