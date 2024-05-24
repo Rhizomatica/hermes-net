@@ -17,6 +17,7 @@ LATEST_SERVER_CALL_TIME=0
 
 while true
 do
+    # just enabled timers
     timers_start=($(curl -s https://localhost/api/caller -k | jq --raw-output '.[] | select( .enable | contains(1)) | .starttime ' 2> /dev/null))
     timers_stop=($(curl -s https://localhost/api/caller -k | jq --raw-output '.[] | select( .enable | contains(1)) | .stoptime ' 2> /dev/null))
 
@@ -35,9 +36,19 @@ do
       continue
     fi
 
+    # all timers
+    timers_start=($(curl -s https://localhost/api/caller -k | jq --raw-output '.[] | .starttime ' 2> /dev/null))
+    timers_stop=($(curl -s https://localhost/api/caller -k | jq --raw-output '.[] | .stoptime ' 2> /dev/null))
+
     run_at_least_once=0
 
     for (( c=0; c<${#timers_start[@]}; c++ )); do
+	      is_enabled=($(curl -s https://localhost/api/caller/ -k | jq --raw-output '.[${c}] | select( .enable | contains(1))' 2> /dev/null))
+
+	      if [[ -z ${is_enabled} ]]
+	      then
+              continue
+	      fi
 
 	      tmp="curl -s https://localhost/api/caller/ -k | jq --raw-output '.[${c}] | .stations[]' 2> /dev/null"
 	      hosts=$(bash -c "${tmp}")
