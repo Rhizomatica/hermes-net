@@ -30,7 +30,7 @@
 #define USE_XZ 1
 
 // use Fraunhofer Neural End-2-End Speech Coder instead of LPCNet
-#define USE_NESC 1
+#define USE_NESC 0
 
 #define MAIL_SIZE_SCRIPT "mail_size_enforcement.sh"
 
