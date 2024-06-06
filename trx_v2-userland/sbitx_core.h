@@ -26,8 +26,8 @@
 #define CFG_CORE_PATH "/etc/sbitx/core.ini"
 #define CFG_USER_PATH "/etc/sbitx/user.ini"
 #define CFG_WEBSOCKET_PATH "/etc/sbitx/web"
-#define CFG_SSL_CERT "/etc/ssl/private/hermes.radio.crt"
-#define CFG_SSL_KEY "/etc/ssl/private/hermes.key"
+#define CFG_SSL_CERT "/etc/ssl/certs/hermes.radio.crt"
+#define CFG_SSL_KEY "/etc/ssl/private/hermes.radio.key"
 
 #include <stdbool.h>
 #include <stdint.h>

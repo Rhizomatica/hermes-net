@@ -5,7 +5,7 @@ Requires=vnc.service sbitx.service
 
 [Service]
 Type=exec
-ExecStart=/usr/bin/uuardopd -a 127.0.0.1 -p 8300 -r vara -o shm -f 2300p
+ExecStart=/usr/bin/uuardopd -a 127.0.0.1 -p 8300 -r vara -o shm -f 2750p
 KillSignal=SIGTERM
 IgnoreSIGPIPE=no
 Restart=always
