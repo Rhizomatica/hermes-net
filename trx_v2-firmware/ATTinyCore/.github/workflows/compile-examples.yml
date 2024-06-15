@@ -1,0 +1,677 @@
+name: Compile Examples
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/compile-examples.yml"
+      - "avr/libraries/**"
+      - "avr/cores/**"
+      - "avr/variants/**"
+      - "avr/*.txt"
+  push:
+    paths:
+      - ".github/workflows/compile-examples.yml"
+      - "avr/libraries/**"
+      - "avr/cores/**"
+      - "avr/variants/**"
+      - "avr/*.txt"
+  # workflow_dispatch event allows the workflow to be triggered manually
+  # See: https://docs.github.com/en/actions/reference/events-that-trigger-workflows#workflow_dispatch
+  workflow_dispatch:
+  # repository_dispatch event allows the workflow to be triggered via the GitHub API
+  # See: https://docs.github.com/en/actions/reference/events-that-trigger-workflows#repository_dispatch
+  repository_dispatch:
+
+jobs:
+  compile-examples:
+    # same name as the fqbn (without the platform-name):
+    name: ${{ matrix.device.name}}
+    runs-on: ubuntu-latest
+
+    env:
+      platform-name: ATTinyCore:avr
+
+      available-flash-8kB-plus-sketch-paths-true: |
+        - avr/libraries/SPI/examples/BarometricPressureSensor
+        - avr/libraries/SoftwareSerial/examples/TwoPortReceive
+        - avr/libraries/Wire/examples/SFRRanger_reader
+        - avr/libraries/tinyNeoPixel/examples/RGBWstrandtest
+        # - avr/extras/CompileTestSketches/test_analog_read
+      available-flash-4kB-sketch-paths-true: |
+        - avr/libraries/EEPROM/examples/eeprom_crc
+        - avr/libraries/EEPROM/examples/eeprom_put
+        - avr/libraries/EEPROM/examples/eeprom_read
+        - avr/libraries/Wire/examples/digital_potentiometer
+        # - avr/libraries/megaTinyCore/examples/ModernRevSer
+        - avr/libraries/SoftwareSerial/examples/SoftwareSerialExample
+        - avr/libraries/tinyNeoPixel/examples/buttoncycler
+        - avr/libraries/tinyNeoPixel/examples/simple
+        - avr/libraries/tinyNeoPixel/examples/strandtest
+        - avr/libraries/tinyNeoPixel_Static/examples/buttoncycler
+        - avr/libraries/tinyNeoPixel_Static/examples/strandtest
+        - avr/extras/ci/test_sketches_4k/test_serial
+      available-flash-2kB-sketch-paths-true: |
+        - avr/extras/ci/test_sketches_2k/basic_test
+
+    strategy:
+      fail-fast: false
+
+      # Using the exclude and include matrix options here look attractive but the null soft-serial
+      # option isn't respected by the exclude block so we fully define the test matrix here
+      matrix:
+        device:
+          - name: attinyx4:chip=84,
+            available-flash-kB: 8
+            soft-serial: softserial=enable
+            pll: 0
+            extclk: 0
+            specialclock: "crystal_16m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx4:chip=84,
+            available-flash-kB: 8
+            soft-serial: softserial=txonly
+            pll: 0
+            extclk: 0
+            specialclock: "crystal_16m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx4:chip=44,
+            available-flash-kB: 4
+            soft-serial: softserial=enable
+            pll: 0
+            extclk: 0
+            specialclock: "crystal_16m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx4:chip=44,
+            available-flash-kB: 4
+            soft-serial: softserial=txonly
+            pll: 0
+            extclk: 0
+            specialclock: "crystal_16m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx4:chip=24,
+            available-flash-kB: 2
+            soft-serial: softserial=enable
+            pll: 0
+            extclk: 0
+            specialclock: "crystal_16m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx4:chip=24,
+            available-flash-kB: 2
+            soft-serial: softserial=txonly
+            pll: 0
+            extclk: 0
+            specialclock: "crystal_16m"
+            haspecialclock: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx41:chip=841,
+            available-flash-kB: 8
+            soft-serial: ""
+            pll: 0
+            extclk: 0
+            specialclock: "internal_16m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx41:chip=441,
+            available-flash-kB: 4
+            soft-serial: ""
+            pll: 0
+            extclk: 0
+            specialclock: "internal_16m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx5:chip=85,
+            available-flash-kB: 8
+            soft-serial: softserial=enable
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx5:chip=85,
+            available-flash-kB: 8
+            soft-serial: softserial=txonly
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx5:chip=45,
+            available-flash-kB: 4
+            soft-serial: softserial=enable
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx5:chip=45,
+            available-flash-kB: 4
+            soft-serial: softserial=txonly
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx5:chip=25,
+            available-flash-kB: 2
+            soft-serial: softserial=enable
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx5:chip=25,
+            available-flash-kB: 2
+            soft-serial: softserial=txonly
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx61:chip=861,
+            available-flash-kB: 8
+            soft-serial: softserial861=enable_AIN0
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx61:chip=861,
+            available-flash-kB: 8
+            soft-serial: softserial861=txonly
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx61:chip=461,
+            available-flash-kB: 4
+            soft-serial: softserial861=enable_AIN2
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx61:chip=461,
+            available-flash-kB: 4
+            soft-serial: softserial861=txonly
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx61:chip=261,
+            available-flash-kB: 2
+            soft-serial: softserial861=enable_AIN1
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx61:chip=261,
+            available-flash-kB: 2
+            soft-serial: softserial861=txonly
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx7:chip=167,
+            available-flash-kB: 16
+            soft-serial: ""
+            pll: 0
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx7:chip=87,
+            available-flash-kB: 8
+            soft-serial: ""
+            pll: 0
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx8:chip=88,
+            available-flash-kB: 8
+            soft-serial: softserial=enable
+            pll: 0
+            extclk: 1
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 0
+            crystalspeed: ""
+          - name: attinyx8:chip=88,
+            available-flash-kB: 8
+            soft-serial: softserial=txonly
+            pll: 0
+            extclk: 1
+            specialclock: ""
+            haspecialclock: 0
+            hasinternal: 1
+            crystal: 0
+            crystalspeed: ""
+          - name: attinyx8:chip=48,
+            available-flash-kB: 4
+            soft-serial: softserial=enable
+            pll: 0
+            extclk: 1
+            specialclock: "internal_2m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 0
+            crystalspeed: ""
+          - name: attinyx8:chip=48,
+            available-flash-kB: 4
+            soft-serial: softserial=txonly
+            pll: 0
+            extclk: 1
+            specialclock: "internal_2m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 0
+            crystalspeed: ""
+          - name: "attiny1634:"
+            available-flash-kB: 16
+            soft-serial: ""
+            pll: 0
+            extclk: 0
+            specialclock: "crystal_12m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx313:chip=4313,
+            available-flash-kB: 4
+            soft-serial: ""
+            pll: 0
+            extclk: 0
+            specialclock: "internal_2m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: attinyx313:chip=2313,
+            available-flash-kB: 2
+            soft-serial: ""
+            pll: 0
+            extclk: 0
+            specialclock: "internal_4m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: "attiny828:"
+            available-flash-kB: 8
+            soft-serial: ""
+            pll: 0
+            extclk: 1
+            specialclock: "internal_4m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 0
+            crystalspeed: ""
+          - name: "attiny43u:"
+            available-flash-kB: 4
+            soft-serial: softserial=enable
+            pll: 0
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            crystal: 0
+            crystalspeed: ""
+          - name: "attiny43u:"
+            available-flash-kB: 4
+            soft-serial: softserial=txonly
+            pll: 0
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 0
+            crystal: 0
+            crystalspeed: ""
+          - name: "attiny26:"
+            available-flash-kB: 2
+            soft-serial: softserial=enable
+            pll: 1
+            extclk: 0
+            specialclock: ""
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: "attiny26:"
+            available-flash-kB: 2
+            soft-serial: softserial=txonly
+            pll: 0
+            extclk: 0
+            specialclock: "pll_16m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 1
+            crystalspeed: "9216k"
+          - name: "attiny88micr:"
+            available-flash-kB: 6.8
+            soft-serial: softserial=enable
+            pll: 0
+            extclk: 1
+            specialclock: "extclk_8m"
+            haspecialclock: 1
+            hasinternal: 0
+            crystal: 0
+            crystalspeed: ""
+          - name: "attiny167micr:"
+            available-flash-kB: 14.5
+            soft-serial: ""
+            pll: 0
+            extclk: 0
+            specialclock: "crystal_8m"
+            haspecialclock: 1
+            hasinternal: 0
+            crystal: 1
+            crystalspeed: "16m"
+          - name: "attiny861micr:"
+            available-flash-kB: 6.5
+            soft-serial: softserial861=enable_AIN2
+            pll: 1
+            extclk: 0
+            specialclock: "pll_8m"
+            haspecialclock: 1
+            hasinternal: 0
+            crystal: 0
+            crystalspeed: ""
+          - name: "attiny85micr:"
+            available-flash-kB: 6.5
+            soft-serial: softserial=enable
+            pll: 1
+            extclk: 0
+            specialclock: "pll_8m"
+            haspecialclock: 1
+            hasinternal: 0
+            crystal: 0
+            crystalspeed: ""
+          - name: "attiny84mi12:"
+            available-flash-kB: 6.5
+            soft-serial: softserial=enable
+            pll: 0
+            extclk: 0
+            specialclock: "internal_12m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 0
+            crystalspeed: ""
+          - name: "attiny84micr:"
+            available-flash-kB: 6.2
+            soft-serial: softserial=enable
+            pll: 0
+            extclk: 0
+            specialclock: "internal_12m8"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 0
+            crystalspeed: ""
+          - name: "attiny841micr:"
+            available-flash-kB: 6.5
+            soft-serial: ""
+            pll: 0
+            extclk: 0
+            specialclock: "internal_16m"
+            haspecialclock: 1
+            hasinternal: 1
+            crystal: 0
+            crystalspeed: ""
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Build fqbn with soft serial
+        if: ${{ matrix.device.soft-serial != 0 }}
+        run: |
+          export job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=internal_8m,${{ matrix.device.soft-serial }}
+          export minspeed_job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=internal_1m,${{ matrix.device.soft-serial }}
+          export xtal_job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=crystal_${{ matrix.device.crystalspeed }},${{ matrix.device.soft-serial }}
+          export pll_job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=pll_16m,${{ matrix.device.soft-serial }}
+          export pll165_job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=pll_16m5,${{ matrix.device.soft-serial }}
+          export extclk_job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=extclk_16m,${{ matrix.device.soft-serial }}
+          export specclk_job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=${{ matrix.device.specialclock }},${{ matrix.device.soft-serial }}
+          echo "job_fqbn=$job_fqbn" >> $GITHUB_ENV
+          echo "minspeed_job_fqbn=$minspeed_job_fqbn" >> $GITHUB_ENV
+          echo "extclk_job_fqbn=$extclk_job_fqbn" >> $GITHUB_ENV
+          echo "xtal_job_fqbn=$xtal_job_fqbn" >> $GITHUB_ENV
+          echo "pll_job_fqbn=$pll_job_fqbn" >> $GITHUB_ENV
+          echo "pll165_job_fqbn=$pll165_job_fqbn" >> $GITHUB_ENV
+          echo "specclk_job_fqbn=$specclk_job_fqbn" >> $GITHUB_ENV
+      - name: Build fqbn without soft serial
+        if: ${{ matrix.device.soft-serial == 0}}
+        run: |
+          export job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=internal_8m
+          export xtal_job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=crystal_${{ matrix.device.crystalspeed }}
+          export minspeed_job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=internal_1m
+          export pll_job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=pll_16
+          export pll165_job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=pll_16m5
+          export extclk_job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=extclk_16m
+          export specclk_job_fqbn=${{ env.platform-name }}:${{ matrix.device.name }}clock=${{ matrix.device.specialclock }}
+          echo "job_fqbn=$job_fqbn" >> $GITHUB_ENV
+          echo "xtal_job_fqbn=$xtal_job_fqbn" >> $GITHUB_ENV
+          echo "minspeed_job_fqbn=$minspeed_job_fqbn" >> $GITHUB_ENV
+          echo "extclk_job_fqbn=$extclk_job_fqbn" >> $GITHUB_ENV
+          echo "pll_job_fqbn=$pll_job_fqbn" >> $GITHUB_ENV
+          echo "pll165_job_fqbn=$pll165_job_fqbn" >> $GITHUB_ENV
+          echo "specclk_job_fqbn=$specclk_job_fqbn" >> $GITHUB_ENV
+      # See: https://github.com/arduino/compile-sketches/README.md
+      - name: Compile examples 8 MHz internal
+        if: ${{matrix.device.hasinternal == 1}}
+        uses: arduino/compile-sketches@main
+        with:
+          cli-version: 0.33.0
+          fqbn: ${{ env.job_fqbn }}
+          sketch-paths: |
+            ${{ env[format('available-flash-8kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 7.5)] }}
+            ${{ env[format('available-flash-4kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 4)] }}
+            ${{ env[format('available-flash-2kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 2)] }}
+          platforms: |
+            # Install ATTinyCore via Boards Manager for the toolchain
+            - source-url: http://drazzy.com/package_drazzy.com_index.json
+              name: ${{ env.platform-name }}
+            # Overwrite the ATTinyCore release version with the platform from the local path
+            - source-path: avr
+              name: ${{ env.platform-name }}
+          libraries: |
+            # The sketches don't have any external library dependencies, so just define an empty array
+            -
+          verbose: false
+          enable-deltas-report: false
+          enable-warnings-report: true
+          sketches-report-path: sketches-reports
+      - name: Compile examples 1mhz internal
+        if: ${{matrix.device.hasinternal == 1}}
+        uses: arduino/compile-sketches@main
+        with:
+          cli-version: 0.33.0
+          fqbn: ${{ env.minspeed_job_fqbn }}
+          sketch-paths: |
+            ${{ env[format('available-flash-8kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 7.5)] }}
+            ${{ env[format('available-flash-4kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 4)] }}
+            ${{ env[format('available-flash-2kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 2)] }}
+          platforms: |
+            # Install ATTinyCore via Boards Manager for the toolchain
+            - source-url: http://drazzy.com/package_drazzy.com_index.json
+              name: ${{ env.platform-name }}
+            # Overwrite the ATTinyCore release version with the platform from the local path
+            - source-path: avr
+              name: ${{ env.platform-name }}
+          libraries: |
+            # The sketches don't have any external library dependencies, so just define an empty array
+            -
+          verbose: false
+          enable-deltas-report: false
+          enable-warnings-report: true
+          sketches-report-path: sketches-reports
+      - name: Compile examples external uart xtal
+        if: ${{matrix.device.crystal == 1}}
+        uses: arduino/compile-sketches@main
+        with:
+          cli-version: 0.33.0
+          fqbn: ${{ env.xtal_job_fqbn }}
+          sketch-paths: |
+            ${{ env[format('available-flash-8kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 7.5)] }}
+            ${{ env[format('available-flash-4kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 4)] }}
+            ${{ env[format('available-flash-2kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 2)] }}
+          platforms: |
+            # Install ATTinyCore via Boards Manager for the toolchain
+            - source-url: http://drazzy.com/package_drazzy.com_index.json
+              name: ${{ env.platform-name }}
+            # Overwrite the ATTinyCore release version with the platform from the local path
+            - source-path: avr
+              name: ${{ env.platform-name }}
+          libraries: |
+            # The sketches don't have any external library dependencies, so just define an empty array
+            -
+          verbose: false
+          enable-deltas-report: false
+          enable-warnings-report: true
+          sketches-report-path: sketches-reports
+      - name: Compile examples internal pll at 16 MHz
+        if: ${{matrix.device.pll == 1}}
+        uses: arduino/compile-sketches@main
+        with:
+          cli-version: 0.33.0
+          fqbn: ${{ env.pll_job_fqbn }}
+          sketch-paths: |
+            ${{ env[format('available-flash-8kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 7.5)] }}
+            ${{ env[format('available-flash-4kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 4)] }}
+            ${{ env[format('available-flash-2kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 2)] }}
+          platforms: |
+            # Install ATTinyCore via Boards Manager for the toolchain
+            - source-url: http://drazzy.com/package_drazzy.com_index.json
+              name: ${{ env.platform-name }}
+            # Overwrite the ATTinyCore release version with the platform from the local path
+            - source-path: avr
+              name: ${{ env.platform-name }}
+          libraries: |
+            # The sketches don't have any external library dependencies, so just define an empty array
+            -
+          verbose: false
+          enable-deltas-report: false
+          enable-warnings-report: true
+          sketches-report-path: sketches-reports
+      - name: Compile examples internal pll at 16.5
+        if: ${{matrix.device.pll == 1}}
+        uses: arduino/compile-sketches@main
+        with:
+          cli-version: 0.33.0
+          fqbn: ${{ env.pll165_job_fqbn }}
+          sketch-paths: |
+            ${{ env[format('available-flash-8kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 7.5)] }}
+            ${{ env[format('available-flash-4kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 4)] }}
+            ${{ env[format('available-flash-2kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 2)] }}
+          platforms: |
+            # Install ATTinyCore via Boards Manager for the toolchain
+            - source-url: http://drazzy.com/package_drazzy.com_index.json
+              name: ${{ env.platform-name }}
+            # Overwrite the ATTinyCore release version with the platform from the local path
+            - source-path: avr
+              name: ${{ env.platform-name }}
+          libraries: |
+            # The sketches don't have any external library dependencies, so just define an empty array
+            -
+          verbose: false
+          enable-deltas-report: false
+          enable-warnings-report: true
+          sketches-report-path: sketches-reports
+      - name: Compile examples external 16 MHz clock
+        if: ${{matrix.device.extclk == 1}}
+        uses: arduino/compile-sketches@main
+        with:
+          cli-version: 0.33.0
+          fqbn: ${{ env.extclk_job_fqbn }}
+          sketch-paths: |
+            ${{ env[format('available-flash-8kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 7.5)] }}
+            ${{ env[format('available-flash-4kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 4)] }}
+            ${{ env[format('available-flash-2kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 2)] }}
+          platforms: |
+            # Install ATTinyCore via Boards Manager for the toolchain
+            - source-url: http://drazzy.com/package_drazzy.com_index.json
+              name: ${{ env.platform-name }}
+            # Overwrite the ATTinyCore release version with the platform from the local path
+            - source-path: avr
+              name: ${{ env.platform-name }}
+          libraries: |
+            # The sketches don't have any external library dependencies, so just define an empty array
+            -
+          verbose: false
+          enable-deltas-report: false
+          enable-warnings-report: true
+          sketches-report-path: sketches-reports
+      - name: Compile examples part-specific clock
+        if: ${{matrix.device.havespecialclock == 1}}
+        uses: arduino/compile-sketches@main
+        with:
+          cli-version: 0.33.0
+          fqbn: ${{ env.specclk_job_fqbn }}
+          sketch-paths: |
+            ${{ env[format('available-flash-8kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 7.5)] }}
+            ${{ env[format('available-flash-4kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 4)] }}
+            ${{ env[format('available-flash-2kB-sketch-paths-{0}', matrix.device.available-flash-kB >= 2)] }}
+          platforms: |
+            # Install ATTinyCore via Boards Manager for the toolchain
+            - source-url: http://drazzy.com/package_drazzy.com_index.json
+              name: ${{ env.platform-name }}
+            # Overwrite the ATTinyCore release version with the platform from the local path
+            - source-path: avr
+              name: ${{ env.platform-name }}
+          libraries: |
+            # The sketches don't have any external library dependencies, so just define an empty array
+            -
+          verbose: false
+          enable-deltas-report: false
+          enable-warnings-report: true
+          sketches-report-path: sketches-reports

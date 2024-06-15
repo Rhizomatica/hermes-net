@@ -1,0 +1,114 @@
+name: Check code formatting
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/check-code-formatting.yml"
+      - "avr/bootloaders/optiboot/source/**"
+      - "avr/bootloaders/micronucleus/firmware/**"
+#      - "avr/cores/**"
+      - "avr/libraries/**"
+#      - "avr/variants/**"
+  push:
+    paths:
+      - ".github/workflows/check-code-formatting.yml"
+      - "avr/bootloaders/optiboot/source/**"
+#      - "avr/bootloaders/micronucleus/firmware/**" Not checked in yet.
+#      - "avr/cores/**" # Artistic style deals unacceptably poorly with nested ifdefs.
+      - "avr/libraries/**"
+#      - "avr/variants/**" #prohibited formatting in variant files is done intentionally to improve readability and clarity. Don't run the code style checker there.
+
+  # workflow_dispatch event allows the workflow to be triggered manually
+  # See: https://docs.github.com/en/actions/reference/events-that-trigger-workflows#workflow_dispatch
+  workflow_dispatch:
+  # repository_dispatch event allows the workflow to be triggered via the GitHub API
+  # See: https://docs.github.com/en/actions/reference/events-that-trigger-workflows#repository_dispatch
+  repository_dispatch:
+
+env:
+  OPTIONS_FILE_PATH: avr/extras/ci/arduino-code-style.conf
+  NAME_PATTERNS: |
+    - '*.ino'
+    - '*.h'
+    - '*.hpp'
+    - '*.hh'
+    - '*.hxx'
+    - '*.h++'
+    - '*.cpp'
+    - '*.cc'
+    - '*.cxx'
+    - '*.c++'
+    - '*.cp'
+    - '*.c'
+    - '*.ipp'
+    - '*.ii'
+    - '*.ixx'
+    - '*.inl'
+    - '*.tpp'
+    - '*.txx'
+    - '*.tpl'
+
+jobs:
+#  bootloaders:
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v2
+#
+#      - name: Check code formatting
+#        uses: per1234/artistic-style-action@main
+#        with:
+#          options-file-path: ${{ env.OPTIONS_FILE_PATH }}
+#          name-patterns: |
+#            ${{ env.NAME_PATTERNS }}
+#          target-paths: |
+#            - avr/bootloaders
+
+#  cores:
+#    runs-on: ubuntu-latest
+
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v2
+
+#      - name: Check code formatting
+#        uses: per1234/artistic-style-action@main
+#        with:
+#          options-file-path: ${{ env.OPTIONS_FILE_PATH }}
+#          name-patterns: |
+#            ${{ env.NAME_PATTERNS }}
+#          target-paths: |
+#            - avr/cores
+
+  libraries:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Check code formatting
+        uses: per1234/artistic-style-action@main
+        with:
+          options-file-path: ${{ env.OPTIONS_FILE_PATH }}
+          name-patterns: |
+            ${{ env.NAME_PATTERNS }}
+          target-paths: |
+            - avr/libraries
+
+  variants:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Check code formatting
+        uses: per1234/artistic-style-action@main
+        with:
+          options-file-path: ${{ env.OPTIONS_FILE_PATH }}
+          name-patterns: |
+            ${{ env.NAME_PATTERNS }}
+          target-paths: |
+            - avr/variants
