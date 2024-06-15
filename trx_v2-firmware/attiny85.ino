@@ -1,6 +1,8 @@
+// sBitx v3 ATTiny85 firmware
+// Authors: Ashhar Farhan and Rafael Diniz
 
 #include <Wire.h>
-// #include "ATTinyCore/avr/libraries/Wire/src/Wire.h"
+
 int16_t fwd, ref;
 byte message[4];
 
