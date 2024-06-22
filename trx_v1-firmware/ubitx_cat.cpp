@@ -45,7 +45,6 @@ static uint32_t rxBufferArriveTime = 0;
 static uint8_t rxBufferCheckCount = 0;
 
 static uint8_t cat[5];
-static uint8_t insideCat = 0;
 
 uint16_t skipTimeCount = 0;
 
@@ -308,14 +307,7 @@ void checkCAT(){
   for (i = 0; i < 5; i++)
       cat[i] = Serial.read();
 
-  // So here we lose data??? not ok....
-  //this code is not re-entrant.
-  // if (insideCat == 1)
-  //    return;
-  insideCat = 1;
-
   catCount++;
 
   processCATCommand(cat);
-  insideCat = 0;
 }
