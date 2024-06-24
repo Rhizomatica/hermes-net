@@ -42,8 +42,6 @@ uint8_t response[4];
 
 uint8_t pin_mode = INPUT;
 uint32_t serial;
-uint8_t led_status = LOW;
-
 
 void(*reset) (void) = 0;
 
@@ -214,24 +212,12 @@ void setup()
     serial |= (uint32_t) EEPROM.read(SERIAL_EEPROM_OFFSET+1) << 8;
     serial |= (uint32_t) EEPROM.read(SERIAL_EEPROM_OFFSET+2) << 16;
 
-    // we could use PB1 for something
     pinMode(PB1, pin_mode);
     pinMode(PB3, INPUT);
     pinMode(PB4, INPUT);
 
 }
 
-// bool blink = 0;
-// uint16_t serial_number = 247;
-// uint8_t low = serial_number & 0xff;
-// uint8_t high = serial_number >> 8;
-// EEPROM.write(0, low);
-// EEPROM.write(1, high);
-
 void loop()
 {
-//    digitalWrite(PB1, HIGH);
-//    delay(5000);
-//    digitalWrite(PB1, LOW);
-//    delay(5000);
 }
