@@ -1,13 +1,13 @@
 #!/bin/sh
-echo -n "profile"
+echo -n "profile "
 sbitx_client -c get_profile
-echo -n "freq p0 (digital)"
+echo -n "freq p0 - digit "
 sbitx_client -c get_frequency -p 0
-echo -n "freq p1 (voice)"
+echo -n "freq p1 - voice "
 sbitx_client -c get_frequency -p 1
-echo -n "mode p0 (digital)"
+echo -n "mode p0 - digit "
 sbitx_client -c get_mode -p 0
-echo -n "mode p1 (voice)"
+echo -n "mode p1 - voice "
 sbitx_client -c get_mode -p 1
 echo -n "txrx "
 sbitx_client -c get_txrx_status
