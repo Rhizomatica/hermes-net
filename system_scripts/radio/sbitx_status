@@ -1,18 +1,24 @@
 #!/bin/sh
-echo -n "freq "
-sbitx_client -c get_frequency
-echo -n "mode "
-sbitx_client -c get_mode
+echo -n "profile"
+sbitx_client -c get_profile
+echo -n "freq p0 (digital)"
+sbitx_client -c get_frequency -p 0
+echo -n "freq p1 (voice)"
+sbitx_client -c get_frequency -p 1
+echo -n "mode p0 (digital)"
+sbitx_client -c get_mode -p 0
+echo -n "mode p1 (voice)"
+sbitx_client -c get_mode -p 1
 echo -n "txrx "
 sbitx_client -c get_txrx_status
 echo -n "protection "
 sbitx_client -c get_protection_status
-echo -n "swr_threshold "
-sbitx_client -c get_ref_threshold
 echo -n "forward "
 sbitx_client -c get_fwd
 echo -n "reflected "
 sbitx_client -c get_ref
+echo -n "swr_threshold "
+sbitx_client -c get_ref_threshold
 echo -n "sys_led "
 sbitx_client -c get_led_status
 echo -n "connected_status "
@@ -23,5 +29,3 @@ echo -n "volume "
 sbitx_client -c get_volume
 echo -n "frequency_step "
 sbitx_client -c get_freqstep
-echo -n "serial "
-sbitx_client -c get_serial
