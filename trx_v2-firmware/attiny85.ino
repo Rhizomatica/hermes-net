@@ -215,7 +215,6 @@ void setup()
     pinMode(PB1, pin_mode);
     pinMode(PB3, INPUT);
     pinMode(PB4, INPUT);
-
 }
 
 void loop()
