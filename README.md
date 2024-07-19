@@ -58,6 +58,10 @@ Rhizomatica's v1 µbitx-based radio transceiver control utils.
 
 Rhizomatica's v2 sbitx-based radio transceiver control utils.
 
+## trx_v2-firmware
+
+Rhizomatica's v2 sbitx-based radio transceiver ATtiny85 firmware.
+
 ## uucpd
 
 Previosly called rhizo-uuardopd, is composed by a control daemon which transports uucp payload
