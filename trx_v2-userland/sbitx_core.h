@@ -59,9 +59,10 @@
 #define LPF_D     7 // Pin 26
 
 /* Internal software modes listing */
-#define OPERATING_MODE_FULL_VOICE 0 // DSP + IO, radio tx comes from MIC
-#define OPERATING_MODE_FULL_LOOPBACK 1 // DSP + IO, radio tx comes from Alsa loopback
+#define OPERATING_MODE_FULL_VOICE 0 // IO+ALSA+DSP, radio tx comes from MIC
+#define OPERATING_MODE_FULL_LOOPBACK 1 // IO+ALSA+DSP, radio tx comes from Alsa loopback
 #define OPERATING_MODE_CONTROLS_ONLY 2 // just IO, does not open the Alsa device
+#define OPERATING_MODE_EXTERNAL_DSP 3 // IO+ALSA, passes the signal without DSP
 
 /* ... yes, this is all done in software. */
 #define MODE_LSB 0
