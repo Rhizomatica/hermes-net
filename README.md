@@ -54,13 +54,13 @@ Rhizomatica's v1 µbitx-based radio transceiver Arduino Nano firmware.
 
 Rhizomatica's v1 µbitx-based radio transceiver control utils. 
 
+## trx_v2-firmware
+
+Rhizomatica's v2 sbitx-based radio transceiver ATtiny85 firmware (experimental).
+
 ## trx_v2-userland
 
 Rhizomatica's v2 sbitx-based radio transceiver control utils.
-
-## trx_v2-firmware
-
-Rhizomatica's v2 sbitx-based radio transceiver ATtiny85 firmware.
 
 ## uucpd
 
