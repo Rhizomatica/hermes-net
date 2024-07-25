@@ -1,9 +1,8 @@
 /*
  * sBitx controller
  *
- * Copyright (C) 2023-2024 Rafael Diniz, Ashhar Farhan and Fadi Jerji
+ * Copyright (C) 2023-2024 Rafael Diniz and Ashhar Farhan
  * Authors: Rafael Diniz <rafael@rhizomatica.org>
- *          Fadi Jerji <fadi.jerji@rhizomatica.org>
  *          Ashhar Farhan <afarhan@gmail.com>
  *
  * This is free software; you can redistribute it and/or modify
@@ -22,7 +21,6 @@
  * Boston, MA 02110-1301, USA.
  *
  */
-
 
 #ifndef SBITX_DSP_H_
 #define SBITX_DSP_H_
@@ -84,7 +82,6 @@ void vfo_init_phase_table();
 void vfo_start(struct vfo *v, int frequency_hz, int start_phase);
 int vfo_read(struct vfo *v);
 
-// by Fadi Jerji @ Rhizomatica
 void rational_resampler(double * in, int in_size, double * out, int rate, int interpolation_decimation);
 double interpolate_linear(double  a,double a_x,double b,double b_x,double x);
 

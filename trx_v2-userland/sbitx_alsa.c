@@ -92,7 +92,7 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
     printf("channels = %d\n", val);
 
     snd_pcm_hw_params_get_rate(params, &val, &dir);
-    printf("rate = %d bps\n", val);
+    printf("rate = %d Hz\n", val);
 
     snd_pcm_hw_params_get_periods(params, &val, &dir);
     printf("periods per buffer = %d frames\n", val);
@@ -110,7 +110,7 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
     printf("buffer time = %d us\n", val);
 
     snd_pcm_hw_params_get_rate_numden(params, &val, &val2);
-    printf("exact rate = %d/%d bps\n", val, val2);
+    printf("exact rate = %d/%d Hz\n", val, val2);
 
     val = snd_pcm_hw_params_get_sbits(params);
     printf("significant bits = %d\n", val);
@@ -924,6 +924,10 @@ void *control_thread(void *device_ptr)
 
     while (!shutdown_)
     {
+        // TODO: finish external DSP integration
+        // halt this loop on external DSP
+        // check_external_dsp(radio_h_snd);
+
         _Atomic bool use_loopback = (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_FULL_LOOPBACK) ? true : false;
 
         read_buffer(radio_to_dsp, buffer_radio_to_dsp, buffer_size); // mono

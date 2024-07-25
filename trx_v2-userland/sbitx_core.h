@@ -62,7 +62,7 @@
 #define OPERATING_MODE_FULL_VOICE 0 // IO+ALSA+DSP, radio tx comes from MIC
 #define OPERATING_MODE_FULL_LOOPBACK 1 // IO+ALSA+DSP, radio tx comes from Alsa loopback
 #define OPERATING_MODE_CONTROLS_ONLY 2 // just IO, does not open the Alsa device
-#define OPERATING_MODE_EXTERNAL_DSP 3 // IO+ALSA, passes the signal without DSP
+#define OPERATING_MODE_EXTERNAL_DSP 3 // IO+ALSA, passes the signal to external DSP
 
 /* ... yes, this is all done in software. */
 #define MODE_LSB 0
@@ -174,7 +174,7 @@ typedef struct
 
     _Atomic uint32_t bridge_compensation;
 
-    _Atomic bool enable_websocket;
+    _Atomic bool enable_websocket; // this is needed for hermes-gui
     _Atomic bool enable_shm_control; // this is needed for sbitx_client
 
     // some informational fields
@@ -198,6 +198,9 @@ typedef struct
     dictionary *cfg_user;
     _Atomic bool cfg_user_dirty;
     _Atomic bool send_ws_update;
+
+    // TODO: finish external DSP integration
+    // _Atomic bool internal_dsp_off;
 } radio;
 
 
