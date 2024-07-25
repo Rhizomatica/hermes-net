@@ -115,9 +115,6 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
     val = snd_pcm_hw_params_get_sbits(params);
     printf("significant bits = %d\n", val);
 
-    snd_pcm_hw_params_get_tick_time(params, &val, &dir);
-    printf("tick time = %d us\n", val);
-
     val = snd_pcm_hw_params_is_batch(params);
     printf("is batch double buffering = %d\n", val);
 
