@@ -284,7 +284,7 @@ void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile)
     if (profile == radio_h->profile_active_idx)
     {
         if (radio_h->profiles[radio_h->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
-            si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency); // here we set the real frequency of the radio (in USB, which is the current setup)
+            si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 15000); // here we set the real frequency of the radio (in USB, which is the current setup) - 15000 which is the carrier offset in Mercury
         else
             si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 24000); // 24 kHz offset to provide the user the "real" dial frequency after the DSP processing (just "- 24000")
     }
