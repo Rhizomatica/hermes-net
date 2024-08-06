@@ -39,16 +39,17 @@ inline void read_buffer(buffer *buf_in, uint8_t *buffer_out, int size) {
     void *addr;
 
 try_again_read:
-    if ( ring_buffer_count_bytes( &buf_in->buf ) >= size ) {
-        pthread_mutex_lock( &buf_in->mutex );
+    pthread_mutex_lock( &buf_in->mutex );
+    if ( ring_buffer_count_bytes( &buf_in->buf ) >= size )
+    {
         addr = ring_buffer_read_address( &buf_in->buf );
         memcpy( buffer_out, addr, size );
         ring_buffer_read_advance( &buf_in->buf, size );
         pthread_cond_signal( &buf_in->cond );
         pthread_mutex_unlock( &buf_in->mutex );
     }
-    else {
-        pthread_mutex_lock( &buf_in->mutex );
+    else
+    {
         pthread_cond_wait( &buf_in->cond, &buf_in->mutex );
         pthread_mutex_unlock( &buf_in->mutex );
         goto try_again_read;
@@ -61,16 +62,17 @@ inline void write_buffer(buffer *buf_out, uint8_t *buffer_in, int size) {
     void *addr;
 
 try_again_write:
-    if ( ring_buffer_count_free_bytes ( &buf_out->buf ) >= size){
-        pthread_mutex_lock( &buf_out->mutex );
+    pthread_mutex_lock( &buf_out->mutex );
+    if ( ring_buffer_count_free_bytes ( &buf_out->buf ) >= size)
+    {
         addr = ring_buffer_write_address( &buf_out->buf );
         memcpy( addr, buffer_in, size );
         ring_buffer_write_advance ( &buf_out->buf, size );
         pthread_cond_signal( &buf_out->cond );
         pthread_mutex_unlock( &buf_out->mutex );
     }
-    else {
-        pthread_mutex_lock( &buf_out->mutex );
+    else
+    {
         pthread_cond_wait( &buf_out->cond, &buf_out->mutex );
         pthread_mutex_unlock( &buf_out->mutex );
         goto try_again_write;
