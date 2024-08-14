@@ -1,6 +1,6 @@
-# rhizo-uuardop
-RHIZO-UUARDOP is a set of tools which allow UUCP to use ARDOP or VARA as modem. With
-this integration, UUCP is fully functional over HF links.
+# UUCPD (rhizo-uuardop)
+RHIZO-UUARDOP is a set of tools which allow UUCP to use ARDOP, VARA or Mercury as modem. With
+this integration, UUCP is fully functional over HF links. Also called UUCPD.
 
 Rhizo-uuardop comes with two tools: uuardopd and uuport.
 
