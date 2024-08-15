@@ -1,6 +1,6 @@
-# rhizo-uuardop
-RHIZO-UUARDOP is a set of tools which allow UUCP to use ARDOP or VARA as modem. With
-this integration, UUCP is fully functional over HF links.
+# UUCPD (rhizo-uuardop)
+RHIZO-UUARDOP is a set of tools which allow UUCP to use ARDOP, VARA or Mercury as modem. With
+this integration, UUCP is fully functional over HF links. Also called UUCPD.
 
 Rhizo-uuardop comes with two tools: uuardopd and uuport.
 
@@ -12,23 +12,28 @@ UUPORT is the command invoked by UUCICO (using port type = pipe) when
 initiating a call (uucico master mode). Communication between uuport and uuardopd is done over shared memory.
 
 ## UUARDOPD Usage
+Rhizomatica's uuardopd version 0.2 by Rafael Diniz -  rafael (AT) rhizomatica (DOT) org
+License: GNU AGPL version 3+
+```
+Usage modes: 
+./uuardopd -r vara -a tnc_ip_address -p tcp_base_port -s /dev/ttyUSB0 [-l]
+./uuardopd -h
 
-| Option | Description |
-| --- | --- |
-| -c callsign | Station Callsign (Eg: PU2HFF) |
-| -d remote_callsign | Remote Station Callsign (optional) |
-| -r [ardop,vara] | Choose modem/radio type |
-| -a tnc_ip_address | IP address of the TNC |
-| -p tcp_base_port | TCP base port of the TNC. ARDOP uses ports tcp_base_port and tcp_base_port+1 |
-| -t timeout | Time to wait before disconnect when idling (ARDOP ONLY) |
-| -f features | Enable/Disable features. |
-|  | Supported features ARDOP: ofdm, noofdm (default: ofdm) |
-|  | Supported features VARA, BW mode: 500, 2300 or 2750 (default: 2300) |
-| -s serial_device | Set the serial device file path for keying the radio (VARA ONLY) |
-| -l | Tell UUCICO to ask login prompt (default: disabled) |
-| -o [icom,ubitx,shm] | Sets radio type (supported: icom, ubitx or shm). |
-| -h | Prints this help |
-
+Options:
+ -r [ardop,vara]            Choose modem/radio type.
+ -c callsign                Station Callsign (Eg: PU2HFF). Not setting it will cause the hostname to be retrieved from uucp config
+ -d remote_callsign         Remote Station Callsign.
+ -a tnc_ip_address          IP address of the TNC,
+ -p tnc_tcp_base_port       TNC's TCP base port of the TNC. ARDOP uses ports tcp_base_port and tcp_base_port+1.
+ -t timeout                 Time to wait before disconnect when idling (only for ardop).
+ -f features                   Supported features ARDOP: ofdm, noofdm (default: ofdm).
+                               Supported features VARA, BW mode: 500, 2300 or 2750 (default: 2300).
+                               Supported features VARA, P2P mode: "p" to enable (eg. 2300p).
+ -s serial_device           Set the serial device file path for keying the radio (VARA ONLY).
+ -l                         Tell UUCICO to ask login prompt (default: disabled).
+ -o [icom,ubitx,shm]        Sets radio type (supported: icom, ubitx or shm)
+ -h                         Prints this help.
+```
 
 ## UUPORT Usage
 
