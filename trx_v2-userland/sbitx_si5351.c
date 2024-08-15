@@ -83,7 +83,10 @@ void setup_oscillators(radio *radio_h)
     si5351bx_setfreq(1, radio_h->bfo_frequency);
     si5351_reset();
     usleep(100000);
-    si5351bx_setfreq(2, radio_h->profiles[radio_h->profile_active_idx].freq + radio_h->bfo_frequency - 24000);
+    if (radio_h->profiles[radio_h->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
+        si5351bx_setfreq(2, radio_h->profiles[radio_h->profile_active_idx].freq + radio_h->bfo_frequency - 15000);
+    else
+        si5351bx_setfreq(2, radio_h->profiles[radio_h->profile_active_idx].freq + radio_h->bfo_frequency - 24000);
 }
 
 void si5351_reset()
