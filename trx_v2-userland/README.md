@@ -61,7 +61,15 @@ This code is designed to run on ARM64 (aarch64) Linux architecture.
 
 # Compilation
 
-Just type "make" to build the two example applications. 
+Dependencies are, for example, in a Debian-based system:
+
+```
+apt-get install libiniparser-dev libfftw3-dev  libfftw3-double3 libssl-dev libi2c-dev
+```
+
+And csdr from https://github.com/Rhizomatica/csdr
+
+Just type "make" to build both binaries sbitx_client and sbitx_controller.
 
 
 # Usage

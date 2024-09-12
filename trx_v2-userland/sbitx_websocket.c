@@ -144,6 +144,7 @@ void *webserver_thread_function(void *radio_h_v)
     mg_http_listen(&mgr, s_listen_on, fn, NULL);  // Create HTTPS listener
     uint64_t counter = 0;
     uint64_t pwr_counter = 1;
+    int last_state = IN_RX;
 
     radio *radio_h = (radio *) radio_h_v;
 
@@ -168,6 +169,8 @@ void *webserver_thread_function(void *radio_h_v)
                     sprintf(buff+strlen(buff), "\"fwd_watts\": %u,\n", get_fwd_power(radio_h));
                     sprintf(buff+strlen(buff), "\"swr\": %u}", get_swr(radio_h));
                     mg_ws_send(c, buff, strlen(buff), WEBSOCKET_OP_TEXT);
+                    if (last_state == IN_RX)
+                        last_state = IN_TX;
                 }
                 else
 // B: caso geral
@@ -183,6 +186,12 @@ void *webserver_thread_function(void *radio_h_v)
                 if ((!(counter % 4)) || radio_h->send_ws_update) // each 300 ms... or when there are changes
                 {
                     sprintf(buff, "{\"type\": 1,\n");
+                    if (last_state == IN_TX)
+                    {
+                        sprintf(buff+strlen(buff), "\"fwd_watts\": 0,\n");
+                        sprintf(buff+strlen(buff), "\"swr\": 10,\n");
+                        last_state = IN_RX;
+                    }
                     sprintf(buff+strlen(buff), "\"rx\": %s,\n", radio_h->txrx_state ? "false":"true");
                     sprintf(buff+strlen(buff), "\"tx\": %s,\n", radio_h->txrx_state ? "true":"false");
                     sprintf(buff+strlen(buff), "\"led\": %s,\n", radio_h->system_is_ok ? "true":"false");
