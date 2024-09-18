@@ -959,9 +959,20 @@ void *control_thread(void *device_ptr)
             dsp_process_tx(signal_to_tx, output_speaker, output_loopback, output_tx, block_size, use_loopback);
         }
 
-        write_buffer(dsp_to_loopback, output_loopback, buffer_size); // stereo 48 kHz interleaved
-        write_buffer(dsp_to_radio, output_tx, buffer_size); // mono 96 kHz
-        write_buffer(dsp_to_speaker, output_speaker, buffer_size); // mono 96 kHz
+        if (ring_buffer_count_free_bytes(&dsp_to_loopback->buf) >= buffer_size)
+            write_buffer(dsp_to_loopback, output_loopback, buffer_size); // stereo 48 kHz interleaved
+        else
+            printf("Buffer full dsp_to_loopback!\n");
+
+        if (ring_buffer_count_free_bytes(&dsp_to_radio->buf) >= buffer_size)
+            write_buffer(dsp_to_radio, output_tx, buffer_size); // mono 96 kHz
+        else
+            printf("Buffer full dsp_to_radio!\n");
+
+        if (ring_buffer_count_free_bytes(&dsp_to_speaker->buf) >= buffer_size)
+            write_buffer(dsp_to_speaker, output_speaker, buffer_size); // mono 96 kHz
+        else
+            printf("Buffer full dsp_to_speaker!\n");
     }
 
     free(buffer_null);

@@ -23,9 +23,9 @@ struct ring_buffer
 {
   void *address;
 
-  unsigned long count_bytes;
-  unsigned long write_offset_bytes;
-  unsigned long read_offset_bytes;
+  _Atomic unsigned long count_bytes;
+  _Atomic unsigned long write_offset_bytes;
+  _Atomic unsigned long read_offset_bytes;
 
   pthread_mutex_t    mutex;
   pthread_cond_t     cond;

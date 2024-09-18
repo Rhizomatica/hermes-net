@@ -21,6 +21,9 @@
  */
 
 #include <iniparser.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
 #ifndef DEBUG_CFG_
 #define DEBUG_CFG_ 0
