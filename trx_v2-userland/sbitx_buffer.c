@@ -30,9 +30,31 @@ buffer *dsp_to_speaker;
 buffer *dsp_to_loopback;
 buffer *loopback_to_dsp;
 
+inline unsigned long free_size_buffer(buffer *buffer)
+{
+	unsigned long ret = 0;
+
+    pthread_mutex_lock(&buffer->mutex);
+
+    ret = ring_buffer_count_free_bytes(&buffer->buf);
+
+	pthread_mutex_unlock(&buffer->mutex);
+
+	return ret;
+}
+
+
 inline unsigned long size_buffer(buffer *buffer)
 {
-    return ring_buffer_count_bytes(&buffer->buf);
+	unsigned long ret = 0;
+
+    pthread_mutex_lock(&buffer->mutex);
+
+	ret = ring_buffer_count_bytes(&buffer->buf);
+
+	pthread_mutex_unlock(&buffer->mutex);
+
+	return ret;
 }
 
 inline void read_buffer(buffer *buf_in, uint8_t *buffer_out, int size) {
