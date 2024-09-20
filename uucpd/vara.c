@@ -230,7 +230,7 @@ void *vara_control_worker_thread_rx(void *conn)
                 {
                     sscanf( (char *) buffer, "SN %f", &snr);
                     fprintf(stderr, "SN %.1f\n", snr);
-                    modem_snr(snr);
+                    modem_snr(snr * 10);
                     continue;
                 }
             }
