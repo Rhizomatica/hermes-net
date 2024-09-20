@@ -230,7 +230,7 @@ void *vara_control_worker_thread_rx(void *conn)
                 if (!memcmp(buffer, "SN", strlen("SN")))
                 {
                     sscanf( (char *) buffer, "SN %f", &snr);
-                    fprintf(stderr, "SN %.1f bps\n", snr);
+                    fprintf(stderr, "SN %.1f\n", snr);
                     continue;
                 }
             }
