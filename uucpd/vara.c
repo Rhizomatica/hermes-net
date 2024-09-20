@@ -136,11 +136,14 @@ void *vara_control_worker_thread_rx(void *conn)
     rhizo_conn *connector = (rhizo_conn *) conn;
     uint8_t rcv_byte;
     uint8_t buffer[1024];
+    int bitrate_index = 0;
+    int bitrate = 0;
+    float snr = 0.0;
     int counter = 0;
     bool new_cmd = false;
 
-    while(connector->shutdown == false){
-
+    while(connector->shutdown == false)
+    {
         if (tcp_read(connector->control_socket, &rcv_byte, 1) == false)
         {
             fprintf(stderr, "Error in tcp_read(control_socket)\n");
@@ -159,16 +162,24 @@ void *vara_control_worker_thread_rx(void *conn)
             new_cmd = false;
         }
 
-        if (new_cmd){
-            if (!strcmp((char *) buffer, "DISCONNECTED")){
+        if (new_cmd)
+        {
+            // lets not print IMALIVE watchdog
+            if (!memcmp(buffer, "IAMALIVE", strlen("IAMALIVE")))
+                continue;
+
+            if (!strcmp((char *) buffer, "DISCONNECTED"))
+            {
                 fprintf(stderr, "TNC: %s\n", buffer);
                 connector->clean_buffers = true;
                 connector->connected = false;
                 connected_led_off(connector->serial_fd, connector->radio_type);
                 connector->waiting_for_connection = false;
-            } else
-            // other commands here
-            if (!memcmp(buffer, "CONNECTED", strlen("CONNECTED"))){
+                continue;
+            }
+
+            if (!memcmp(buffer, "CONNECTED", strlen("CONNECTED")))
+            {
                 fprintf(stderr, "TNC: %s\n", buffer);
                 connector->connected = true;
                 connected_led_on(connector->serial_fd, connector->radio_type);
@@ -179,26 +190,49 @@ void *vara_control_worker_thread_rx(void *conn)
                         fprintf(stderr, "Error calling call_uucico()!\n");
                 }
                 connector->waiting_for_connection = false;
-            } else
+                continue;
+            }
+
             if (!memcmp(buffer, "BUFFER", strlen("BUFFER")))
             {
                 sscanf( (char *) buffer, "BUFFER %d", &connector->buffer_size);
                 fprintf(stderr, "BUFFER: %d\n", connector->buffer_size);
-            } else
+                continue;
+            }
+
+            if (connector->serial_keying == true || connector->radio_type == RADIO_TYPE_SHM)
             {
-                if (connector->serial_keying == true || connector->radio_type == RADIO_TYPE_SHM)
+                if (!memcmp(buffer, "PTT ON", strlen("PTT ON")))
                 {
-                    if (!memcmp(buffer, "PTT ON", strlen("PTT ON")))
-                    {
-                        key_on(connector->serial_fd, connector->radio_type);
-                    }
-                    if (!memcmp(buffer, "PTT OFF", strlen("PTT OFF"))){
-                        key_off(connector->serial_fd, connector->radio_type);
-                    }
-                }
-                // lets not print IMALIVE watchdog
-                if (memcmp(buffer, "IAMALIVE", strlen("IAMALIVE")))
+                    key_on(connector->serial_fd, connector->radio_type);
                     fprintf(stderr, "%s\n", buffer);
+                    continue;
+                }
+                if(!memcmp(buffer, "PTT OFF", strlen("PTT OFF")))
+                {
+                    key_off(connector->serial_fd, connector->radio_type);
+                    fprintf(stderr, "%s\n", buffer);
+                    continue;
+                }
+            }
+
+            if (connector->radio_type == RADIO_TYPE_SHM)
+            {
+                // bitrate
+                if (!memcmp(buffer, "BITRATE", strlen("BITRATE")))
+                {
+                    sscanf( (char *) buffer, "BITRATE (%d) %d", &bitrate_index, &bitrate);
+                    fprintf(stderr, "BITRATE (%d) %d bps\n", bitrate_index, bitrate);
+                    continue;
+                }
+
+                // snr
+                if (!memcmp(buffer, "SN", strlen("SN")))
+                {
+                    sscanf( (char *) buffer, "SN %f", &snr);
+                    fprintf(stderr, "SN %.1f bps\n", snr);
+                    continue;
+                }
             }
         }
     }
