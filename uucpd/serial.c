@@ -237,6 +237,11 @@ void connected_led_off(int serial_fd, int radio_type)
         srv_cmd[1] = srv_cmd[2] = srv_cmd[3] = 0x00;
         srv_cmd[4] = CMD_SET_CONNECTED_STATUS; // CMD_SET_CONNECTED_STATUS
         radio_cmd(radio_conn, srv_cmd, response);
+
+        // clean up bitrate and snr values
+        modem_bitrate(0);
+        modem_snr(0);
+
     }
 }
 
