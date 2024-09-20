@@ -183,7 +183,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
        break;
 
    case CMD_GET_STEPHZ: // CMD_GET_STEPHZ
-       response[0] = CMD_RESP_GET_SERIAL_ACK;
+       response[0] = CMD_RESP_GET_STEPHZ_ACK;
        memcpy(response+1, &radio_h->step_size, 4);
        break;
 
@@ -305,6 +305,26 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
    case CMD_SET_TONE: // SET_TONE
        response[0] = CMD_RESP_ACK;
        memcpy(&radio_h->tone_generation, cmd, 1);
+       break;
+
+   case CMD_GET_BITRATE: // CMD_GET_BITRATE
+       response[0] = CMD_RESP_GET_BITRATE;
+       memcpy(response+1, &radio_h->bitrate, 4);
+       break;
+
+   case CMD_SET_BITRATE: // CMD_SET_BITRATE
+       response[0] = CMD_RESP_ACK;
+       memcpy(&radio_h->bitrate, cmd, 4);
+       break;
+
+   case CMD_GET_SNR: // CMD_GET_SNR
+       response[0] = CMD_RESP_GET_SNR;
+       memcpy(response+1, &radio_h->snr, 4);
+       break;
+
+   case CMD_SET_SNR: // CMD_SET_SNR
+       response[0] = CMD_RESP_ACK;
+       memcpy(&radio_h->snr, cmd, 4);
        break;
 
 // TODO: finish implementig the remaining commands

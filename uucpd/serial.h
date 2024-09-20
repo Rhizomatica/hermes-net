@@ -23,6 +23,7 @@
 #define HAVE_SERIAL_H__
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #define MAX_MODEM_PATH 4096
 #define MAX_BUF_SIZE 4096
@@ -42,5 +43,9 @@ void sys_led_off(int serial_fd, int radio_type);
 
 int open_serial_port(char *ttyport);
 void set_fixed_baudrate(char *baudname, int target_fd);
+
+void modem_snr(int32_t snr);
+void modem_bitrate(uint32_t bitrate);
+
 
 #endif // HAVE_SERIAL_H__

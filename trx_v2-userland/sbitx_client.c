@@ -165,7 +165,35 @@ int main(int argc, char *argv[])
 
         srv_cmd[4] = CMD_SET_MODE | (profile << 6);
     }
-    else if (!strcmp(command, "get_txrx_status"))
+    else if (!strcmp(command, "get_snr"))
+    {
+        srv_cmd[4] = CMD_GET_SNR;
+    }
+    else if (!strcmp(command, "set_snr"))
+    {
+        if (argument_set == false)
+            goto manual;
+
+        int32_t snr = (int32_t) atoi(command_argument);
+        memcpy(srv_cmd, &snr, 4);
+
+        srv_cmd[4] = CMD_SET_SNR;
+    }
+    else if (!strcmp(command, "get_bitrate"))
+    {
+        srv_cmd[4] = CMD_GET_BITRATE;
+    }
+    else if (!strcmp(command, "set_bitrate"))
+    {
+        if (argument_set == false)
+            goto manual;
+
+        uint32_t bitrate = (uint32_t) atoi(command_argument);
+        memcpy(srv_cmd, &bitrate, 4);
+
+        srv_cmd[4] = CMD_SET_BITRATE;
+    }
+	else if (!strcmp(command, "get_txrx_status"))
     {
         srv_cmd[4] = CMD_GET_TXRX_STATUS;
     }
@@ -358,11 +386,8 @@ int main(int argc, char *argv[])
         printf("ERROR\n");
     else
     {
-        uint32_t status;
-        uint32_t freq;
-        uint32_t freqstep;
-        int32_t timeout;
-        uint32_t serial;
+        uint32_t status, freq, freqstep, serial;
+        int32_t timeout, snr;
         uint16_t measure;
         uint8_t tone, profile;
 
@@ -451,6 +476,14 @@ int main(int argc, char *argv[])
         case CMD_RESP_GET_PROFILE:
             memcpy (&profile, response+1, 1);
             printf("%hhu\n", profile);
+            break;
+        case CMD_RESP_GET_BITRATE:
+            memcpy (&status, response+1, 4);
+            printf("%u\n", status);
+            break;
+        case CMD_RESP_GET_SNR:
+            memcpy (&snr, response+1, 4);
+            printf("%d\n", snr);
             break;
         case CMD_RESP_GET_TIMEOUT_ACK:
             memcpy(&timeout, response+1, 4);

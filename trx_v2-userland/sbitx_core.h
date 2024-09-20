@@ -186,6 +186,10 @@ typedef struct
     power_settings band_power[MAX_CAL_BANDS];
     uint32_t band_power_count;
 
+	// information written by modem, sent to ui
+	_Atomic uint32_t bitrate;
+	_Atomic int32_t snr;
+
     // profile variables
     _Atomic uint32_t profile_active_idx;
     _Atomic int32_t profile_timeout; // set to -1 to disable return to "default" profile timeout, or set to the number of seconds for going to the default in case of idle (or what?)

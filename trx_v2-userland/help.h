@@ -170,6 +170,26 @@ const char format_str[] =
 "  * No Argument\n"
 "  * Resp: Reflected Threshold Level | ERROR\n\n"
 
+"* get_bitrate\n"
+"  * Do not specify profile\n"
+"  * No Argument\n"
+"  * Resp: Modem Bitrate | ERROR\n\n"
+
+"* set_bitrate\n"
+"  * Do not specify profile\n"
+"  * Modem Bitrate\n"
+"  * Resp: OK | ERROR\n\n"
+
+"* get_snr\n"
+"  * Do not specify profile\n"
+"  * No Argument\n"
+"  * Resp: Modem SNR | ERROR\n\n"
+
+"* set_snr\n"
+"  * Do not specify profile\n"
+"  * Modem SNR\n"
+"  * Resp: OK | ERROR\n\n"
+
 "* set_radio_defaults\n"
 "  * Do not specify profile\n"
 "  * No Argument\n"

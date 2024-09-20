@@ -103,6 +103,14 @@
 
 #define CMD_SET_TIMEOUT 0x30
 #define CMD_GET_TIMEOUT 0x31
+
+#define CMD_SET_BITRATE 0x32
+#define CMD_GET_BITRATE 0x33
+
+#define CMD_SET_SNR 0x34
+#define CMD_GET_SNR 0x35
+
+
 // ================================= //
 
 
@@ -153,6 +161,9 @@
 
 #define CMD_RESP_GET_TIMEOUT_ACK 0x22
 
-#define CMD_RESP_WRONG_COMMAND 0x23
+#define CMD_RESP_GET_BITRATE 0x23
+#define CMD_RESP_GET_SNR 0x24
+
+#define CMD_RESP_WRONG_COMMAND 0x25
 
 #endif // HAVE_CMDS_H__

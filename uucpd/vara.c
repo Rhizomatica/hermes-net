@@ -218,19 +218,19 @@ void *vara_control_worker_thread_rx(void *conn)
 
             if (connector->radio_type == RADIO_TYPE_SHM)
             {
-                // bitrate
                 if (!memcmp(buffer, "BITRATE", strlen("BITRATE")))
                 {
                     sscanf( (char *) buffer, "BITRATE (%d) %d", &bitrate_index, &bitrate);
                     fprintf(stderr, "BITRATE (%d) %d bps\n", bitrate_index, bitrate);
+                    modem_bitrate(bitrate);
                     continue;
                 }
 
-                // snr
                 if (!memcmp(buffer, "SN", strlen("SN")))
                 {
                     sscanf( (char *) buffer, "SN %f", &snr);
                     fprintf(stderr, "SN %.1f\n", snr);
+                    modem_snr(snr);
                     continue;
                 }
             }

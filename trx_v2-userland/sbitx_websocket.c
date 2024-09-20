@@ -192,6 +192,8 @@ void *webserver_thread_function(void *radio_h_v)
                         sprintf(buff+strlen(buff), "\"swr\": 10,\n");
                         last_state = IN_RX;
                     }
+                    sprintf(buff+strlen(buff), "\"bitrate\": %u,\n", radio_h->bitrate);
+                    sprintf(buff+strlen(buff), "\"snr\": %d,\n", radio_h->snr);
                     sprintf(buff+strlen(buff), "\"rx\": %s,\n", radio_h->txrx_state ? "false":"true");
                     sprintf(buff+strlen(buff), "\"tx\": %s,\n", radio_h->txrx_state ? "true":"false");
                     sprintf(buff+strlen(buff), "\"led\": %s,\n", radio_h->system_is_ok ? "true":"false");

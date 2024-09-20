@@ -270,3 +270,21 @@ void sys_led_off(int serial_fd, int radio_type)
     }
 
 }
+
+void modem_snr(int32_t snr)
+{
+    uint8_t srv_cmd[5];
+    uint8_t response[5];
+    memcpy(srv_cmd, &snr, 4);
+    srv_cmd[4] = CMD_SET_SNR; // CMD_SET_SNR
+    radio_cmd(radio_conn, srv_cmd, response);
+}
+
+void modem_bitrate(uint32_t bitrate)
+{
+    uint8_t srv_cmd[5];
+    uint8_t response[5];
+    memcpy(srv_cmd, &bitrate, 4);
+    srv_cmd[4] = CMD_SET_BITRATE; // CMD_SET_BITRATE
+    radio_cmd(radio_conn, srv_cmd, response);
+}
