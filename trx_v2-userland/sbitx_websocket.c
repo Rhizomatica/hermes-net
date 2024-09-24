@@ -147,14 +147,13 @@ void *webserver_thread_function(void *radio_h_v)
 
     radio *radio_h = (radio *) radio_h_v;
 
+    mg_mgr_poll(&mgr, 100);
+
     while (!shutdown_)
     {
-        // lock
-        mg_mgr_poll(&mgr, 100);
-
         counter++;
         if ((counter % 4) && !radio_h->send_ws_update)
-            continue;
+            goto socket_poll;
 
         for(struct mg_connection* c = mgr.conns; c != NULL; c = c->next)
         {
@@ -198,6 +197,8 @@ void *webserver_thread_function(void *radio_h_v)
         if (radio_h->send_ws_update)
             radio_h->send_ws_update = false;
 
+    socket_poll:
+        mg_mgr_poll(&mgr, 100);
     }
 
     for(struct mg_connection* c = mgr.conns; c != NULL; c = c->next )
