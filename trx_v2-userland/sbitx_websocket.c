@@ -157,7 +157,7 @@ void *webserver_thread_function(void *radio_h_v)
                 char buff[4096];
 
                 sprintf(buff, "\{\"fwd_watts\": %u,\n", get_fwd_power(radio_h));
-                sprintf(buff+strlen(buff), "\"swr\": %u}", get_swr(radio_h));
+                sprintf(buff+strlen(buff), "\"swr\": %u,\n", get_swr(radio_h));
                 sprintf(buff+strlen(buff), "\"bitrate\": %u,\n", radio_h->bitrate);
                 sprintf(buff+strlen(buff), "\"snr\": %d,\n", radio_h->snr);
                 sprintf(buff+strlen(buff), "\"rx\": %s,\n", radio_h->txrx_state ? "false":"true");
