@@ -142,89 +142,53 @@ void *webserver_thread_function(void *radio_h_v)
 {
     mg_mgr_init(&mgr);  // Initialise event manager
     mg_http_listen(&mgr, s_listen_on, fn, NULL);  // Create HTTPS listener
-    uint64_t counter = 0;
-    uint64_t pwr_counter = 1;
-    int last_state = IN_RX;
 
     radio *radio_h = (radio *) radio_h_v;
 
     while (!shutdown_)
     {
         // lock
-        mg_mgr_poll(&mgr, 100);
+        mg_mgr_poll(&mgr, 300);
 
         for(struct mg_connection* c = mgr.conns; c != NULL; c = c->next)
         {
             if( c->is_accepted && c->is_websocket && !c->is_draining)
             {
-// A: caso INTX
-//  .type: Number , // 0
-//  .fwd_watts: Number,
-//  .swr: Number,
-
                 char buff[4096];
-                if ((radio_h->txrx_state == IN_TX) && !(pwr_counter % 2))
+
+                sprintf(buff, "\{\"fwd_watts\": %u,\n", get_fwd_power(radio_h));
+                sprintf(buff+strlen(buff), "\"swr\": %u}", get_swr(radio_h));
+                sprintf(buff+strlen(buff), "\"bitrate\": %u,\n", radio_h->bitrate);
+                sprintf(buff+strlen(buff), "\"snr\": %d,\n", radio_h->snr);
+                sprintf(buff+strlen(buff), "\"rx\": %s,\n", radio_h->txrx_state ? "false":"true");
+                sprintf(buff+strlen(buff), "\"tx\": %s,\n", radio_h->txrx_state ? "true":"false");
+                sprintf(buff+strlen(buff), "\"led\": %s,\n", radio_h->system_is_ok ? "true":"false");
+                sprintf(buff+strlen(buff), "\"connection\": %s,\n", radio_h->system_is_connected ? "true":"false");
+                sprintf(buff+strlen(buff), "\"profile\": %u,\n", radio_h->profile_active_idx);
+                sprintf(buff+strlen(buff), "\"timeout\": %ld,\n", timeout_counter);
+
+                time_t t = time(NULL);
+                struct tm tm = *localtime(&t);
+                sprintf(buff+strlen(buff), "\"datetime\": \"%02d/%02d/%d %02d:%02d:%02d\",\n", tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+                for (int i = 0; i < radio_h->profiles_count; i++)
                 {
-                    sprintf(buff, "{\"type\": 0,\n");
-                    sprintf(buff+strlen(buff), "\"fwd_watts\": %u,\n", get_fwd_power(radio_h));
-                    sprintf(buff+strlen(buff), "\"swr\": %u}", get_swr(radio_h));
-                    mg_ws_send(c, buff, strlen(buff), WEBSOCKET_OP_TEXT);
-                    if (last_state == IN_RX)
-                        last_state = IN_TX;
+                    radio_profile *curr_prof = &radio_h->profiles[i];
+                    sprintf(buff+strlen(buff), "\"p%d_freq\": %u,\n", i, curr_prof->freq);
+                    sprintf(buff+strlen(buff), "\"p%d_volume\": %d,\n", i, curr_prof->speaker_level);
+                    if (curr_prof->mode == MODE_USB)
+                        sprintf(buff+strlen(buff), "\"p%d_mode\": \"USB\",\n", i);
+                    else if (curr_prof->mode == MODE_LSB)
+                        sprintf(buff+strlen(buff), "\"p%d_mode\": \"LSB\",\n", i);
+                    else if (curr_prof->mode == MODE_CW)
+                        sprintf(buff+strlen(buff), "\"p%d_mode\": \"CW\",\n", i);
                 }
-                else
-// B: caso geral
-//  .type: Number , // 1
-//  .tx: Boolean,
-//  .rx: Boolean,
-//  .led: Boolean,
-//  .connection: Boolean,
-//  .mode: String,
-//  .protection: Boolean,
-//  .freq: Number
+                sprintf(buff+strlen(buff), "\"protection\": %s}", radio_h->swr_protection_enabled ?"true":"false");
 
-                if ((!(counter % 4)) || radio_h->send_ws_update) // each 300 ms... or when there are changes
-                {
-                    sprintf(buff, "{\"type\": 1,\n");
-                    if (last_state == IN_TX)
-                    {
-                        sprintf(buff+strlen(buff), "\"fwd_watts\": 0,\n");
-                        sprintf(buff+strlen(buff), "\"swr\": 10,\n");
-                        last_state = IN_RX;
-                    }
-                    sprintf(buff+strlen(buff), "\"bitrate\": %u,\n", radio_h->bitrate);
-                    sprintf(buff+strlen(buff), "\"snr\": %d,\n", radio_h->snr);
-                    sprintf(buff+strlen(buff), "\"rx\": %s,\n", radio_h->txrx_state ? "false":"true");
-                    sprintf(buff+strlen(buff), "\"tx\": %s,\n", radio_h->txrx_state ? "true":"false");
-                    sprintf(buff+strlen(buff), "\"led\": %s,\n", radio_h->system_is_ok ? "true":"false");
-                    sprintf(buff+strlen(buff), "\"connection\": %s,\n", radio_h->system_is_connected ? "true":"false");
-                    sprintf(buff+strlen(buff), "\"profile\": %u,\n", radio_h->profile_active_idx);
-                    sprintf(buff+strlen(buff), "\"timeout\": %ld,\n", timeout_counter);
-
-                    time_t t = time(NULL);
-                    struct tm tm = *localtime(&t);
-                    sprintf(buff+strlen(buff), "\"datetime\": \"%02d/%02d/%d %02d:%02d:%02d\",\n", tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
-
-                    for (int i = 0; i < radio_h->profiles_count; i++)
-                    {
-                        radio_profile *curr_prof = &radio_h->profiles[i];
-                        sprintf(buff+strlen(buff), "\"p%d_freq\": %u,\n", i, curr_prof->freq);
-                        sprintf(buff+strlen(buff), "\"p%d_volume\": %d,\n", i, curr_prof->speaker_level);
-                        if (curr_prof->mode == MODE_USB)
-                            sprintf(buff+strlen(buff), "\"p%d_mode\": \"USB\",\n", i);
-                        else if (curr_prof->mode == MODE_LSB)
-                            sprintf(buff+strlen(buff), "\"p%d_mode\": \"LSB\",\n", i);
-                        else if (curr_prof->mode == MODE_CW)
-                            sprintf(buff+strlen(buff), "\"p%d_mode\": \"CW\",\n", i);
-                    }
-                    sprintf(buff+strlen(buff), "\"protection\": %s}", radio_h->swr_protection_enabled ?"true":"false");
-
-                    mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
-                }
+                mg_ws_send( c, buff, strlen(buff), WEBSOCKET_OP_TEXT );
             }
         }
-        counter++;
-        pwr_counter++;
+
         if (radio_h->send_ws_update)
             radio_h->send_ws_update = false;
     }
