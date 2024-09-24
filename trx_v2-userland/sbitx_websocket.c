@@ -148,7 +148,7 @@ void *webserver_thread_function(void *radio_h_v)
     while (!shutdown_)
     {
         // lock
-        mg_mgr_poll(&mgr, 300);
+        mg_mgr_poll(&mgr, 500);
 
         for(struct mg_connection* c = mgr.conns; c != NULL; c = c->next)
         {
