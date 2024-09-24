@@ -140,6 +140,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 
 void *webserver_thread_function(void *radio_h_v)
 {
+    uint64_t counter = 0;
+
     mg_mgr_init(&mgr);  // Initialise event manager
     mg_http_listen(&mgr, s_listen_on, fn, NULL);  // Create HTTPS listener
 
@@ -148,7 +150,10 @@ void *webserver_thread_function(void *radio_h_v)
     while (!shutdown_)
     {
         // lock
-        mg_mgr_poll(&mgr, 500);
+        mg_mgr_poll(&mgr, 100);
+
+		if ((counter % 4) && !radio_h->send_ws_update)
+			continue;
 
         for(struct mg_connection* c = mgr.conns; c != NULL; c = c->next)
         {
@@ -191,6 +196,8 @@ void *webserver_thread_function(void *radio_h_v)
 
         if (radio_h->send_ws_update)
             radio_h->send_ws_update = false;
+
+        counter++;
     }
 
     for(struct mg_connection* c = mgr.conns; c != NULL; c = c->next )
