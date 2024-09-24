@@ -152,8 +152,9 @@ void *webserver_thread_function(void *radio_h_v)
         // lock
         mg_mgr_poll(&mgr, 100);
 
-		if ((counter % 4) && !radio_h->send_ws_update)
-			continue;
+        counter++;
+        if ((counter % 4) && !radio_h->send_ws_update)
+            continue;
 
         for(struct mg_connection* c = mgr.conns; c != NULL; c = c->next)
         {
@@ -197,7 +198,6 @@ void *webserver_thread_function(void *radio_h_v)
         if (radio_h->send_ws_update)
             radio_h->send_ws_update = false;
 
-        counter++;
     }
 
     for(struct mg_connection* c = mgr.conns; c != NULL; c = c->next )
