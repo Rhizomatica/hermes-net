@@ -11,6 +11,8 @@ Rhizomatica's uuxcomp provides rewriting features for email's audio and image
 attachments, which includes media transcoding (scripts available in https://github.com/Rhizomatica/hermes-net/tree/main/system_scripts/compression ), and compression (gzip and lzma supported). The media codecs packages are available at:
 http://packages.hermes.radio/
 
+Currently are in use the H.266 (VVC) for image compression and LPCNET for audio compression.
+
 # Usage
 
 Postfix uucp configuration should be changed to use uuxcomp instead of uux, and rmail should be changed to crmail. Also, crmail must be put in the uucp configuration
