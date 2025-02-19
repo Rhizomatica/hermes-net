@@ -247,7 +247,7 @@ void *vara_control_worker_thread_rx(void *conn)
                 if (connector->bytes_transmitted != last_bytes_tx)
                 {
                     last_bytes_tx = connector->bytes_transmitted;
-                    modem_bytes_transmitted(connector->bytes_received);
+                    modem_bytes_transmitted(connector->bytes_transmitted);
                 }
             }
         }
