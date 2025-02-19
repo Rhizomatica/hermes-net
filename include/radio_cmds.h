@@ -110,6 +110,11 @@
 #define CMD_SET_SNR 0x34
 #define CMD_GET_SNR 0x35
 
+#define CMD_SET_BYTES_RX 0x36
+#define CMD_GET_BYTES_RX 0x37
+
+#define CMD_SET_BYTES_TX 0x38
+#define CMD_GET_BYTES_TX 0x39
 
 // ================================= //
 
@@ -164,6 +169,9 @@
 #define CMD_RESP_GET_BITRATE 0x23
 #define CMD_RESP_GET_SNR 0x24
 
-#define CMD_RESP_WRONG_COMMAND 0x25
+#define CMD_RESP_GET_BYTES_RX 0x25
+#define CMD_RESP_GET_BYTES_TX 0x26
+
+#define CMD_RESP_WRONG_COMMAND 0x27
 
 #endif // HAVE_CMDS_H__

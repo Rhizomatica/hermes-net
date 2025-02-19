@@ -327,6 +327,27 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
        memcpy(&radio_h->snr, cmd, 4);
        break;
 
+   case CMD_SET_BYTES_RX:
+       response[0] = CMD_RESP_ACK;
+       memcpy(&radio_h->bytes_received, cmd, 4);
+       break;
+
+   case CMD_GET_BYTES_RX:
+       response[0] = CMD_RESP_GET_BYTES_RX;
+       memcpy(response+1, &radio_h->bytes_received, 4);
+       break;
+
+   case CMD_SET_BYTES_TX:
+       response[0] = CMD_RESP_ACK;
+       memcpy(&radio_h->bytes_transmitted, cmd, 4);
+       break;
+
+   case CMD_GET_BYTES_TX:
+       response[0] = CMD_RESP_GET_BYTES_TX;
+       memcpy(response+1, &radio_h->bytes_transmitted, 4);
+       break;
+
+
 // TODO: finish implementig the remaining commands
 #if 0
     case CMD_SET_RADIO_DEFAULTS: // SET RADIO DEFAULTS

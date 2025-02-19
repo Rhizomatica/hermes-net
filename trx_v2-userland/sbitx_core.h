@@ -203,6 +203,9 @@ typedef struct
     _Atomic bool cfg_user_dirty;
     _Atomic bool send_ws_update;
 
+	_Atomic uint32_t bytes_transmitted;
+	_Atomic uint32_t bytes_received;
+
     // TODO: finish external DSP integration
     // _Atomic bool internal_dsp_off;
 } radio;

@@ -190,6 +190,26 @@ const char format_str[] =
 "  * Modem SNR\n"
 "  * Resp: OK | ERROR\n\n"
 
+"* get_bytes_rx\n"
+"  * Do not specify profile\n"
+"  * No Argument\n"
+"  * Resp: Bytes received by modem | ERROR\n\n"
+
+"* set_bytes_rx\n"
+"  * Do not specify profile\n"
+"  * Received bytes by modem\n"
+"  * Resp: OK | ERROR\n\n"
+
+"* get_bytes_tx\n"
+"  * Do not specify profile\n"
+"  * No Argument\n"
+"  * Resp: Bytes transmitted by modem | ERROR\n\n"
+
+"* set_bytes_tx\n"
+"  * Do not specify profile\n"
+"  * Transmitted bytes by modem\n"
+"  * Resp: OK | ERROR\n\n"
+
 "* set_radio_defaults\n"
 "  * Do not specify profile\n"
 "  * No Argument\n"

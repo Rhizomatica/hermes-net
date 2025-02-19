@@ -193,6 +193,34 @@ int main(int argc, char *argv[])
 
         srv_cmd[4] = CMD_SET_BITRATE;
     }
+    else if (!strcmp(command, "get_bytes_rx"))
+    {
+        srv_cmd[4] = CMD_GET_BYTES_RX;
+    }
+    else if (!strcmp(command, "set_bytes_rx"))
+    {
+        if (argument_set == false)
+            goto manual;
+
+        uint32_t bytes = (uint32_t) atoi(command_argument);
+        memcpy(srv_cmd, &bytes, 4);
+
+        srv_cmd[4] = CMD_SET_BYTES_RX;
+    }
+    else if (!strcmp(command, "get_bytes_tx"))
+    {
+        srv_cmd[4] = CMD_GET_BYTES_TX;
+    }
+    else if (!strcmp(command, "set_bytes_tx"))
+    {
+        if (argument_set == false)
+            goto manual;
+
+        uint32_t bytes = (uint32_t) atoi(command_argument);
+        memcpy(srv_cmd, &bytes, 4);
+
+        srv_cmd[4] = CMD_SET_BYTES_TX;
+    }
 	else if (!strcmp(command, "get_txrx_status"))
     {
         srv_cmd[4] = CMD_GET_TXRX_STATUS;
@@ -484,6 +512,14 @@ int main(int argc, char *argv[])
         case CMD_RESP_GET_SNR:
             memcpy (&snr, response+1, 4);
             printf("%d\n", snr);
+            break;
+        case CMD_RESP_GET_BYTES_RX:
+            memcpy (&status, response+1, 4);
+            printf("%u\n", status);
+            break;
+        case CMD_RESP_GET_BYTES_TX:
+            memcpy (&status, response+1, 4);
+            printf("%u\n", status);
             break;
         case CMD_RESP_GET_TIMEOUT_ACK:
             memcpy(&timeout, response+1, 4);
