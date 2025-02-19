@@ -61,7 +61,7 @@ void *vara_data_worker_thread_tx(void *conn)
             if (connector->shutdown == true){
                 goto exit_local;
             }
-            // fprintf(stderr, "vara_data_worker_thread_tx: sleeping\n");
+            connector->bytes_transmitted = 0;
             sleep(1);
         }
 
