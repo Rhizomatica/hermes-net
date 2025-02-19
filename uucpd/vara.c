@@ -241,11 +241,13 @@ void *vara_control_worker_thread_rx(void *conn)
 
                 if (connector->bytes_received != last_bytes_rx)
                 {
+					printf("bytes_received %d\n", connector->bytes_received);
                     last_bytes_rx = connector->bytes_received;
                     modem_bytes_received(connector->bytes_received);
                 }
                 if (connector->bytes_transmitted != last_bytes_tx)
                 {
+					printf("bytes_transmitted %d\n", connector->bytes_transmitted);
                     last_bytes_tx = connector->bytes_transmitted;
                     modem_bytes_transmitted(connector->bytes_transmitted);
                 }
