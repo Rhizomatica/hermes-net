@@ -218,6 +218,7 @@ void *vara_control_worker_thread_rx(void *conn)
                 sscanf( (char *) buffer, "BUFFER %d", &connector->buffer_size);
 				if (connector->buffer_size < old_buffer_size)
 					connector->bytes_transmitted += (old_buffer_size - connector->buffer_size);
+                old_buffer_size = connector->buffer_size;
                 fprintf(stderr, "BUFFER: %d\n", connector->buffer_size);
                 continue;
             }
