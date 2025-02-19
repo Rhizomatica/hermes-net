@@ -141,8 +141,9 @@ void *vara_control_worker_thread_rx(void *conn)
     int bitrate = 0;
     float snr = 0.0;
     int counter = 0;
-	atomic_int last_bytes_rx = 0, last_bytes_tx = 0;
+    atomic_int last_bytes_rx = 0, last_bytes_tx = 0;
     bool new_cmd = false;
+    int old_buffer_size = 0;
 
     while(connector->shutdown == false)
     {
@@ -200,6 +201,7 @@ void *vara_control_worker_thread_rx(void *conn)
             if (!memcmp(buffer, "CONNECTED", strlen("CONNECTED")))
             {
                 fprintf(stderr, "TNC: %s\n", buffer);
+                old_buffer_size = 0;
                 connector->connected = true;
                 connected_led_on(connector->serial_fd, connector->radio_type);
                 if (connector->waiting_for_connection == false)
@@ -214,7 +216,6 @@ void *vara_control_worker_thread_rx(void *conn)
 
             if (!memcmp(buffer, "BUFFER", strlen("BUFFER")))
             {
-				int old_buffer_size = connector->buffer_size;
                 sscanf( (char *) buffer, "BUFFER %d", &connector->buffer_size);
 				if (connector->buffer_size < old_buffer_size)
 					connector->bytes_transmitted += (old_buffer_size - connector->buffer_size);
