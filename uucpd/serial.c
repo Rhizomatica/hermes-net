@@ -293,3 +293,21 @@ void modem_bitrate(uint32_t bitrate)
     srv_cmd[4] = CMD_SET_BITRATE; // CMD_SET_BITRATE
     radio_cmd(radio_conn, srv_cmd, response);
 }
+
+void modem_bytes_received(int32_t bytes)
+{
+    uint8_t srv_cmd[5];
+    uint8_t response[5];
+    memcpy(srv_cmd, &bytes, 4);
+    srv_cmd[4] = CMD_SET_BYTES_RX; // CMD_SET_BYTES_RX
+    radio_cmd(radio_conn, srv_cmd, response);
+}
+
+void modem_bytes_transmitted(int32_t bytes)
+{
+    uint8_t srv_cmd[5];
+    uint8_t response[5];
+    memcpy(srv_cmd, &bytes, 4);
+    srv_cmd[4] = CMD_SET_BYTES_TX; // CMD_SET_BYTES_TX
+    radio_cmd(radio_conn, srv_cmd, response);
+}

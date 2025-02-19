@@ -86,6 +86,9 @@ typedef struct{
     atomic_int session_counter_read;
     atomic_int session_counter_write;
 
+    atomic_int bytes_received;
+    atomic_int bytes_transmitted;
+
     // internal ardop buffer size
     atomic_int buffer_size;
 

@@ -47,5 +47,7 @@ void set_fixed_baudrate(char *baudname, int target_fd);
 void modem_snr(int32_t snr);
 void modem_bitrate(uint32_t bitrate);
 
+void modem_bytes_received(int32_t bytes);
+void modem_bytes_transmitted(int32_t bytes);
 
 #endif // HAVE_SERIAL_H__

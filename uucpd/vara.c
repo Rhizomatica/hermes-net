@@ -109,6 +109,7 @@ void *vara_data_worker_thread_rx(void *conn)
             if (connector->shutdown == true){
                 goto exit_local;
             }
+            connector->bytes_received = 0;
             sleep(1);
         }
 
@@ -123,7 +124,7 @@ void *vara_data_worker_thread_rx(void *conn)
             usleep(100000); // 100ms
         }
         circular_buf_put_range(connector->out_buffer, buffer, 1);
-
+        connector->bytes_received++;
     }
 
 exit_local:
@@ -140,6 +141,7 @@ void *vara_control_worker_thread_rx(void *conn)
     int bitrate = 0;
     float snr = 0.0;
     int counter = 0;
+	atomic_int last_bytes_rx = 0, last_bytes_tx = 0;
     bool new_cmd = false;
 
     while(connector->shutdown == false)
@@ -195,7 +197,10 @@ void *vara_control_worker_thread_rx(void *conn)
 
             if (!memcmp(buffer, "BUFFER", strlen("BUFFER")))
             {
+				int old_buffer_size = connector->buffer_size;
                 sscanf( (char *) buffer, "BUFFER %d", &connector->buffer_size);
+				if (connector->buffer_size < old_buffer_size)
+					connector->bytes_transmitted += (old_buffer_size - connector->buffer_size);
                 fprintf(stderr, "BUFFER: %d\n", connector->buffer_size);
                 continue;
             }
@@ -232,6 +237,17 @@ void *vara_control_worker_thread_rx(void *conn)
                     fprintf(stderr, "SN %.1f\n", snr);
                     modem_snr(snr * 10);
                     continue;
+                }
+
+                if (connector->bytes_received != last_bytes_rx)
+                {
+                    last_bytes_rx = connector->bytes_received;
+                    modem_bytes_received(connector->bytes_received);
+                }
+                if (connector->bytes_transmitted != last_bytes_tx)
+                {
+                    last_bytes_tx = connector->bytes_transmitted;
+                    modem_bytes_transmitted(connector->bytes_received);
                 }
             }
         }
