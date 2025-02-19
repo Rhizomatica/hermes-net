@@ -166,7 +166,24 @@ void *vara_control_worker_thread_rx(void *conn)
 
         if (new_cmd)
         {
-            // lets not print IMALIVE watchdog
+            if (connector->radio_type == RADIO_TYPE_SHM)
+            {
+                if (connector->bytes_received != last_bytes_rx)
+                {
+                    printf("bytes_received %d\n", connector->bytes_received);
+                    last_bytes_rx = connector->bytes_received;
+                    modem_bytes_received(connector->bytes_received);
+                }
+                if (connector->bytes_transmitted != last_bytes_tx)
+                {
+                    printf("bytes_transmitted %d\n", connector->bytes_transmitted);
+                    last_bytes_tx = connector->bytes_transmitted;
+                    modem_bytes_transmitted(connector->bytes_transmitted);
+                }
+            }
+
+
+			// lets not print IMALIVE watchdog
             if (!memcmp(buffer, "IAMALIVE", strlen("IAMALIVE")))
                 continue;
 
@@ -237,19 +254,6 @@ void *vara_control_worker_thread_rx(void *conn)
                     fprintf(stderr, "SN %.1f\n", snr);
                     modem_snr(snr * 10);
                     continue;
-                }
-
-                if (connector->bytes_received != last_bytes_rx)
-                {
-					printf("bytes_received %d\n", connector->bytes_received);
-                    last_bytes_rx = connector->bytes_received;
-                    modem_bytes_received(connector->bytes_received);
-                }
-                if (connector->bytes_transmitted != last_bytes_tx)
-                {
-					printf("bytes_transmitted %d\n", connector->bytes_transmitted);
-                    last_bytes_tx = connector->bytes_transmitted;
-                    modem_bytes_transmitted(connector->bytes_transmitted);
                 }
             }
         }
