@@ -90,6 +90,7 @@ void *vara_data_worker_thread_tx(void *conn)
             goto exit_local;
         }
 		connector->bytes_buffered_tx += bytes_to_read;
+		fprintf(stderr, "bytes_buffered %d\n", connector->bytes_buffered_tx);
 
         // buffer management hack
         sleep(1);
@@ -170,6 +171,7 @@ void *vara_control_worker_thread_rx(void *conn)
         {
             if (connector->radio_type == RADIO_TYPE_SHM)
             {
+				fprintf(stderr, "tx: %d buffered: %d\n", connector->bytes_transmitted, connector->bytes_buffered_tx);
                 if (connector->bytes_received != last_bytes_rx)
                 {
                     fprintf(stderr, "bytes_received %d\n", connector->bytes_received);
