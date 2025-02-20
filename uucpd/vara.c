@@ -62,6 +62,7 @@ void *vara_data_worker_thread_tx(void *conn)
                 goto exit_local;
             }
             connector->bytes_transmitted = 0;
+			connector->bytes_buffered_tx = 0;
             sleep(1);
         }
 
@@ -88,6 +89,7 @@ void *vara_data_worker_thread_tx(void *conn)
             connector->shutdown = true;
             goto exit_local;
         }
+		connector->bytes_buffered_tx += bytes_to_read;
 
         // buffer management hack
         sleep(1);
@@ -143,7 +145,6 @@ void *vara_control_worker_thread_rx(void *conn)
     int counter = 0;
     atomic_int last_bytes_rx = 0, last_bytes_tx = 0;
     bool new_cmd = false;
-    int old_buffer_size = 0;
 
     while(connector->shutdown == false)
     {
@@ -201,7 +202,6 @@ void *vara_control_worker_thread_rx(void *conn)
             if (!memcmp(buffer, "CONNECTED", strlen("CONNECTED")))
             {
                 fprintf(stderr, "TNC: %s\n", buffer);
-                old_buffer_size = 0;
                 connector->connected = true;
                 connected_led_on(connector->serial_fd, connector->radio_type);
                 if (connector->waiting_for_connection == false)
@@ -217,9 +217,19 @@ void *vara_control_worker_thread_rx(void *conn)
             if (!memcmp(buffer, "BUFFER", strlen("BUFFER")))
             {
                 sscanf( (char *) buffer, "BUFFER %d", &connector->buffer_size);
-				if (connector->buffer_size < old_buffer_size)
-					connector->bytes_transmitted += (old_buffer_size - connector->buffer_size);
-                old_buffer_size = connector->buffer_size;
+				if (connector->buffer_size == 0)
+				{
+					last_bytes_tx = connector->bytes_transmitted;
+					connector->bytes_transmitted += connector->bytes_buffered_tx;
+					connector->bytes_buffered_tx = 0;
+				}
+				else if (connector->buffer_size < connector->bytes_buffered_tx)
+				{
+					last_bytes_tx = connector->bytes_transmitted;
+					connector->bytes_transmitted += connector->bytes_buffered_tx - connector->buffer_size;
+					connector->bytes_buffered_tx = connector->bytes_buffered_tx - connector->buffer_size;
+				}
+
                 fprintf(stderr, "BUFFER: %d\n", connector->buffer_size);
                 continue;
             }
@@ -356,6 +366,7 @@ void *vara_control_worker_thread_tx(void *conn)
             circular_buf_reset(connector->out_buffer);
 
             connector->clean_buffers = false;
+			connector->buffer_size = 0;
         }
 
         // Logic to start a connection
@@ -393,6 +404,12 @@ exit_local:
 bool initialize_modem_vara(rhizo_conn *connector)
 {
     bool ret;
+
+	connector->buffer_size = 0;
+	connector->bytes_received = 0;
+	connector->bytes_transmitted = 0;
+    connector->bytes_buffered_tx = 0;
+
 try_connect_again:
     ret = true;
     ret &= tcp_connect(connector->ip_address, connector->tcp_base_port, &connector->control_socket);
