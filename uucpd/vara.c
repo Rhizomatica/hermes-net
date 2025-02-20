@@ -192,6 +192,13 @@ void *vara_control_worker_thread_rx(void *conn)
             if (!strcmp((char *) buffer, "DISCONNECTED"))
             {
                 fprintf(stderr, "TNC: %s\n", buffer);
+				last_bytes_tx = 0;
+				last_bytes_tx = 0;
+				connector->bytes_received = 0;
+				connector->bytes_transmitted = 0;
+				connector->bytes_buffered_tx = 0;
+				modem_bytes_received(connector->bytes_received);
+				modem_bytes_transmitted(connector->bytes_transmitted);
                 connector->clean_buffers = true;
                 connector->connected = false;
                 connected_led_off(connector->serial_fd, connector->radio_type);
