@@ -88,7 +88,7 @@ void *vara_data_worker_thread_tx(void *conn)
             goto exit_local;
         }
 		connector->bytes_buffered_tx += bytes_to_read;
-		fprintf(stderr, "bytes_buffered %d\n", connector->bytes_buffered_tx);
+		// fprintf(stderr, "bytes_buffered %d\n", connector->bytes_buffered_tx);
 
         // buffer management hack
         sleep(1);
@@ -169,16 +169,16 @@ void *vara_control_worker_thread_rx(void *conn)
         {
             if (connector->radio_type == RADIO_TYPE_SHM)
             {
-				fprintf(stderr, "tx: %d buffered: %d last: %d\n", connector->bytes_transmitted, connector->bytes_buffered_tx, last_bytes_tx);
+				// fprintf(stderr, "tx: %d buffered: %d last: %d\n", connector->bytes_transmitted, connector->bytes_buffered_tx, last_bytes_tx);
                 if (connector->bytes_received != last_bytes_rx)
                 {
-                    fprintf(stderr, "bytes_received %d\n", connector->bytes_received);
+                    // fprintf(stderr, "bytes_received %d\n", connector->bytes_received);
                     last_bytes_rx = connector->bytes_received;
                     modem_bytes_received(connector->bytes_received);
                 }
                 if (connector->bytes_transmitted != last_bytes_tx)
                 {
-                    fprintf(stderr, "bytes_transmitted %d\n", connector->bytes_transmitted);
+                    // fprintf(stderr, "bytes_transmitted %d\n", connector->bytes_transmitted);
                     last_bytes_tx = connector->bytes_transmitted;
                     modem_bytes_transmitted(connector->bytes_transmitted);
                 }
@@ -192,13 +192,15 @@ void *vara_control_worker_thread_rx(void *conn)
             if (!strcmp((char *) buffer, "DISCONNECTED"))
             {
                 fprintf(stderr, "TNC: %s\n", buffer);
-				last_bytes_tx = 0;
-				last_bytes_tx = 0;
-				connector->bytes_received = 0;
-				connector->bytes_transmitted = 0;
-				connector->bytes_buffered_tx = 0;
-				modem_bytes_received(connector->bytes_received);
-				modem_bytes_transmitted(connector->bytes_transmitted);
+
+                last_bytes_tx = 0;
+                last_bytes_tx = 0;
+                connector->bytes_received = 0;
+                connector->bytes_transmitted = 0;
+                connector->bytes_buffered_tx = 0;
+                modem_bytes_received(connector->bytes_received);
+                modem_bytes_transmitted(connector->bytes_transmitted);
+
                 connector->clean_buffers = true;
                 connector->connected = false;
                 connected_led_off(connector->serial_fd, connector->radio_type);
@@ -224,18 +226,18 @@ void *vara_control_worker_thread_rx(void *conn)
             if (!memcmp(buffer, "BUFFER", strlen("BUFFER")))
             {
                 sscanf( (char *) buffer, "BUFFER %d", &connector->buffer_size);
-				if (connector->buffer_size == 0)
-				{
-					last_bytes_tx = connector->bytes_transmitted;
-					connector->bytes_transmitted += connector->bytes_buffered_tx;
-					connector->bytes_buffered_tx = 0;
-				}
-				else if (connector->buffer_size < connector->bytes_buffered_tx)
-				{
-					last_bytes_tx = connector->bytes_transmitted;
-					connector->bytes_transmitted += connector->bytes_buffered_tx - connector->buffer_size;
-					connector->bytes_buffered_tx -= connector->bytes_buffered_tx - connector->buffer_size;
-				}
+                if (connector->buffer_size == 0)
+                {
+                    last_bytes_tx = connector->bytes_transmitted;
+                    connector->bytes_transmitted += connector->bytes_buffered_tx;
+                    connector->bytes_buffered_tx = 0;
+                }
+                else if (connector->buffer_size < connector->bytes_buffered_tx)
+                {
+                    last_bytes_tx = connector->bytes_transmitted;
+                    connector->bytes_transmitted += connector->bytes_buffered_tx - connector->buffer_size;
+                    connector->bytes_buffered_tx -= connector->bytes_buffered_tx - connector->buffer_size;
+                }
 
                 fprintf(stderr, "BUFFER: %d\n", connector->buffer_size);
                 continue;
