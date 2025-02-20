@@ -227,7 +227,7 @@ void *vara_control_worker_thread_rx(void *conn)
 				{
 					last_bytes_tx = connector->bytes_transmitted;
 					connector->bytes_transmitted += connector->bytes_buffered_tx - connector->buffer_size;
-					connector->bytes_buffered_tx = connector->bytes_buffered_tx - connector->buffer_size;
+					connector->bytes_buffered_tx -= connector->bytes_buffered_tx - connector->buffer_size;
 				}
 
                 fprintf(stderr, "BUFFER: %d\n", connector->buffer_size);
