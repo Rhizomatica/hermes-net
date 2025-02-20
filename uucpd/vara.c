@@ -61,8 +61,6 @@ void *vara_data_worker_thread_tx(void *conn)
             if (connector->shutdown == true){
                 goto exit_local;
             }
-            connector->bytes_transmitted = 0;
-			connector->bytes_buffered_tx = 0;
             sleep(1);
         }
 
@@ -171,7 +169,7 @@ void *vara_control_worker_thread_rx(void *conn)
         {
             if (connector->radio_type == RADIO_TYPE_SHM)
             {
-				fprintf(stderr, "tx: %d buffered: %d\n", connector->bytes_transmitted, connector->bytes_buffered_tx);
+				fprintf(stderr, "tx: %d buffered: %d last: %d\n", connector->bytes_transmitted, connector->bytes_buffered_tx, last_bytes_tx);
                 if (connector->bytes_received != last_bytes_rx)
                 {
                     fprintf(stderr, "bytes_received %d\n", connector->bytes_received);
