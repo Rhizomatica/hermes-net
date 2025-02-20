@@ -171,6 +171,8 @@ void *webserver_thread_function(void *radio_h_v)
                 sprintf(buff+strlen(buff), "\"connection\": %s,\n", radio_h->system_is_connected ? "true":"false");
                 sprintf(buff+strlen(buff), "\"profile\": %u,\n", radio_h->profile_active_idx);
                 sprintf(buff+strlen(buff), "\"timeout\": %ld,\n", timeout_counter);
+                sprintf(buff+strlen(buff), "\"bytes_transmitted\": %u,\n", radio_h->bytes_transmitted);
+                sprintf(buff+strlen(buff), "\"bytes_received\": %u,\n", radio_h->bytes_received);
 
                 time_t t = time(NULL);
                 struct tm tm = *localtime(&t);
