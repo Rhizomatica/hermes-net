@@ -60,6 +60,7 @@ install_v2:
 	install -m 644 -D system_services/init/vnc.service $(DESTDIR)/etc/systemd/system/vnc.service
 	install -m 644 -D system_services/init/sbitx.service $(DESTDIR)/etc/systemd/system/sbitx.service
 	install -m 644 -D system_services/alsa/asound-sbitx-hermes.conf $(DESTDIR)/etc/asound.conf
+	install -m 644 -D system_services/udev/71-i2c.rules $(DESTDIR)/etc/udev/rules.d/71-i2c.rules
 	install -D system_scripts/compression/compress_image.sh $(DESTDIR)$(prefix)/bin/compress_image.sh
 	install -D system_scripts/compression/compress_audio.sh $(DESTDIR)$(prefix)/bin/compress_audio.sh
 	install -D system_scripts/compression/decompress_image.sh $(DESTDIR)$(prefix)/bin/decompress_image.sh

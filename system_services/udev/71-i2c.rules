@@ -1,0 +1,1 @@
+SUBSYSTEM=="i2c-dev", KERNELS=="i2c-gpio-rtc@0", SYMLINK+="i2c-sbitx"
