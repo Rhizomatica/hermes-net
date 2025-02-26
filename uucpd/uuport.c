@@ -49,6 +49,7 @@
 #include "shm.h"
 #include "circular_buffer.h"
 
+rhizo_conn *connector_aux = NULL;
 FILE *log_fd;
 atomic_bool running_read;
 atomic_bool running_write;
@@ -175,6 +176,11 @@ void *write_thread(void *conn)
 
 void finish(int s){
 
+    if (s == SIGPIPE){
+        fprintf(log_fd, "\nSIGPIPE: Doing nothing.\n");
+        return;
+    }
+
     if (s == SIGINT)
         fprintf(log_fd, "\nSIGINT: Exiting.\n");
 
@@ -191,15 +197,11 @@ void finish(int s){
         running_read = false;
         fflush(log_fd);
         sleep(1);
-        exit(EXIT_SUCCESS); // this is not perfect... but it is what we can do now.
-        return;
-    }
-    if (s == SIGPIPE){
-        fprintf(log_fd, "\nSIGPIPE: Doing nothing.\n");
-        return;
     }
 
     // some house keeping here?
+    if (connector_aux)
+        connector_aux->clean_buffers = true;
 
     fclose(log_fd);
     exit(EXIT_SUCCESS);
@@ -269,6 +271,9 @@ int main (int argc, char *argv[])
     connector->in_buffer_p = circular_buf_connect_shm(INTERNAL_BUFFER_SIZE, SYSV_SHM_KEY_IB);
     connector->out_buffer_p = circular_buf_connect_shm(INTERNAL_BUFFER_SIZE, SYSV_SHM_KEY_OB);
 
+    // for signal() use
+    connector_aux = connector;
+
     if (log_file[0])
     {
         log_fd = fopen(log_file, "a");
@@ -293,6 +298,8 @@ int main (int argc, char *argv[])
     pthread_create(&tid, NULL, write_thread, (void *) connector);
 
     read_thread(connector);
+
+    connector->clean_buffers = true;
 
     // workaround... as write_thread blocks in fd 0...
     fclose(log_fd);

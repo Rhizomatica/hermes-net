@@ -352,16 +352,17 @@ void *vara_control_worker_thread_tx(void *conn)
                 sprintf(buffer,"DISCONNECT\r");
                 // sprintf(buffer,"ABORT\r"); // shouldn't we use abort here?
                 ret &= tcp_write(connector->control_socket, (uint8_t *)buffer, strlen(buffer));
+                fprintf(stderr, "SENDING DISCONNECT\n");
             }
             usleep(1200000); // sleep for threads finish their jobs (more than 1s here)
 
-            fprintf(stderr, "Killing uucico.\n");
+//            fprintf(stderr, "Killing uucico.\n");
             system("killall uucico");
 
-            fprintf(stderr, "Killing uuport.\n");
+//            fprintf(stderr, "Killing uuport.\n");
             system("killall uuport");
 
-            fprintf(stderr, "Connection closed - Cleaning internal buffers.\n");
+//            fprintf(stderr, "Connection closed - Cleaning internal buffers.\n");
             circular_buf_reset(connector->in_buffer);
             circular_buf_reset(connector->out_buffer);
 
@@ -370,7 +371,7 @@ void *vara_control_worker_thread_tx(void *conn)
 
             usleep(1200000); // sleep for threads finish their jobs (more than 1s here)
 
-            fprintf(stderr, "Connection closed - Cleaning internal buffers 2.\n");
+            fprintf(stderr, "Connection closed. Cleaning internal buffers.\n");
             circular_buf_reset(connector->in_buffer);
             circular_buf_reset(connector->out_buffer);
 
