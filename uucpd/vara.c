@@ -42,7 +42,7 @@
 #include <sched.h>
 #include <unistd.h>
 
-#include "common.h"
+#include "uucpd.h"
 #include "net.h"
 #include "call_uucico.h"
 #include "vara.h"

@@ -70,6 +70,7 @@ int main(int argc, char *argv[])
     uint8_t srv_cmd[5];
     uint8_t response[5];
     bool argument_set = false;
+    bool show_connector_msg = false;
 
     if (argc < 3)
     {
@@ -112,7 +113,12 @@ int main(int argc, char *argv[])
 
     memset(srv_cmd, 0, 5);
 
-    if (!strcmp(command, "ptt_on"))
+
+    if (!strcmp(command, "get_message"))
+    {
+        show_connector_msg = true;
+    }
+    else if (!strcmp(command, "ptt_on"))
     {
         srv_cmd[4] = CMD_PTT_ON;
     }
@@ -400,6 +406,13 @@ int main(int argc, char *argv[])
 
     connector = shm_attach(SYSV_SHM_CONTROLLER_KEY_STR, sizeof(controller_conn));
     tmp_connector = connector;
+
+    if (show_connector_msg)
+    {
+        printf("%s\n", connector->message);
+        printf("message_available: %s\n", connector->message_available? "yes":"no");
+        return EXIT_SUCCESS;
+    }
 
     memset(response, 0, 5);
     bool cmd_resp = radio_cmd(connector, srv_cmd, response);

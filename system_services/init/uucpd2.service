@@ -1,0 +1,14 @@
+[Unit]
+Description=UUCPD daemon
+After=vnc.service ubitx.service
+Requires=vnc.service ubitx.service
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/uucpd -a 127.0.0.1 -p 8300 -r vara -o shm
+KillSignal=SIGTERM
+IgnoreSIGPIPE=no
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

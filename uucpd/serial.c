@@ -35,7 +35,7 @@
 #include <stdint.h>
 #include <pthread.h>
 
-#include "uuardopd.h"
+#include "uucpd.h"
 #include "serial.h"
 
 #include "sbitx_io.h"

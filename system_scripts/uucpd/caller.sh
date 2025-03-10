@@ -98,7 +98,7 @@ do
                 fi
 
                 echo "Calling station ${t}."
-                uucico -D -S ${t}
+                uucico -m -D -S ${t}
                 sleep ${DELAY}
 
                 if [[ ${freqmode_enabled} -eq 1  ]]; then

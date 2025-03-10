@@ -1,5 +1,5 @@
-/* Rhizo-uuardop: Tools to integrate Ardop to UUCP
- * Copyright (C) 2019 Rhizomatica
+/* UUCPD: Tools which integrate HF to UUCP
+ * Copyright (C) 2019-2015 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
@@ -44,7 +44,7 @@
 #include <fcntl.h>
 #include <malloc.h>
 
-#include "uuardopd.h"
+#include "uucpd.h"
 #include "uuport.h"
 #include "shm.h"
 #include "circular_buffer.h"

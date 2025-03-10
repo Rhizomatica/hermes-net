@@ -1,5 +1,5 @@
-# Rhizo-uuardop: UUCP <-> HF tools
-# Copyright (C) 2019-2021 Rhizomatica
+# UUCPD: UUCP <-> HF tools
+# Copyright (C) 2019-2025 Rhizomatica
 # Author: Rafael Diniz <rafael@riseup.net>
 #
 # This is free software; you can redistribute it and/or modify
@@ -27,6 +27,8 @@ CFLAGS=-O3 -Wall -pedantic -std=gnu11 -pthread -fstack-protector -I../include
 ifeq (${uname_p},aarch64)
 # aarch64 Raspberry Pi 4 or better
 	CFLAGS+=-moutline-atomics -march=armv8-a+crc
+# for Pi 5 use:
+#	CFLAGS+=-march=armv8.2-a+crypto+fp16+rcpc+dotprod
 else
 # x86_64 with SSE 4.2 level or better
 	CFLAGS+=-march=x86-64-v2
@@ -38,12 +40,12 @@ else
 	EXTRA_OBJ=../trx_v2-userland/sbitx_io.o
 endif
 
-all: uuardopd uuport
+all: uucpd uuport
 
 %.o : %.c %.h
 	gcc -c $(CFLAGS) $< -o $@
 
-uuardopd: ardop.o shm.o common.o net.o circular_buffer.o uuardopd.o call_uucico.o serial.o vara.o $(EXTRA_OBJ)
+uucpd: ardop.o shm.o net.o circular_buffer.o uucpd.o call_uucico.o serial.o vara.o $(EXTRA_OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
 
 
@@ -52,12 +54,12 @@ uuport: uuport.o shm.o circular_buffer.o
 
 
 .PHONY: clean install doc
-install: uuardopd uuport
-	install -D uuardopd $(DESTDIR)$(prefix)/bin/uuardopd
+install: uucpd uuport
+	install -D uucpd $(DESTDIR)$(prefix)/bin/uucpd
 	install -D uuport $(DESTDIR)$(prefix)/bin/uuport
 
 doc:
 	doxygen doxyfile
 
 clean:
-	rm -rf uuardopd uuport *.o $(EXTRA_OBJ) *~ doc
+	rm -rf uucpd uuport *.o $(EXTRA_OBJ) *~ doc

@@ -97,25 +97,29 @@ bool shm_destroy(key_t key, size_t size)
 void *shm_attach(key_t key, size_t size)
 {
     int shmid = shmget(key, size, 0);
-
     if (shmid == -1)
-    {
         return NULL;
-    }
 
-    return shmat(shmid, NULL, 0);
+
+    void *tmp = shmat(shmid, NULL, 0);
+    if (tmp == (void *)-1)
+        return NULL;
+
+    return tmp;
 }
 
 bool shm_dettach(key_t key, size_t size, void *ptr)
 {
     int shmid = shmget(key, size, 0);
-
     if (shmid == -1)
-    {
         return false;
-    }
 
-    shmdt(ptr);
+    if (!ptr)
+        return false;
+
+    shmid = shmdt(ptr);
+    if (shmid == -1)
+        return false;
 
     return true;
 }

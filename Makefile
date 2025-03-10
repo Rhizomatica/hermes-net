@@ -56,8 +56,7 @@ install_v2:
 	$(MAKE) -C trx_v2-userland install
 	$(MAKE) -C uuxcomp install
 	IS_SBITX=1 $(MAKE) -C uucpd install
-	install -m 644 -D system_services/init/uuardopd2.service $(DESTDIR)/etc/systemd/system/uuardopd.service
-	install -m 644 -D system_services/init/vnc.service $(DESTDIR)/etc/systemd/system/vnc.service
+	install -m 644 -D system_services/init/uucpd.service $(DESTDIR)/etc/systemd/system/uucpd.service
 	install -m 644 -D system_services/init/sbitx.service $(DESTDIR)/etc/systemd/system/sbitx.service
 	install -m 644 -D system_services/alsa/asound-sbitx-hermes.conf $(DESTDIR)/etc/asound.conf
 	install -m 644 -D system_services/udev/71-i2c.rules $(DESTDIR)/etc/udev/rules.d/71-i2c.rules
@@ -80,8 +79,7 @@ install_v1:
 	$(MAKE) -C trx_v1-userland install
 	$(MAKE) -C uuxcomp install
 	IS_SBITX=0 $(MAKE) -C uucpd install
-	install -m 644 -D system_services/init/uuardopd.service $(DESTDIR)/etc/systemd/system/uuardopd.service
-	install -m 644 -D system_services/init/vnc.service $(DESTDIR)/etc/systemd/system/vnc.service
+	install -m 644 -D system_services/init/uucpd2.service $(DESTDIR)/etc/systemd/system/uucpd.service
 	install -D system_scripts/compression/compress_image.sh $(DESTDIR)$(prefix)/bin/compress_image.sh
 	install -D system_scripts/compression/compress_audio.sh $(DESTDIR)$(prefix)/bin/compress_audio.sh
 	install -D system_scripts/compression/decompress_image.sh $(DESTDIR)$(prefix)/bin/decompress_image.sh

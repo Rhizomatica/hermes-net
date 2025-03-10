@@ -1,6 +1,6 @@
 /* sBitx control daemon - HERMES
  *
- * Copyright (C) 2023-2024 Rhizomatica
+ * Copyright (C) 2023-2025 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
@@ -31,6 +31,7 @@
 #include "mongoose.h"
 #include "sbitx_websocket.h"
 #include "sbitx_core.h"
+#include "sbitx_io.h"
 
 static const char *s_listen_on = "wss://0.0.0.0:8080";
 static char s_web_root[1000];
@@ -41,6 +42,8 @@ extern _Atomic bool send_ws_update;
 extern _Atomic bool shutdown_;
 
 extern time_t timeout_counter;
+
+extern controller_conn *connector_local;
 
 char request[200];
 int request_index = 0;
@@ -141,18 +144,20 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 void *webserver_thread_function(void *radio_h_v)
 {
     uint64_t counter = 0;
-
+    char message[MAX_MESSAGE_SIZE];
     mg_mgr_init(&mgr);  // Initialise event manager
     mg_http_listen(&mgr, s_listen_on, fn, NULL);  // Create HTTPS listener
 
     radio *radio_h = (radio *) radio_h_v;
+
+    memset(message, 0, MAX_MESSAGE_SIZE);
 
     mg_mgr_poll(&mgr, 100);
 
     while (!shutdown_)
     {
         counter++;
-        if ((counter % 4) && !radio_h->send_ws_update)
+        if ((counter % 5) && !radio_h->send_ws_update)
             goto socket_poll;
 
         for(struct mg_connection* c = mgr.conns; c != NULL; c = c->next)
@@ -173,6 +178,12 @@ void *webserver_thread_function(void *radio_h_v)
                 sprintf(buff+strlen(buff), "\"timeout\": %ld,\n", timeout_counter);
                 sprintf(buff+strlen(buff), "\"bytes_transmitted\": %u,\n", radio_h->bytes_transmitted);
                 sprintf(buff+strlen(buff), "\"bytes_received\": %u,\n", radio_h->bytes_received);
+                if (connector_local->message_available)
+                {
+                    stpncpy(message, connector_local->message, MAX_MESSAGE_SIZE);
+                    connector_local->message_available = false;
+                }
+                sprintf(buff+strlen(buff), "\"message\": \"%s\",\n", message);
 
                 time_t t = time(NULL);
                 struct tm tm = *localtime(&t);

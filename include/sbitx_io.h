@@ -1,6 +1,6 @@
 /* sBitx controller shm interface
  *
- * Copyright (C) 2023-2024 Rhizomatica
+ * Copyright (C) 2023-2025 Rhizomatica
  * Author: Rafael Diniz <rafael@rhizomatica.org>
  *
  * This is free software; you can redistribute it and/or modify
@@ -39,6 +39,8 @@ extern "C" {
 
 #define SYSV_SHM_CONTROLLER_KEY_STR 66650 // key for the controller_conn struct
 
+#define MAX_MESSAGE_SIZE 128
+
 typedef struct
 {
 
@@ -53,6 +55,9 @@ typedef struct
 
     int radio_fd;
 
+    // for messaging system
+    char message[MAX_MESSAGE_SIZE];
+    atomic_bool message_available;
 } controller_conn;
 
 

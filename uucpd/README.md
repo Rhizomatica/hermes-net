@@ -1,27 +1,30 @@
-# UUCPD (rhizo-uuardop)
-RHIZO-UUARDOP is a set of tools which allow UUCP to use ARDOP, VARA or Mercury as modem. With
-this integration, UUCP is fully functional over HF links. Also called UUCPD.
+# UUCPD
 
-Rhizo-uuardop comes with two tools: uuardopd and uuport.
+UUCPD is a set of tools which allow UUCP to use ARDOP, VARA or Mercury as modem. With
+this integration, UUCP is fully functional over HF links.
 
-UUARDOPD is the daemon which keeps connected to ARDOP or VARA modem and properly
+UUCPD comes with two tools: uucpd and uuport.
+
+UUCPD is the daemon which keeps connected to ARDOP or VARA modem and properly
  receive calls (calling uucico) and initiate calls (uucico calls thought
  UUPORT connection).
 
 UUPORT is the command invoked by UUCICO (using port type = pipe) when
-initiating a call (uucico master mode). Communication between uuport and uuardopd is done over shared memory.
+initiating a call (uucico master mode). Communication between uuport and uucpd is done over shared memory.
 
-## UUARDOPD Usage
-Rhizomatica's uuardopd version 0.2 by Rafael Diniz -  rafael (AT) rhizomatica (DOT) org
+## UUCPD Usage
+
+Rhizomatica's uucpd version 0.3 by Rafael Diniz -  rafael (AT) rhizomatica (DOT) org
 License: GNU AGPL version 3+
 ```
 Usage modes: 
-./uuardopd -r vara -a tnc_ip_address -p tcp_base_port -s /dev/ttyUSB0 [-l]
-./uuardopd -h
+./uucpd -r vara -a tnc_ip_address -p tcp_base_port -s /dev/ttyUSB0 [-l]
+./uucpd -h
 
 Options:
  -r [ardop,vara]            Choose modem/radio type.
- -c callsign                Station Callsign (Eg: PU2HFF). Not setting it will cause the hostname to be retrieved from uucp config
+ -m                         Enable shared memory messaging parameter to uucp.
+ -c callsign                Station Callsign (Eg: PU2HFF). Not setting it will cause the hostname to be retrieved from uucp config.
  -d remote_callsign         Remote Station Callsign.
  -a tnc_ip_address          IP address of the TNC,
  -p tnc_tcp_base_port       TNC's TCP base port of the TNC. ARDOP uses ports tcp_base_port and tcp_base_port+1.
@@ -61,8 +64,8 @@ Port configuration example at "/etc/uucp/port":
 An alternative Port configuration if you use a patched uucp ( for "\Z"
 support, available in "improved-pipe.patch" which was added to uucp debian 
 package version 1.07-27 ), where uuport pass
-the callsign of the station to be called to uuardopd with the uucp remote
-station name (allowing a single uuardopd instance to be used for different
+the callsign of the station to be called to uucpd with the uucp remote
+station name (allowing a single uucpd instance to be used for different
 remote station callsigns):
 
     port HFP
@@ -85,7 +88,7 @@ Sys configuration example of remote system at "/etc/uucp/sys" (without login pro
     port HFP
     chat "" \r
 
- Sys configuration example of remote system at "/etc/uucp/sys" (with login prompt - should call uuardopd with "-l"):
+ Sys configuration example of remote system at "/etc/uucp/sys" (with login prompt - should call uucpd with "-l"):
 
     system remote
     call-login *
@@ -94,16 +97,20 @@ Sys configuration example of remote system at "/etc/uucp/sys" (without login pro
     port HFP
     chat "" \r\c ogin: \L word: \P
 
-### Running uuardopd
+### Running uucpd
 
-Examples of uuardopd invocation:
+Examples of uucpd invocation:
 
-    $ uuardopd -a 127.0.0.1 -c PU2BBB -p 8515 -t 60 -r ardop
-    $ uuardopd -a 127.0.0.1 -p 8300 -r vara -o icom -s /dev/ttyUSB0 -f 2750
+    $ uucpd -a 127.0.0.1 -c PU2BBB -p 8515 -t 60 -r ardop
+    $ uucpd -a 127.0.0.1 -p 8300 -r vara -o icom -s /dev/ttyUSB0 -f 2750
 
-### UUCP with "improved-pipe.patch" for Raspberry OS (32 bits)
+### UUCP with "shared_messages.patch" for Raspberry OS (64 bits)
 
-While UUCP package for Debian 11 (Bullseye) and onwards already have the patch included and the package works fine in Debian 10 (Buster), in the case of the Raspberry Pi Zero and 1, there is a need for a UUCP armhf package compiled for armv6l (Debian's armhf port is compiled for armv7l then incompatible with the Pi Zero and 1). We made available UUCP for Raspberry OS, and to get it installed do:
+The "-m" option should only be used with patched uucp available in:
+https://github.com/Rhizomatica/uucp
+
+UUCPD support for the modified uucp (which has the "-m" patch to enable status messages) is optional. If you don't need this feature, just do not use "-m" option.
+Packages of uucp with the shared memory for Raspberry OS's Debian 12 arm64 are available at:
 
     $ wget http://www.telemidia.puc-rio.br/~rafaeldiniz/public_files/hermes-repo/rafaeldiniz.gpg.key
     $ apt-key add rafaeldiniz.gpg.key

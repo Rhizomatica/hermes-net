@@ -64,7 +64,7 @@ Rhizomatica's v2 sbitx-based radio transceiver control utils.
 
 ## uucpd
 
-Previosly called rhizo-uuardopd, is composed by a control daemon which transports uucp payload
+UUCPD is composed by a control daemon, uucpd, which transports uucp payload
 between uucico and the HF modem. It also contains uuport, a tool to be used in a uucico
 port in pipe mode to connect uucico to the uucpd daemon.
 

@@ -42,7 +42,6 @@
 #include <unistd.h>
 
 
-#include "common.h"
 #include "ardop.h"
 #include "net.h"
 #include "call_uucico.h"
