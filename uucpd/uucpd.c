@@ -46,7 +46,7 @@
 
 #include "serial.h"
 #include "call_uucico.h"
-#include "uuardopd.h"
+#include "uucpd.h"
 #include "ardop.h"
 #include "vara.h"
 #include "shm.h"
@@ -201,7 +201,7 @@ int main (int argc, char *argv[])
     // signal (SIGPIPE, pipe_fucked);
     signal(SIGPIPE, SIG_IGN); // ignores SIGPIPE...
 
-    fprintf(stderr, "Rhizomatica's uuardopd version 0.2 by Rafael Diniz -  rafael (AT) rhizomatica (DOT) org\n");
+    fprintf(stderr, "Rhizomatica's uucpd version 0.3 by Rafael Diniz -  rafael (AT) rhizomatica (DOT) org\n");
     fprintf(stderr, "License: GNU AGPL version 3+\n\n");
 
 
@@ -212,9 +212,10 @@ int main (int argc, char *argv[])
         fprintf(stderr, "%s -h\n", argv[0]);
         fprintf(stderr, "\nOptions:\n");
         fprintf(stderr, " -r [ardop,vara]            Choose modem/radio type.\n");
-        fprintf(stderr, " -c callsign                Station Callsign (Eg: PU2HFF). Not setting it will cause the hostname to be retrieved from uucp config\n");
+        fprintf(stderr, " -m                         Enable shared memory messaging parameter to uucp.\n");
+        fprintf(stderr, " -c callsign                Station Callsign (Eg: PU2HFF). Not setting it will cause the hostname to be retrieved from uucp config.\n");
         fprintf(stderr, " -d remote_callsign         Remote Station Callsign.\n");
-        fprintf(stderr, " -a tnc_ip_address          IP address of the TNC,\n");
+        fprintf(stderr, " -a tnc_ip_address          IP address of the TNC.\n");
         fprintf(stderr, " -p tnc_tcp_base_port       TNC's TCP base port of the TNC. ARDOP uses ports tcp_base_port and tcp_base_port+1.\n");
         fprintf(stderr, " -t timeout                 Time to wait before disconnect when idling (only for ardop).\n");
         fprintf(stderr, " -f features                   Supported features ARDOP: ofdm, noofdm (default: ofdm).\n");
@@ -222,7 +223,7 @@ int main (int argc, char *argv[])
         fprintf(stderr, "                               Supported features VARA, P2P mode: \"p\" to enable (eg. 2300p).\n");
         fprintf(stderr, " -s serial_device           Set the serial device file path for keying the radio (VARA ONLY).\n");
         fprintf(stderr, " -l                         Tell UUCICO to ask login prompt (default: disabled).\n");
-        fprintf(stderr, " -o [icom,ubitx,shm]        Sets radio type (supported: icom, ubitx or shm)\n");
+        fprintf(stderr, " -o [icom,ubitx,shm]        Sets radio type (supported: icom, ubitx or shm).\n");
         fprintf(stderr, " -h                         Prints this help.\n");
         exit(EXIT_FAILURE);
     }
@@ -240,7 +241,7 @@ int main (int argc, char *argv[])
     initialize_connector(connector);
 
     int opt;
-    while ((opt = getopt(argc, argv, "hlc:d:p:a:t:f:o:r:s:")) != -1)
+    while ((opt = getopt(argc, argv, "hlmc:d:p:a:t:f:o:r:s:")) != -1)
     {
         switch (opt)
         {
@@ -249,6 +250,9 @@ int main (int argc, char *argv[])
             break;
         case 'l':
             connector->ask_login = true;
+            break;
+        case 'm':
+            connector->ask_uucp_msg = true;
             break;
         case 'r':
             strcpy(connector->modem_type, optarg);

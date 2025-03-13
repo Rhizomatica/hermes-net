@@ -187,8 +187,8 @@ typedef struct
     uint32_t band_power_count;
 
 	// information written by modem, sent to ui
-	_Atomic uint32_t bitrate;
-	_Atomic int32_t snr;
+    _Atomic uint32_t bitrate;
+    _Atomic int32_t snr;
 
     // profile variables
     _Atomic uint32_t profile_active_idx;
@@ -202,9 +202,9 @@ typedef struct
     dictionary *cfg_user;
     _Atomic bool cfg_user_dirty;
     _Atomic bool send_ws_update;
-
-	_Atomic uint32_t bytes_transmitted;
-	_Atomic uint32_t bytes_received;
+    
+    _Atomic uint32_t bytes_transmitted;
+    _Atomic uint32_t bytes_received;
 
     // TODO: finish external DSP integration
     // _Atomic bool internal_dsp_off;

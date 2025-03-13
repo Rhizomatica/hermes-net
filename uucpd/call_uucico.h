@@ -33,7 +33,7 @@
 #define HAVE_CALL_UUCICO_H__
 
 #include <stdint.h>
-#include "uuardopd.h"
+#include "uucpd.h"
 
 #ifdef __cplusplus
 extern "C" {

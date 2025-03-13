@@ -1,5 +1,5 @@
 /* Rhizo-uuhf: Tools to integrate HF TNCs to UUCP
- * Copyright (C) 2019-2021 Rhizomatica
+ * Copyright (C) 2019-2025 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
  *
  * This is free software; you can redistribute it and/or modify
@@ -25,12 +25,12 @@
  * @date 10 Jul 2019
  * @brief UUCP ARDOP daemon header
  *
- * UUCP ARDOP daemon
+ * UUCP daemon
  *
  */
 
-#ifndef HAVE_UUARDOPD_H__
-#define HAVE_UUARDOPD_H__
+#ifndef HAVE_UUCPD_H__
+#define HAVE_UUCPD_H__
 
 #include <stdint.h>
 #include <stdatomic.h>
@@ -66,6 +66,7 @@ typedef struct{
     bool ofdm_mode;
     uint16_t vara_mode;
     bool ask_login;
+    bool ask_uucp_msg;
     int timeout;
     int data_socket;
     int control_socket;
@@ -87,7 +88,7 @@ typedef struct{
     atomic_int session_counter_write;
 
     atomic_int bytes_received;
-	atomic_int bytes_transmitted;
+    atomic_int bytes_transmitted;
     atomic_int bytes_buffered_tx;
 
     // internal ardop buffer size
@@ -105,4 +106,4 @@ typedef struct{
 };
 #endif
 
-#endif /* HAVE_UUARDOPD_H__ */
+#endif /* HAVE_UUCPD_H__ */

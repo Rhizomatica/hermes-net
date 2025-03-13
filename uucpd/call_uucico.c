@@ -177,9 +177,15 @@ void *uucico_thread(void *conn){
         setenv("TERM", "dumb", 1);
 
         if (connector->ask_login == true)
-            execl(shell, shell, "-l", NULL);
+            if(connector->ask_uucp_msg == true)
+                execl(shell, shell, "-l","-m", NULL);
+            else
+                execl(shell, shell, "-l", NULL);
         else
-            execl(shell, shell, NULL);
+            if(connector->ask_uucp_msg == true)
+                execl(shell, shell, "-m", NULL);
+            else
+                execl(shell, shell, NULL);
 
         perror(shell);
 

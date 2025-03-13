@@ -36,7 +36,7 @@
 #include <stdint.h>
 #include <pthread.h>
 
-#include "uuardopd.h"
+#include "uucpd.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -47,7 +47,7 @@
 
 extern _Atomic bool shutdown_;
 
-static controller_conn *connector_local;
+controller_conn *connector_local;
 
 extern bool timer_reset;
 extern time_t timeout_counter;
@@ -169,6 +169,12 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
 
    case CMD_SET_CONNECTED_STATUS: // SET CONNECTED STATUS
        response[0] = CMD_RESP_ACK;
+       if (!cmd[0])
+       {
+           // we cleanup the message buffer at disconnection
+           connector_local->message_available = true;
+           connector_local->message[0] = 0;
+       }
        radio_h->system_is_connected = cmd[0];
        break;
 
@@ -473,6 +479,7 @@ bool initialize_connector(controller_conn *connector)
     }
 
     connector->response_available = false;
+    connector->message_available = false;
 
     return EXIT_SUCCESS;
 }

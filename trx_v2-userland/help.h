@@ -210,6 +210,11 @@ const char format_str[] =
 "  * Transmitted bytes by modem\n"
 "  * Resp: OK | ERROR\n\n"
 
+"* get_message\n"
+"  * Do not specify profile\n"
+"  * No Argument\n"
+"  * Resp: Message and message available flag. | ERROR\n\n"
+    
 "* set_radio_defaults\n"
 "  * Do not specify profile\n"
 "  * No Argument\n"
