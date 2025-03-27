@@ -1,0 +1,14 @@
+[Unit]
+Description=UUCPD daemon
+After=modem.service sbitx.service
+Requires=modem.service sbitx.service
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/uucpd -a 127.0.0.1 -p 8300 -r vara -o shm
+KillSignal=SIGTERM
+IgnoreSIGPIPE=no
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

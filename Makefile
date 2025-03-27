@@ -93,6 +93,10 @@ install_gateway:
 	install -m 644 -D system_services/init/caller.service $(DESTDIR)/etc/systemd/system/caller.service
 	install system_scripts/uucpd/caller.sh $(DESTDIR)$(prefix)/bin
 
+install_mercury:
+	install -m 644 -D system_services/init/uucpd-mercury.service $(DESTDIR)/etc/systemd/system/uucpd.service
+
+
 clean:
 	$(MAKE) -C trx_v2-userland clean
 	$(MAKE) -C trx_v1-userland clean
