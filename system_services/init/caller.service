@@ -1,7 +1,7 @@
 [Unit]
 Description=HERMES Gateway caller daemon
-After=vnc.service
-Requires=vnc.service
+After=nginx.service
+Requires=nginx.service
 
 [Service]
 Type=exec
