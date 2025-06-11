@@ -167,6 +167,8 @@ void *vara_control_worker_thread_rx(void *conn)
 
         if (new_cmd)
         {
+            // fprintf(stderr, "cmd %s\n", buffer);
+
             if (connector->radio_type == RADIO_TYPE_SHM)
             {
 				// fprintf(stderr, "tx: %d buffered: %d last: %d\n", connector->bytes_transmitted, connector->bytes_buffered_tx, last_bytes_tx);
@@ -185,7 +187,7 @@ void *vara_control_worker_thread_rx(void *conn)
             }
 
 
-			// lets not print IMALIVE watchdog
+            // lets not print IMALIVE watchdog
             if (!memcmp(buffer, "IAMALIVE", strlen("IAMALIVE")))
                 continue;
 
@@ -415,9 +417,9 @@ bool initialize_modem_vara(rhizo_conn *connector)
 {
     bool ret;
 
-	connector->buffer_size = 0;
-	connector->bytes_received = 0;
-	connector->bytes_transmitted = 0;
+    connector->buffer_size = 0;
+    connector->bytes_received = 0;
+    connector->bytes_transmitted = 0;
     connector->bytes_buffered_tx = 0;
 
 try_connect_again:

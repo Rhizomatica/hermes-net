@@ -218,6 +218,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
        break;
 
    case CMD_SET_PROFILE: // CMD_SET_PROFILE
+       printf("CMD_SET_PROFILE: %u\n", cmd[0]);
        response[0] = CMD_RESP_ACK;
        uint32_t prof_set = (uint32_t) cmd[0];
        if (prof_set < radio_h->profiles_count)
