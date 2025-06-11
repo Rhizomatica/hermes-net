@@ -276,6 +276,11 @@ bool init_config_user(radio *radio_h, char *ini_name)
         // printf("%s:      [%d]\n", profile_field, i);
         radio_h->profiles[k].tx_level = (uint32_t) i;
 
+        sprintf(profile_field, "%s:power_level_percentage", profile_name);
+        i = iniparser_getint(ini, profile_field, 100);
+        // printf("%s:      [%d]\n", profile_field, i);
+        radio_h->profiles[k].power_level_percentage = (uint16_t) i;
+
         sprintf(profile_field, "%s:agc", profile_name);
         s = iniparser_getstring(ini, profile_field, "OFF");
         // printf("%s:     [%s]\n", profile_field, s);
