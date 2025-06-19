@@ -376,6 +376,25 @@ int main(int argc, char *argv[])
         memcpy(srv_cmd, &tone, 1);
         srv_cmd[4] = CMD_SET_TONE;
     }
+    else if (!strcmp(command, "get_power"))
+    {
+        srv_cmd[4] = CMD_GET_POWER | (profile << 6);
+    }
+    else if (!strcmp(command, "set_power"))
+    {
+        if (argument_set == false)
+            goto manual;
+
+        uint32_t power = (uint32_t) atoi(command_argument);
+        if (power > 100 || power < 0)
+        {
+            fprintf(stderr, "Power must be between 0 and 100.\n");
+            goto manual;
+        }
+
+        memcpy(srv_cmd, &power, 4);
+        srv_cmd[4] = CMD_SET_POWER | (profile << 6);
+    }
     else if (!strcmp(command, "set_radio_defaults"))
     {
         srv_cmd[4] = CMD_SET_RADIO_DEFAULTS;
@@ -427,7 +446,7 @@ int main(int argc, char *argv[])
         printf("ERROR\n");
     else
     {
-        uint32_t status, freq, freqstep, serial;
+        uint32_t status, freq, freqstep, serial, power;
         int32_t timeout, snr;
         uint16_t measure;
         uint8_t tone, profile;
@@ -537,6 +556,10 @@ int main(int argc, char *argv[])
         case CMD_RESP_GET_TIMEOUT_ACK:
             memcpy(&timeout, response+1, 4);
             printf("%d\n", timeout);
+            break;
+        case CMD_RESP_GET_POWER:
+            memcpy(&power, response+1, 4);
+            printf("%u\n", power);
             break;
 
             // this happens when there is no anwser from daemon

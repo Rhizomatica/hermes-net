@@ -105,16 +105,16 @@ void *hw_thread(void *radio_h_v)
 // reads the power measurements from I2C bus
 bool update_power_measurements(radio *radio_h)
 {
-	uint8_t response[4];
+    uint8_t response[4];
     uint16_t vfwd, vref;
 
     int count = i2c_read_pwr_levels(radio_h, response);
 
-	if(count != 4)
-		return false;
+    if(count != 4)
+        return false;
 
     memcpy(&vfwd, response, 2);
-	memcpy(&vref, response+2, 2);
+    memcpy(&vref, response+2, 2);
 
     radio_h->fwd_power = vfwd;
     radio_h->ref_power = vref;
@@ -126,8 +126,8 @@ bool update_power_measurements(radio *radio_h)
 uint32_t get_fwd_power(radio *radio_h)
 {
     // 40 should be we are using 40W as end of scale
-	uint32_t fwdvoltage =  (radio_h->fwd_power * 40) / radio_h->bridge_compensation;
-	uint32_t fwdpower = (fwdvoltage * fwdvoltage) / 400;
+    uint32_t fwdvoltage =  (radio_h->fwd_power * 40) / radio_h->bridge_compensation;
+    uint32_t fwdpower = (fwdvoltage * fwdvoltage) / 400;
 
     return fwdpower;
 }
@@ -173,6 +173,36 @@ void set_reflected_threshold(radio *radio_h, uint32_t ref_threshold)
         printf("Error modifying config file\n");
 
     radio_h->cfg_core_dirty = true;
+}
+
+void set_power_knob(radio *radio_h, uint16_t power_level, uint32_t profile)
+{
+    if (profile > radio_h->profiles_count)
+    {
+        printf("Error: Profile index out of bounds\n");
+        return;
+    }
+
+    _Atomic uint16_t *power_level_percentage = &radio_h->profiles[profile].power_level_percentage;
+
+    if (*power_level_percentage == power_level)
+        return;
+
+    if (power_level > 100)
+        power_level = 100;
+    if (power_level < 0)
+        power_level = 0;
+
+    radio_h->profiles[profile].power_level_percentage = power_level;
+
+    char tmp1[64]; char tmp2[64];
+    sprintf(tmp1, "profile%u:power_level_percentage", profile);
+    sprintf(tmp2, "%u", *power_level_percentage);
+    int rc = cfg_set(radio_h, radio_h->cfg_user, tmp1, tmp2);
+    if (rc != 0)
+        printf("Error modifying config file\n");
+
+    radio_h->cfg_user_dirty = true;
 }
 
 void set_profile(radio *radio_h, uint32_t profile)
@@ -284,7 +314,7 @@ void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile)
     if (profile == radio_h->profile_active_idx)
     {
         if (radio_h->profiles[radio_h->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
-            si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 15000); // here we set the real frequency of the radio (in USB, which is the current setup) - 15000 which is the carrier offset in Mercury
+            si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 15000); // here we set the real frequency of the radio (in USB, which is the current setup) - 15000 which is the carrier offset in Mercury in sbitx mode
         else
             si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 24000); // 24 kHz offset to provide the user the "real" dial frequency after the DSP processing (just "- 24000")
     }
@@ -390,6 +420,7 @@ void swr_protection_check(radio *radio_h)
         radio_h->swr_protection_enabled = true;
         peak_removal_counter = 0;
         radio_h->send_ws_update = true;
+        radio_h->tone_generation = 0;
     }
 }
 

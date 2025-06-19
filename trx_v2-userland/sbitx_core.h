@@ -126,12 +126,12 @@ typedef struct {
     // lpf settings
     uint32_t bpf_low; // band-pass filter settings
     uint32_t bpf_high;
+    _Atomic uint16_t power_level_percentage; // 0 - 100, this is output power level in percentage
 
     // These are switche that can enable/disable interaction with the devices
     bool enable_knob_volume;
     bool enable_knob_frequency;
     bool enable_ptt;
-
 } radio_profile;
 
 
@@ -186,7 +186,7 @@ typedef struct
     power_settings band_power[MAX_CAL_BANDS];
     uint32_t band_power_count;
 
-	// information written by modem, sent to ui
+    // information written by modem, sent to ui
     _Atomic uint32_t bitrate;
     _Atomic int32_t snr;
 
@@ -202,7 +202,7 @@ typedef struct
     dictionary *cfg_user;
     _Atomic bool cfg_user_dirty;
     _Atomic bool send_ws_update;
-    
+
     _Atomic uint32_t bytes_transmitted;
     _Atomic uint32_t bytes_received;
 
@@ -227,6 +227,7 @@ void set_speaker_volume(radio *radio_h, uint32_t speaker_level, uint32_t profile
 void set_profile(radio *radio_h, uint32_t profile);
 void set_serial(radio *radio_h, uint32_t serial); // set internal serial number
 void set_profile_timeout(radio *radio_h, int32_t timeout);
+void set_power_knob(radio *radio_h, uint16_t power_level, uint32_t profile);
 
 // TX/RX switch
 void tr_switch(radio *radio_h, bool txrx_state);
