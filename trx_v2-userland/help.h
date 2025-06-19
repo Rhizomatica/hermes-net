@@ -40,6 +40,16 @@ const char format_str[] =
 "  * Frequency\n"
 "  * Resp: OK | ERROR\n\n"
 
+"* get_power\n"
+"  * Specify profile\n"
+"  * No Argument\n"
+"  * Resp: Power level percentage (0-100) | ERROR\n\n"
+
+"* set_power\n"
+"  * Specify profile\n"
+"  * Power level percentage (0-100)\n"
+"  * Resp: OK | ERROR\n\n"
+
 "* get_mode\n"
 "  * Specify profile\n"
 "  * No Argument\n"
