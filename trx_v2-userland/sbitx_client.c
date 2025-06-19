@@ -376,6 +376,28 @@ int main(int argc, char *argv[])
         memcpy(srv_cmd, &tone, 1);
         srv_cmd[4] = CMD_SET_TONE;
     }
+
+    else if (!strcmp(command, "get_power"))
+    {
+        srv_cmd[4] = CMD_GET_POWER | (profile << 6);
+    }
+    else if (!strcmp(command, "set_power"))
+    {
+        if (argument_set == false)
+            goto manual;
+
+        uint32_t power = (uint32_t) atoi(command_argument);
+        if (power > 100 || power < 0)
+        {
+            fprintf(stderr, "Power must be between 0 and 100.\n");
+            goto manual;
+        }
+
+        memcpy(srv_cmd, &power, 4);
+        srv_cmd[4] = CMD_SET_POWER | (profile << 6);
+    }
+
+
     else if (!strcmp(command, "set_radio_defaults"))
     {
         srv_cmd[4] = CMD_SET_RADIO_DEFAULTS;

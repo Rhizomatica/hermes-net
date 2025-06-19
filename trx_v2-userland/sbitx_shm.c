@@ -57,7 +57,7 @@ static radio *radio_h_shm;
 
 void process_radio_command(uint8_t *cmd, uint8_t *response)
 {
-    uint32_t frequency = 0;
+    uint32_t frequency = 0, power = 0;
     uint8_t profile;
 
     radio *radio_h = radio_h_shm;
@@ -66,7 +66,7 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
     // here we split the upper 2 bits, with the profile number, and lower 6 bits, with the command
    switch(cmd[4] & 0x3f){
 
-   case CMD_PTT_ON: // PTT On
+   case CMD_PTT_ON: // PTT ON
        if (radio_h->swr_protection_enabled)
        {
            response[0] = CMD_ALERT_PROTECTION_ON;
@@ -245,6 +245,24 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
        {
            memcpy(&frequency, cmd, 4);
            set_frequency(radio_h, frequency, profile);
+       }
+       break;
+
+   case CMD_GET_POWER: // GET POWER
+       response[0] = CMD_RESP_GET_POWER;
+       profile = cmd[4] >> 6;
+       if (profile < radio_h->profiles_count)
+           power = radio_h->profiles[profile].power_level_percentage;
+       memcpy(response+1, &power, 4);
+       break;
+
+   case CMD_SET_POWER: // SET POWER
+       response[0] = CMD_RESP_ACK;
+       profile = cmd[4] >> 6;
+       if (profile < radio_h->profiles_count)
+       {
+           memcpy(&power, cmd, 4);
+           set_power_knob(radio_h, power, profile);
        }
        break;
 
