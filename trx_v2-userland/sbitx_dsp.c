@@ -213,7 +213,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         return;
     }
 
-	//fix the burst at the start of transmission
+    //fix the burst at the start of transmission
     if (tx_starting)
     {
         fft_reset_m_bins();
@@ -221,8 +221,8 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         tx_starting = false;
     }
 
-	//first add the previous M samples
-	memcpy(fft_in, fft_m, MAX_BINS/2 * sizeof(fftw_complex));
+    //first add the previous M samples
+    memcpy(fft_in, fft_m, MAX_BINS/2 * sizeof(fftw_complex));
 
     double i_sample;
     int i, j = 0;
@@ -256,8 +256,8 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     static double min_i_sample = 100000000;
 #endif
 
-	//gather the samples into a time domain array
-	for (i = MAX_BINS/2; i < MAX_BINS; i++, j++)
+    //gather the samples into a time domain array
+    for (i = MAX_BINS/2; i < MAX_BINS; i++, j++)
     {
         i_sample = signal_input_f[j];
 
@@ -281,30 +281,30 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
         __real__ fft_in[i]  = i_sample;
         __imag__ fft_in[i]  = 0;
-	}
+    }
 
-	//convert to frequency
-	fftw_execute(plan_fwd);
+    //convert to frequency
+    fftw_execute(plan_fwd);
 
-	// NOTE: fft_out holds the fft output (in freq domain) of the
-	// incoming mic samples
-	// the naming is unfortunate
+    // NOTE: fft_out holds the fft output (in freq domain) of the
+    // incoming mic samples
+    // the naming is unfortunate
 
-	// apply the filter
+    // apply the filter
     for (i = 0; i < MAX_BINS; i++)
-		fft_out[i] *= tx_filter->fir_coeff[i];
+        fft_out[i] *= tx_filter->fir_coeff[i];
 
-	// the usb extends from 0 to MAX_BINS/2 - 1,
-	// the lsb extends from MAX_BINS - 1 to MAX_BINS/2 (reverse direction)
-	// zero out the other sideband
+    // the usb extends from 0 to MAX_BINS/2 - 1,
+    // the lsb extends from MAX_BINS - 1 to MAX_BINS/2 (reverse direction)
+    // zero out the other sideband
 
-	// TBD: Something strange is going on, this should have been the otherway
-	if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].mode == MODE_LSB)
+    // TBD: Something strange is going on, this should have been the otherway
+    if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].mode == MODE_LSB)
         memset(fft_out, 0, sizeof(fftw_complex) * (MAX_BINS/2));
-	else
+    else
         memset((void *) fft_out + (MAX_BINS/2 * sizeof(fftw_complex)), 0, sizeof(fftw_complex) * (MAX_BINS/2));
 
-	//now rotate to the tx_bin
+    //now rotate to the tx_bin
     for (i = 0; i < MAX_BINS; i++)
     {
         int b = i + TUNED_BINS;
@@ -318,8 +318,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     //convert back to time domain
     fftw_execute(plan_rev);
 
-    // TODO: Add the tx calibration gain here!!
-    double multiplier = get_band_multiplier();
+    double multiplier = get_band_multiplier() * (double) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].power_level_percentage / 100.0;
     for (i = 0; i < MAX_BINS / 2; i++)
     {
         signal_output_int[i] = (int32_t) (creal(fft_time[i+(MAX_BINS/2)]) * 4000.0 * multiplier); // we just chose an appropriate level...
