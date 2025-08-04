@@ -27,7 +27,7 @@ uname_p := $(shell uname -m)
 
 CC=gcc
 LDFLAGS=-liniparser -li2c -lssl -lcrypto -lpthread -lasound -lm -lfftw3 -lcsdr
-CFLAGS=-Ofast -Wall -std=gnu11 -fstack-protector -I/usr/include/iniparser -I/usr/include/csdr -I../include
+CFLAGS=-Ofast -Wall -std=gnu11 -fstack-protector -I/usr/include/iniparser -I/usr/include/csdr -I../include -Imodem_io
 
 ifeq (${uname_p},aarch64)
 # aarch64 Raspberry Pi 4 or better
@@ -41,12 +41,14 @@ endif
 
 GPIOLIB_OBJS=gpiolib/gpiolib.o gpiolib/gpiochip_bcm2712.o gpiolib/gpiochip_bcm2835.o gpiolib/gpiochip_rp1.o gpiolib/util.o
 
+MODEM_IO_OBJS=modem_io/os_interop.o modem_io/ring_buffer_posix.o modem_io/shm_posix.o
+
 .PHONY: clean
 
 all: sbitx_controller sbitx_client
 
-sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o sbitx_dsp.o ring_buffer.o $(GPIOLIB_OBJS)
-	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o sbitx_dsp.o ring_buffer.o  $(GPIOLIB_OBJS) $(LDFLAGS)
+sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o sbitx_dsp.o ring_buffer.o sbitx_modem.o $(GPIOLIB_OBJS) $(MODEM_IO_OBJS)
+	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o sbitx_dsp.o sbitx_modem.o ring_buffer.o  $(GPIOLIB_OBJS) $(MODEM_IO_OBJS) $(LDFLAGS)
 
 sbitx_client: sbitx_client.c shm_utils.c sbitx_io.c help.h
 	$(CC) $(CFLAGS) sbitx_client.c sbitx_io.c shm_utils.c -o sbitx_client -lpthread
@@ -94,6 +96,9 @@ sbitx_dsp.o: sbitx_dsp.c sbitx_dsp.h
 sbitx_buffer.o: sbitx_buffer.c sbitx_buffer.h
 	$(CC) -c $(CFLAGS) sbitx_buffer.c -o sbitx_buffer.o
 
+sbitx_modem.o: sbitx_modem.c sbitx_modem.h
+	$(CC) -c $(CFLAGS) sbitx_modem.c -o sbitx_modem.o
+
 ring_buffer.o: ring_buffer.c ring_buffer.h
 	$(CC) -c $(CFLAGS) ring_buffer.c -o ring_buffer.o
 
@@ -113,9 +118,20 @@ gpiolib/gpiochip_rp1.o:  gpiolib/gpiochip_rp1.c gpiolib/gpiochip.h
 gpiolib/util.o: gpiolib/util.c gpiolib/util.h
 	$(CC) -c $(CFLAGS) gpiolib/util.c -o gpiolib/util.o
 
+# modem I/O stuff
+modem_io/os_interop.o: modem_io/os_interop.c modem_io/os_interop.h
+	$(CC) -c $(CFLAGS) modem_io/os_interop.c -o modem_io/os_interop.o
+
+modem_io/ring_buffer_posix.o: modem_io/ring_buffer_posix.c modem_io/ring_buffer_posix.h
+	$(CC) -c $(CFLAGS) modem_io/ring_buffer_posix.c -o modem_io/ring_buffer_posix.o
+
+modem_io/shm_posix.o: modem_io/shm_posix.c modem_io/shm_posix.h
+	$(CC) -c $(CFLAGS) modem_io/shm_posix.c -o modem_io/shm_posix.o
+
+
 install: sbitx_controller sbitx_client
 	install -D sbitx_controller $(DESTDIR)$(prefix)/bin/sbitx_controller
 	install -D sbitx_client $(DESTDIR)$(prefix)/bin/sbitx_client
 
 clean:
-	rm -f sbitx_controller sbitx_client *.o gpiolib/*.o
+	rm -f sbitx_controller sbitx_client *.o gpiolib/*.o modem_io/*.o
