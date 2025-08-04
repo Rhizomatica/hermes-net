@@ -1,4 +1,4 @@
-/* HERMES sbitx controller
+/* Sbitx Controller daemon
  *
  * Copyright (C) 2023-2025 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
@@ -14,9 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this software; see the file COPYING.  If not, write to
- * the Free Software Foundation, Inc., 51 Franklin Street,
- * Boston, MA 02110-1301, USA.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
 
@@ -35,6 +33,7 @@
 #include "sbitx_websocket.h"
 #include "sbitx_dsp.h"
 #include "cfg_utils.h"
+#include "ring_buffer_posix.h"
 
 _Atomic bool shutdown_ = false;
 
@@ -51,6 +50,7 @@ void exit_radio(int sig)
 int main(int argc, char* argv[])
 {
     radio radio_h; // radio handler
+    int mode = 0; // mode of operation, 0 for alsa loopback, 1 for shm
     pthread_t cfg_tid; // configuration subsystem thread id
     pthread_t hw_tids[2]; // 2 hw thread ids user for IO
     pthread_t web_tid; // websocket thread id
@@ -64,6 +64,7 @@ int main(int argc, char* argv[])
         fprintf(stderr, "%s -h\n", argv[0]);
         fprintf(stderr, "\nOptions:\n");
         fprintf(stderr, " -c [cpu_nr]                Run on CPU [cpu_br]. Defaults to CPU 3. Use -1 to disable CPU selection\n");
+        fprintf(stderr, " -m [aloop, shm]            Uses ALSA loopback or shared memory for signal IO. Defaults to alsa loopback (aloop).\n");
         fprintf(stderr, " -h                         Prints this help.\n");
         return EXIT_FAILURE;
     }
@@ -71,13 +72,32 @@ int main(int argc, char* argv[])
    // hermes defaults is 3
    int cpu_nr = 3;
    int opt;
-   while ((opt = getopt(argc, argv, "hc:")) != -1)
+   while ((opt = getopt(argc, argv, "hc:m:")) != -1)
    {
        switch (opt)
        {
        case 'c':
            if(optarg)
                cpu_nr = atoi(optarg);
+           break;
+       case 'm':
+           if (optarg)
+           {
+               if (strcmp(optarg, "aloop") == 0)
+                   mode = 0; // alsa loopback
+               else if (strcmp(optarg, "shm") == 0)
+                   mode = 1; // shared memory
+               else
+               {
+                   fprintf(stderr, "Invalid mode: %s\n", optarg);
+                   goto manual;
+               }
+           }
+           else
+           {
+               fprintf(stderr, "Invalid mode.\n");
+               goto manual;
+           }
            break;
        case 'h':
        default:
