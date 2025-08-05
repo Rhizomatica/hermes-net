@@ -32,8 +32,10 @@
 #include "sbitx_core.h"
 #include "sbitx_websocket.h"
 #include "sbitx_dsp.h"
+#include "sbitx_modem.h"
 #include "cfg_utils.h"
 #include "ring_buffer_posix.h"
+
 
 _Atomic bool shutdown_ = false;
 
@@ -50,7 +52,7 @@ void exit_radio(int sig)
 int main(int argc, char* argv[])
 {
     radio radio_h; // radio handler
-    int mode = 0; // mode of operation, 0 for alsa loopback, 1 for shm
+    int io_mode = MODEM_IO_ALSA; // mode of operation, 0 for alsa loopback, 1 for shm
     pthread_t cfg_tid; // configuration subsystem thread id
     pthread_t hw_tids[2]; // 2 hw thread ids user for IO
     pthread_t web_tid; // websocket thread id
@@ -60,11 +62,11 @@ int main(int argc, char* argv[])
    if (argc > 3)
     {
     manual:
-        fprintf(stderr, "Usage modes: \n%s\n%s -c [cpu_nr]\n", argv[0], argv[0]);
+        fprintf(stderr, "Usage modes: \n%s\n%s -c [cpu_nr] -m [aloop, shm]\n", argv[0], argv[0]);
         fprintf(stderr, "%s -h\n", argv[0]);
         fprintf(stderr, "\nOptions:\n");
         fprintf(stderr, " -c [cpu_nr]                Run on CPU [cpu_br]. Defaults to CPU 3. Use -1 to disable CPU selection\n");
-        fprintf(stderr, " -m [aloop, shm]            Uses ALSA loopback or shared memory for signal IO. Defaults to alsa loopback (aloop).\n");
+        fprintf(stderr, " -m [aloop, shm]            Modem I/O using ALSA loopback or shared memory for signal IO. Defaults to alsa loopback (aloop).\n");
         fprintf(stderr, " -h                         Prints this help.\n");
         return EXIT_FAILURE;
     }
@@ -84,9 +86,9 @@ int main(int argc, char* argv[])
            if (optarg)
            {
                if (strcmp(optarg, "aloop") == 0)
-                   mode = 0; // alsa loopback
+                   io_mode = MODEM_IO_ALSA;
                else if (strcmp(optarg, "shm") == 0)
-                   mode = 1; // shared memory
+                   io_mode = MODEM_IO_SHM;
                else
                {
                    fprintf(stderr, "Invalid mode: %s\n", optarg);
@@ -126,6 +128,9 @@ int main(int argc, char* argv[])
    /* Call in order... cfg, hw, shm, sound, shutdown in reverse order */
    cfg_init(&radio_h, CFG_CORE_PATH, CFG_USER_PATH, &cfg_tid);
 
+   // TODO: add to a config parameter?
+   radio_h.io_mode = io_mode;
+
    hw_init(&radio_h, hw_tids);
 
    if (radio_h.enable_websocket)
@@ -135,10 +140,13 @@ int main(int argc, char* argv[])
        shm_controller_init(&radio_h, &shm_tid);
 
    dsp_init(&radio_h);
+
+
    sound_system_init(&radio_h, &control_tid, &radio_capture, &radio_playback, &loop_capture, &loop_playback);
 
    // the next call calls pthread_join(), so it blocks until shutdown == true
    hw_shutdown(&radio_h, hw_tids);
+
    cfg_shutdown(&radio_h, &cfg_tid);
 
    if (radio_h.enable_websocket)
