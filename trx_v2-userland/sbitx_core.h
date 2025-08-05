@@ -206,8 +206,7 @@ typedef struct
     _Atomic uint32_t bytes_transmitted;
     _Atomic uint32_t bytes_received;
 
-    // TODO: finish external DSP integration
-    // _Atomic bool internal_dsp_off;
+    _Atomic int16_t io_mode;
 } radio;
 
 

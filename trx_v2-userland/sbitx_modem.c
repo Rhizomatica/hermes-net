@@ -26,7 +26,6 @@
 cbuf_handle_t capture_buffer;
 cbuf_handle_t playback_buffer;
 
-
 int modem_create_shm()
 {
 

@@ -29,6 +29,8 @@
 #include "sbitx_alsa.h"
 #include "sbitx_dsp.h"
 #include "sbitx_buffer.h"
+#include "sbitx_modem.h"
+#include "ring_buffer_posix.h"
 
 char *radio_capture_dev = "hw:0,0";
 char *radio_playback_dev = "hw:0,0";
@@ -757,6 +759,57 @@ void *loop_capture_thread(void *device_ptr)
     return NULL;
 }
 
+void *shm_capture_thread(void *device_ptr)
+{
+    int sample_size = 2;
+    uint32_t buffer_size = 128 * sample_size * channels;
+
+    uint8_t *buffer = malloc(buffer_size);
+
+    while (!shutdown_)
+    {
+        size_t bytes_to_read = modem_size_buffer(capture_buffer);
+        if (bytes_to_read > buffer_size)
+        {
+            bytes_to_read = buffer_size;
+        }
+        modem_read_buffer(capture_buffer, buffer, bytes_to_read);
+
+        write_buffer(loopback_to_dsp, buffer, bytes_to_read);
+    }
+
+    free(buffer);
+
+    return NULL;
+}
+
+
+void *shm_playback_thread(void *device_ptr)
+{
+    int sample_size = 4;
+    uint32_t buffer_size = 128 * sample_size * channels;
+
+    uint8_t *buffer = malloc(buffer_size);
+
+    while (!shutdown_)
+    {
+        size_t bytes_to_read = size_buffer(dsp_to_loopback);
+        if (bytes_to_read > buffer_size)
+        {
+            bytes_to_read = buffer_size;
+        }
+        read_buffer(dsp_to_loopback, buffer, bytes_to_read);
+
+        modem_write_buffer(playback_buffer, buffer, bytes_to_read);
+    }
+
+    free(buffer);
+
+    return NULL;
+}
+
+
+
 void *loop_playback_thread(void *device_ptr)
 {
     char *device = (char *) device_ptr;
@@ -921,10 +974,6 @@ void *control_thread(void *device_ptr)
 
     while (!shutdown_)
     {
-        // TODO: finish external DSP integration
-        // halt this loop on external DSP
-        // check_external_dsp(radio_h_snd);
-
         _Atomic bool use_loopback = (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_FULL_LOOPBACK) ? true : false;
 
         read_buffer(radio_to_dsp, buffer_radio_to_dsp, buffer_size); // mono
@@ -1010,13 +1059,24 @@ void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_
 
     initialize_buffers();
 
+    if (radio_h->io_mode == MODEM_IO_SHM)
+    {
+        modem_create_shm();
+    }
+
     pthread_create(radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
-    pthread_create(loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
+    if (radio_h->io_mode == MODEM_IO_SHM)
+        pthread_create(loop_playback, NULL, shm_playback_thread, (void*)NULL);
+    else
+        pthread_create(loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
 
     pthread_create(control_tid, NULL, control_thread, NULL);
 
     pthread_create(radio_capture, NULL, radio_capture_thread, (void*)radio_capture_dev);
-    pthread_create(loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
+    if (radio_h->io_mode == MODEM_IO_SHM)
+        pthread_create(loop_capture, NULL, shm_capture_thread, (void*)NULL);
+    else
+        pthread_create(loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
 
 
     struct sched_param sch;
@@ -1042,4 +1102,9 @@ void sound_system_shutdown(radio *radio_h, pthread_t *control_tid, pthread_t *ra
 
     pthread_join(*radio_capture, NULL);
     pthread_join(*loop_capture, NULL);
+
+    if (radio_h->io_mode == MODEM_IO_SHM)
+    {
+        modem_destroy_shm();
+    }
 }
