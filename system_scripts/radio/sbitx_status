@@ -9,6 +9,10 @@ echo -n "mode p0 - digit "
 sbitx_client -c get_mode -p 0
 echo -n "mode p1 - voice "
 sbitx_client -c get_mode -p 1
+echo -n "power_level p0 - digit "
+sbitx_client -c get_power -p 0
+echo -n "power_level p1 - voice "
+sbitx_client -c get_power -p 1
 echo -n "txrx "
 sbitx_client -c get_txrx_status
 echo -n "protection "
@@ -29,3 +33,7 @@ echo -n "volume "
 sbitx_client -c get_volume
 echo -n "frequency_step "
 sbitx_client -c get_freqstep
+echo -n "bit_rate "
+sbitx_client -c get_bitrate
+echo -n "snr "
+sbitx_client -c get_snr
