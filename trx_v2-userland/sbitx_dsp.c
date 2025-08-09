@@ -178,27 +178,21 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     //STEP 9: send the output back to where it needs to go
     int32_t *output_speaker_int = (int32_t *) output_speaker;
     int32_t *output_loopback_int = (int32_t *) output_loopback;
-    int32_t *output_modem_int = (int32_t *) output_loopback;
 
-    int k = 0;
     for (i = 0; i < block_size; i++)
     {
         output_speaker_int[i] = (int32_t) (cimag(fft_time[i+(MAX_BINS/2)]) * MAX_SAMPLE_VALUE);
-        // 8 kHz mono
         if (radio_h_dsp->io_mode == MODEM_IO_SHM)
         {
-            if ((i % 12) == 0)
-            {
-                output_modem_int[k] = output_speaker_int[i] << 4; // we give a small gain here for the loopback
-                k++;
-            }
+            output_loopback_int[i] = output_speaker_int[1];
         }
         else
         {
+            // ALSA loopback 96 kHz mono to 48 kHz stereo decimation, L=R 
             if ((i % 2) == 0)
             {
                 output_loopback_int[i] = output_speaker_int[i] << 4; // we give a small gain here for the loopback
-                output_loopback_int[i + 1] = output_loopback_int[i];     // 96 kHz mono to 48 kHz stereo decimation, L=R        }
+                output_loopback_int[i + 1] = output_loopback_int[i];
             }
         }
         // we shift 8 bit right to revert to wm8731 32-bit sample format (only 24-bit MSB valid)
@@ -242,14 +236,17 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
     double i_sample;
     int i, j = 0;
-    // prepare data from loopback... 48kHz stereo to 96 kHz mono
+    // prepare data from loopback or shared memory... 48kHz stereo to 96 kHz mono
     if (radio_h_dsp->tone_generation)
     {
         for (i = 0; i < block_size; i++)
         {
             signal_input_f[i] = (1.0 * vfo_read(&tone)) / 4800000000.0;
         }
+        rational_resampler(loopback_in, block_size / 2, signal_input_f, 2, INTERPOLATION);
+
     }
+    // this is when we can using the alsa loopback device
     else if (input_is_48k_stereo)
     {
         for (i = 0; i < block_size; i = i + 2)
@@ -259,11 +256,23 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         }
         rational_resampler(loopback_in, block_size / 2, signal_input_f, 2, INTERPOLATION);
     }
-    else // mic input from wm8731
+    else // mic input from wm8731 or shm input
     {
-        for (i = 0; i < block_size; i++)
+        // SHM
+        if (radio_h_dsp->io_mode == MODEM_IO_SHM)
         {
-            signal_input_f[i] = (1.0 * (signal_input_int[i] >> 8)) / MAX_SAMPLE_VALUE;
+            for (i = 0; i < block_size; i++)
+            {
+                signal_input_f[i] = (1.0 * signal_input_int[i]) / MAX_SAMPLE_VALUE;
+            }
+        }
+        // MIC
+        else
+        {
+            for (i = 0; i < block_size; i++)
+            {
+                signal_input_f[i] = (1.0 * (signal_input_int[i] >> 8)) / MAX_SAMPLE_VALUE;
+            }
         }
     }
 
