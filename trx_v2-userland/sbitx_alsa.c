@@ -759,56 +759,90 @@ void *loop_capture_thread(void *device_ptr)
     return NULL;
 }
 
+// we read 8kHz mono s16le from the modem, and write it to the controll_thread
 void *shm_capture_thread(void *device_ptr)
 {
-    int sample_size = 2;
-    uint32_t buffer_size = 128 * sample_size * channels;
+    int sample_size = 4;
+    uint32_t buffer_size = 128 * sample_size;
 
     uint8_t *buffer = malloc(buffer_size);
+    uint8_t *buffer_96k = (uint8_t *) malloc(buffer_size * 12); // 8kHz to 96kHz
 
     while (!shutdown_)
     {
         size_t bytes_to_read = modem_size_buffer(capture_buffer);
-        if (bytes_to_read > buffer_size)
-        {
-            bytes_to_read = buffer_size;
-        }
+
         modem_read_buffer(capture_buffer, buffer, bytes_to_read);
 
-        write_buffer(loopback_to_dsp, buffer, bytes_to_read);
+        // interpolate from 8kHz s32le mono to 96kHz s32le mono
+        size_t bytes_to_read_96k = bytes_to_read * 12;
+
+        for (size_t i = 0; i < bytes_to_read_96k / sample_size; i++)
+        {
+            int32_t sample = 0;
+            size_t base_index = i / 12;
+            float fraction = (float)(i % 12) / 12.0;
+
+            if (base_index + 1 < bytes_to_read / sample_size) {
+                sample = (int32_t)(((1.0 - fraction) * ((int32_t *)buffer)[base_index]) +
+                                   (fraction * ((int32_t *)buffer)[base_index + 1]));
+            } else {
+                sample = ((int32_t *)buffer)[base_index]; // Handle edge case
+            }
+            ((int32_t *)buffer_96k)[i] = sample;
+        }
+
+        write_buffer(loopback_to_dsp, buffer_96k, bytes_to_read_96k);
     }
 
     free(buffer);
+    free(buffer_96k);
 
     return NULL;
 }
 
 
+// we read 96kHz mono s32le and write it to the modem 8kHz mono s32le
 void *shm_playback_thread(void *device_ptr)
 {
-    int sample_size = 4;
-    uint32_t buffer_size = 128 * sample_size * channels;
+    int sample_size = 4; // signed 32 little endian
+    uint32_t buffer_size_96k = 128 * sample_size * 12;
 
-    uint8_t *buffer = malloc(buffer_size);
+    // Calculate the exact buffer size for 8kHz data
+    uint32_t buffer_size_8k = buffer_size_96k / 12;
+
+    uint8_t *buffer_96k = malloc(buffer_size_96k);
+    uint8_t *buffer_8k = malloc(buffer_size_8k);
 
     while (!shutdown_)
     {
         size_t bytes_to_read = size_buffer(dsp_to_loopback);
-        if (bytes_to_read > buffer_size)
+        if (bytes_to_read > buffer_size_96k)
         {
-            bytes_to_read = buffer_size;
+            bytes_to_read = buffer_size_96k;
         }
-        read_buffer(dsp_to_loopback, buffer, bytes_to_read);
 
-        modem_write_buffer(playback_buffer, buffer, bytes_to_read);
+        // Read 96kHz data
+        read_buffer(dsp_to_loopback, buffer_96k, bytes_to_read);
+
+        // Downconvert to 8kHz by selecting every 12th sample
+        size_t samples_to_read = bytes_to_read / sample_size;
+        size_t samples_to_write = samples_to_read / 12;
+
+        for (size_t i = 0; i < samples_to_write; i++)
+        {
+            ((int32_t *)buffer_8k)[i] = ((int32_t *)buffer_96k)[i * 12];
+        }
+
+        // Write the downconverted 8kHz data
+        modem_write_buffer(playback_buffer, buffer_8k, samples_to_write * sample_size);
     }
 
-    free(buffer);
+    free(buffer_96k);
+    free(buffer_8k);
 
     return NULL;
 }
-
-
 
 void *loop_playback_thread(void *device_ptr)
 {
@@ -979,9 +1013,9 @@ void *control_thread(void *device_ptr)
         read_buffer(radio_to_dsp, buffer_radio_to_dsp, buffer_size); // mono
         read_buffer(mic_to_dsp, buffer_mic_to_dsp, buffer_size); // mono
 
+        // in case the alsa loopback device is not started, it will block in the read()
         if (use_loopback)
         {
-            // in case the alsa loopback device is not started, it will block in the read()
             if (size_buffer(loopback_to_dsp) >= buffer_size)
             {
                 read_buffer(loopback_to_dsp, buffer_loop_to_dsp, buffer_size); // stereo interleaved
@@ -1005,7 +1039,7 @@ void *control_thread(void *device_ptr)
         }
         else
         {
-            dsp_process_tx(signal_to_tx, output_speaker, output_loopback, output_tx, block_size, use_loopback);
+            dsp_process_tx(signal_to_tx, output_speaker, output_loopback, output_tx, block_size, radio_h_snd->io_mode == MODEM_IO_SHM ? 0 : use_loopback);
         }
 
         if (free_size_buffer(dsp_to_loopback) >= buffer_size)
