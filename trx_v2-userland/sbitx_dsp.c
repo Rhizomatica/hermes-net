@@ -184,7 +184,7 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         output_speaker_int[i] = (int32_t) (cimag(fft_time[i+(MAX_BINS/2)]) * MAX_SAMPLE_VALUE);
         if (radio_h_dsp->io_mode == MODEM_IO_SHM)
         {
-            output_loopback_int[i] = output_speaker_int[1];
+            output_loopback_int[i] = output_speaker_int[i];
         }
         else
         {
