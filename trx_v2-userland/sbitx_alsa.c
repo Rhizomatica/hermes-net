@@ -1019,7 +1019,8 @@ void *control_thread(void *device_ptr)
             }
             else
             {
-                printf("No data from loopback capture device. Skipping.\n");
+                // TODO: we should never transmit zeros in the middle of the transmit frame - check this
+                // printf("No data from loopback capture device. Skipping.\n");
                 signal_to_tx = buffer_null;
             }
         }
