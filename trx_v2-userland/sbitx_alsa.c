@@ -818,7 +818,11 @@ void *shm_playback_thread(void *device_ptr)
     {
         size_t bytes_to_read = buffer_size_96k;
 
+#ifdef DEBUG
         // Read 96kHz data
+        size_t dsp_to_loopback_a = size_buffer(dsp_to_loopback);
+        printf("shm_playback_thread: reading %zu bytes from dsp_to_loopback buffer (size %zu)\n", bytes_to_read, dsp_to_loopback_a);
+#endif
         read_buffer(dsp_to_loopback, buffer_96k, bytes_to_read);
 
         // Downconvert to 8kHz by selecting every 12th sample
@@ -830,6 +834,11 @@ void *shm_playback_thread(void *device_ptr)
             ((int32_t *)buffer_8k)[i] = ((int32_t *)buffer_96k)[i * 12];
         }
 
+#ifdef DEBUG
+        // get size of playback buffer
+        size_t bytes_playback_a = modem_size_buffer(playback_buffer);
+        printf("shm_playback_thread: modem playback buffer size is %zu bytes\n", bytes_playback_a);
+#endif
         // Write the downconverted 8kHz data
         modem_write_buffer(playback_buffer, buffer_8k, samples_to_write * sample_size);
     }
