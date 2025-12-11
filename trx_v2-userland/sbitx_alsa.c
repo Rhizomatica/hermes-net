@@ -770,7 +770,7 @@ void *shm_capture_thread(void *device_ptr)
 
     while (!shutdown_)
     {
-        size_t bytes_to_read = modem_size_buffer(capture_buffer);
+        size_t bytes_to_read = buffer_size;
 
         modem_read_buffer(capture_buffer, buffer, bytes_to_read);
 
@@ -816,11 +816,7 @@ void *shm_playback_thread(void *device_ptr)
 
     while (!shutdown_)
     {
-        size_t bytes_to_read = size_buffer(dsp_to_loopback);
-        if (bytes_to_read > buffer_size_96k)
-        {
-            bytes_to_read = buffer_size_96k;
-        }
+        size_t bytes_to_read = buffer_size_96k;
 
         // Read 96kHz data
         read_buffer(dsp_to_loopback, buffer_96k, bytes_to_read);
