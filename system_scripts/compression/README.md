@@ -15,10 +15,13 @@ Shell helpers in this directory make it easy to move audio between regular files
 ## Installation
 
 1. Install FFmpeg and Python 3.8+.
-2. Install Python deps:
+2. Install Python deps (PyTorch, EnCodec, SNAC, Hugging Face tooling, etc.) via the curated `requirements.txt`:
    ```bash
    pip install -r requirements.txt
    ```
+   - Core: `torch`, `torchaudio`, `numpy`, `soundfile`, `encodec`, `huggingface-hub`
+   - Optional codecs: `descript-audio-codec`, SemantiCodec (`git+https://github.com/haoheliu/SemantiCodec-inference`)
+   - SNAC: pulled directly from `git+https://github.com/hubertsiuzdak/snac`
 3. (Optional) configure Hugging Face caching if you run these scripts offline later. The first SNAC run pulls the model weights from `hubertsiuzdak/*`.
 
 ## Quick start
