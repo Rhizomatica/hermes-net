@@ -759,45 +759,53 @@ void *loop_capture_thread(void *device_ptr)
     return NULL;
 }
 
-// we read 8kHz mono s16le from the modem, and write it to the controll_thread
+
+
+// we read 8kHz mono s32le from the modem, and write it to the loopback_to_dsp
 void *shm_capture_thread(void *device_ptr)
 {
-    int sample_size = 4;
-    uint32_t buffer_size = 128 * sample_size;
+    const int sample_size = 4;
+    const int up = 12;
 
+    size_t buffer_size = sample_size * 8000 * 15;
     uint8_t *buffer = malloc(buffer_size);
-    uint8_t *buffer_96k = (uint8_t *) malloc(buffer_size * 12); // 8kHz to 96kHz
+    uint8_t *buffer_96k = malloc(buffer_size * up);
+
+    if (!buffer || !buffer_96k)
+        return NULL;
 
     while (!shutdown_)
     {
-        size_t bytes_to_read = buffer_size;
+        size_t bytes_read = modem_read_buffer_all(capture_buffer, buffer);
+        if (bytes_read == 0)
+            continue;
 
-        modem_read_buffer(capture_buffer, buffer, bytes_to_read);
+        size_t in_samples  = bytes_read / sample_size;
+        size_t out_samples = in_samples * up;
 
-        // interpolate from 8kHz s32le mono to 96kHz s32le mono
-        size_t bytes_to_read_96k = bytes_to_read * 12;
+        int32_t *in  = (int32_t *)buffer;
+        int32_t *out = (int32_t *)buffer_96k;
 
-        for (size_t i = 0; i < bytes_to_read_96k / sample_size; i++)
+        for (size_t n = 0; n < in_samples; n++)
         {
-            int32_t sample = 0;
-            size_t base_index = i / 12;
-            float fraction = (float)(i % 12) / 12.0;
+            int32_t a = in[n];
+            int32_t b = (n + 1 < in_samples) ? in[n + 1] : a;
 
-            if (base_index + 1 < bytes_to_read / sample_size) {
-                sample = (int32_t)(((1.0 - fraction) * ((int32_t *)buffer)[base_index]) +
-                                   (fraction * ((int32_t *)buffer)[base_index + 1]));
-            } else {
-                sample = ((int32_t *)buffer)[base_index]; // Handle edge case
+            for (int k = 0; k < up; k++)
+            {
+                out[n * up + k] =
+                    (int32_t)(((int64_t)a * (up - k) +
+                               (int64_t)b * k) / up);
             }
-            ((int32_t *)buffer_96k)[i] = sample;
         }
 
-        write_buffer(loopback_to_dsp, buffer_96k, bytes_to_read_96k);
+        write_buffer(loopback_to_dsp,
+                     buffer_96k,
+                     out_samples * sample_size);
     }
 
     free(buffer);
     free(buffer_96k);
-
     return NULL;
 }
 
@@ -1023,7 +1031,7 @@ void *control_thread(void *device_ptr)
         {
             if (size_buffer(loopback_to_dsp) >= buffer_size)
             {
-                read_buffer(loopback_to_dsp, buffer_loop_to_dsp, buffer_size); // stereo interleaved
+                read_buffer(loopback_to_dsp, buffer_loop_to_dsp, buffer_size); // stereo interleaved or 96 kHz mono
                 signal_to_tx = buffer_loop_to_dsp;
             }
             else
