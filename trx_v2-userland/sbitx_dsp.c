@@ -263,7 +263,7 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         {
             for (i = 0; i < block_size; i++)
             {
-                signal_input_f[i] = (1.0 * signal_input_int[i]) / MAX_SAMPLE_VALUE;
+                signal_input_f[i] = (1.0 * (signal_input_int[i] >> 8)) / MAX_SAMPLE_VALUE;
             }
         }
         // MIC
