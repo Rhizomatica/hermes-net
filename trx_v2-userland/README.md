@@ -96,6 +96,73 @@ Example:
 * sbitx_controller
 
 
+# RADEv2 Digital Voice Mode
+
+This software supports RADEv2 (Radio Autoencoder Version 2) for digital voice
+transmission over HF. When enabled, speech is encoded using the RADAE ML-based
+codec and transmitted within the SSB passband.
+
+## RADEv2 Prerequisites
+
+1. Clone the RADAE repository:
+```bash
+cd /path/to/hermes-net
+git clone https://github.com/drowe67/radae.git
+```
+
+2. Build RADAE:
+```bash
+cd radae
+mkdir build && cd build
+cmake ..
+make
+```
+
+3. Install Python dependencies:
+```bash
+pip3 install torch numpy matplotlib
+```
+
+4. Ensure the RADEv2 model files are present:
+   - `radae/250725/checkpoints/checkpoint_epoch_200.pth` (main model)
+   - `radae/250725a_ml_sync` (frame sync model)
+
+## Building with RADEv2 Support
+
+Build as usual - RADEv2 support is included automatically:
+```bash
+cd trx_v2-userland
+make
+```
+
+## Using Digital Voice Mode
+
+Enable digital voice via the sbitx_client:
+```bash
+sbitx_client -c set_digital_voice -a 1 -p 0    # Enable digital voice on profile 0
+sbitx_client -c set_digital_voice -a 0 -p 0    # Disable digital voice
+sbitx_client -c get_digital_voice -p 0         # Check digital voice status
+```
+
+When digital voice is enabled:
+- **TX**: Speech from mic/loopback is encoded via LPCNet feature extraction,
+  processed through the RADAE encoder, and the resulting 8kHz modem waveform
+  is upsampled and placed in the SSB passband (~1.5kHz center frequency).
+- **RX**: The received SSB signal is downsampled, decoded by RADAE, and
+  synthesized back to speech via LPCNet FARGAN synthesis.
+
+## Technical Details
+
+- Speech sample rate: 16kHz (LPCNet)
+- Modem sample rate: 8kHz (RADAE)
+- Radio sample rate: 96kHz
+- RADEv2 parameters: latent_dim=56, w1_dec=128
+- Model: 250725 checkpoint
+
+The digital voice processing runs as subprocess pipelines:
+- TX: `lpcnet_demo -features` → `inference.py` → modem IQ
+- RX: `radae_rxe.py` → `lpcnet_demo -fargan-synthesis` → speech
+
 # Author
 
 Rafael Diniz @ Rhizomatica
