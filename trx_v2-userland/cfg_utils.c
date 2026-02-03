@@ -326,6 +326,11 @@ bool init_config_user(radio *radio_h, char *ini_name)
         // printf("%s:      [%d]\n", profile_field, b);
         radio_h->profiles[k].enable_ptt = (bool) b;
 
+        sprintf(profile_field, "%s:digital_voice", profile_name);
+        b = iniparser_getboolean(ini, profile_field, 0);
+        // printf("%s:      [%d]\n", profile_field, b);
+        radio_h->profiles[k].digital_voice = (bool) b;
+
     }
 
     return true;

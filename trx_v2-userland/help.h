@@ -100,6 +100,16 @@ const char format_str[] =
 "  * 0 | 1\n"
 "  * Resp: OK | ERROR\n\n"
 
+"* get_digital_voice\n"
+"  * Specify profile\n"
+"  * No Argument\n"
+"  * Resp: ON | OFF | ERROR\n\n"
+
+"* set_digital_voice\n"
+"  * Specify profile\n"
+"  * 0 | 1\n"
+"  * Resp: OK | ERROR\n\n"
+
 "* get_serial\n"
 "  * Do not specify profile\n"
 "  * No Argument\n"

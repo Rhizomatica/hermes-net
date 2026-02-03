@@ -290,6 +290,23 @@ int main(int argc, char *argv[])
 
         srv_cmd[4] = CMD_SET_CONNECTED_STATUS;
     }
+    else if (!strcmp(command, "get_digital_voice"))
+    {
+        srv_cmd[4] = CMD_GET_DIGITAL_VOICE | (profile << 6);
+    }
+    else if (!strcmp(command, "set_digital_voice"))
+    {
+        if (argument_set == false)
+            goto manual;
+
+        if (!strcmp(command_argument, "1") || !strcmp(command_argument, "true") || !strcmp(command_argument, "on") || !strcmp(command_argument, "ON"))
+            srv_cmd[0] = 0x01;
+
+        if (!strcmp(command_argument, "0") || !strcmp(command_argument, "false") || !strcmp(command_argument, "off") || !strcmp(command_argument, "OFF"))
+            srv_cmd[0] = 0x00;
+
+        srv_cmd[4] = CMD_SET_DIGITAL_VOICE | (profile << 6);
+    }
     else if (!strcmp(command, "get_serial"))
     {
         srv_cmd[4] = CMD_GET_SERIAL;
@@ -496,6 +513,12 @@ int main(int argc, char *argv[])
             break;
         case CMD_RESP_GET_CONNECTED_STATUS_OFF:
             printf("LED_OFF\n");
+            break;
+        case CMD_RESP_GET_DIGITAL_VOICE_ON:
+            printf("ON\n");
+            break;
+        case CMD_RESP_GET_DIGITAL_VOICE_OFF:
+            printf("OFF\n");
             break;
          case CMD_RESP_GET_FREQ_ACK:
             memcpy (&freq, response+1, 4);

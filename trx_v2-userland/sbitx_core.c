@@ -205,6 +205,31 @@ void set_power_knob(radio *radio_h, uint16_t power_level, uint32_t profile)
     radio_h->cfg_user_dirty = true;
 }
 
+void set_digital_voice(radio *radio_h, bool digital_voice, uint32_t profile)
+{
+    if (profile > radio_h->profiles_count)
+    {
+        printf("Error: Profile index out of bounds\n");
+        return;
+    }
+
+    _Atomic bool *dv = &radio_h->profiles[profile].digital_voice;
+
+    if (*dv == digital_voice)
+        return;
+
+    radio_h->profiles[profile].digital_voice = digital_voice;
+
+    char tmp1[64]; char tmp2[64];
+    sprintf(tmp1, "profile%u:digital_voice", profile);
+    sprintf(tmp2, "%d", digital_voice ? 1 : 0);
+    int rc = cfg_set(radio_h, radio_h->cfg_user, tmp1, tmp2);
+    if (rc != 0)
+        printf("Error modifying config file\n");
+
+    radio_h->cfg_user_dirty = true;
+}
+
 void set_profile(radio *radio_h, uint32_t profile)
 {
     if (radio_h->profile_active_idx == profile)

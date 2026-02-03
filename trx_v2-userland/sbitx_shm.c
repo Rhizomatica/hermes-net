@@ -178,6 +178,24 @@ void process_radio_command(uint8_t *cmd, uint8_t *response)
        radio_h->system_is_connected = cmd[0];
        break;
 
+   case CMD_GET_DIGITAL_VOICE: // GET DIGITAL VOICE STATUS
+       profile = cmd[4] >> 6;
+       if (profile < radio_h->profiles_count)
+       {
+           if (radio_h->profiles[profile].digital_voice)
+               response[0] = CMD_RESP_GET_DIGITAL_VOICE_ON;
+           else
+               response[0] = CMD_RESP_GET_DIGITAL_VOICE_OFF;
+       }
+       break;
+
+   case CMD_SET_DIGITAL_VOICE: // SET DIGITAL VOICE STATUS
+       response[0] = CMD_RESP_ACK;
+       profile = cmd[4] >> 6;
+       if (profile < radio_h->profiles_count)
+           set_digital_voice(radio_h, cmd[0], profile);
+       break;
+
    case CMD_GET_SERIAL: // GET SERIAL NUMBER
        response[0] = CMD_RESP_GET_SERIAL_ACK;
        memcpy(response+1, &radio_h->serial_number, 4);

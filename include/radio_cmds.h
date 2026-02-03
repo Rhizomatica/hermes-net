@@ -119,6 +119,9 @@
 #define CMD_SET_POWER 0x3a
 #define CMD_GET_POWER 0x3b
 
+#define CMD_GET_DIGITAL_VOICE 0x3c
+#define CMD_SET_DIGITAL_VOICE 0x3d
+
 // ================================= //
 
 
@@ -177,5 +180,8 @@
 #define CMD_RESP_GET_BYTES_TX 0x27
 
 #define CMD_RESP_WRONG_COMMAND 0x28
+
+#define CMD_RESP_GET_DIGITAL_VOICE_ON 0x29
+#define CMD_RESP_GET_DIGITAL_VOICE_OFF 0x2a
 
 #endif // HAVE_CMDS_H__

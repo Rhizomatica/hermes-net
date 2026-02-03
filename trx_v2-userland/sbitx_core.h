@@ -132,6 +132,9 @@ typedef struct {
     bool enable_knob_volume;
     bool enable_knob_frequency;
     bool enable_ptt;
+
+    // digital voice mode
+    _Atomic bool digital_voice;
 } radio_profile;
 
 
@@ -228,6 +231,7 @@ void set_profile(radio *radio_h, uint32_t profile);
 void set_serial(radio *radio_h, uint32_t serial); // set internal serial number
 void set_profile_timeout(radio *radio_h, int32_t timeout);
 void set_power_knob(radio *radio_h, uint16_t power_level, uint32_t profile);
+void set_digital_voice(radio *radio_h, bool digital_voice, uint32_t profile);
 
 // TX/RX switch
 void tr_switch(radio *radio_h, bool txrx_state);
