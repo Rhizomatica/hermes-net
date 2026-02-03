@@ -200,6 +200,7 @@ void *webserver_thread_function(void *radio_h_v)
                         sprintf(buff+strlen(buff), "\"p%d_mode\": \"LSB\",\n", i);
                     else if (curr_prof->mode == MODE_CW)
                         sprintf(buff+strlen(buff), "\"p%d_mode\": \"CW\",\n", i);
+                    sprintf(buff+strlen(buff), "\"p%d_digital_voice\": %s,\n", i, curr_prof->digital_voice ? "true" : "false");
                 }
                 sprintf(buff+strlen(buff), "\"protection\": %s}", radio_h->swr_protection_enabled ?"true":"false");
 
