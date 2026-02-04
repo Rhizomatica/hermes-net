@@ -108,9 +108,10 @@ codec and transmitted within the SSB passband.
 ```bash
 cd /path/to/hermes-net
 git clone https://github.com/drowe67/radae.git
+git checkout dr-radev2
 ```
 
-2. Build RADAE:
+2. Build RADAE (read ../radae/README.md - THIS IS INCOMPLETE):
 ```bash
 cd radae
 mkdir build && cd build
@@ -146,9 +147,9 @@ sbitx_client -c get_digital_voice -p 0         # Check digital voice status
 
 When digital voice is enabled:
 - **TX**: Speech from mic/loopback is encoded via LPCNet feature extraction,
-  processed through the RADAE encoder, and the resulting 8kHz modem waveform
-  is upsampled and placed in the SSB passband (~1.5kHz center frequency).
-- **RX**: The received SSB signal is downsampled, decoded by RADAE, and
+  processed through the RADAE encoder, and the resulting modem waveform
+  is placed in the SSB passband.
+- **RX**: The received SSB signal is decoded by RADAE, and
   synthesized back to speech via LPCNet FARGAN synthesis.
 
 ## Technical Details
@@ -160,7 +161,7 @@ When digital voice is enabled:
 - Model: 250725 checkpoint
 
 The digital voice processing runs as subprocess pipelines:
-- TX: `lpcnet_demo -features` → `inference.py` → modem IQ
+- TX: `lpcnet_demo -features` → `inference.py` → modem
 - RX: `radae_rxe.py` → `lpcnet_demo -fargan-synthesis` → speech
 
 # Author
