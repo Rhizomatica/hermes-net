@@ -621,7 +621,7 @@ static void *radae_rx_thread(void *arg)
 // Simple linear interpolation resampler
 static void resample_linear(const double *in, int in_len, double *out, int out_len)
 {
-    if (in_len <= 0 || out_len <= 0) return;
+    if (in_len <= 1 || out_len <= 1) return;
     
     double ratio = (double)(in_len - 1) / (double)(out_len - 1);
     
