@@ -103,14 +103,10 @@ static void dsp_process_digital_voice_tx(double *signal_input_f, uint32_t block_
     }
 
     // Resample input to 16kHz for RADAE
+    // signal_input_f is always 96kHz: either directly from mic, or after 2x interpolation from 48kHz loopback
+    (void)input_is_48k_stereo;  // Not needed - signal_input_f is always 96kHz
     int speech_16k_len;
-    if (input_is_48k_stereo) {
-        // Input is already decimated to 48kHz equivalent in signal_input_f (block_size samples)
-        resample_48k_to_16k(signal_input_f, block_size, radae_speech_in, &speech_16k_len);
-    } else {
-        // Input is 96kHz
-        resample_96k_to_16k(signal_input_f, block_size, radae_speech_in, &speech_16k_len);
-    }
+    resample_96k_to_16k(signal_input_f, block_size, radae_speech_in, &speech_16k_len);
 
     // Feed speech to RADAE TX
     radae_tx_write_speech(&radae_ctx, radae_speech_in, speech_16k_len);
@@ -122,18 +118,14 @@ static void dsp_process_digital_voice_tx(double *signal_input_f, uint32_t block_
     int modem_samples = radae_tx_read_modem_iq(&radae_ctx, radae_modem_iq, max_modem_samples);
 
     if (modem_samples > 0) {
-        // Upsample 8kHz IQ to 96kHz baseband
-        // The modem IQ is complex (interleaved I,Q), we need to place it in the SSB passband
-        // RADAE modem bandwidth is ~1.5kHz, centered around 1.5kHz in baseband
+        // RADAE outputs complex IQ at 8kHz - the OFDM waveform is already in baseband
+        // Just extract the real part (I component) and upsample to 96kHz for SSB TX
+        // No carrier mixing needed - RADAE waveform already fits in SSB passband
         
         int baseband_len;
-        // Just use the real part for now, upsampled to 96kHz
         float real_part[modem_samples];
         for (int i = 0; i < modem_samples; i++) {
-            // Mix to ~1.5kHz center frequency for SSB passband
-            // Use complex multiplication with carrier
-            double phase = 2.0 * M_PI * 1500.0 * i / RADAE_MODEM_RATE;
-            real_part[i] = radae_modem_iq[i*2] * cos(phase) - radae_modem_iq[i*2+1] * sin(phase);
+            real_part[i] = radae_modem_iq[i*2];  // Just take I component
         }
         
         resample_8k_to_96k(real_part, modem_samples, radae_baseband, &baseband_len);
@@ -161,19 +153,16 @@ static void dsp_process_digital_voice_tx(double *signal_input_f, uint32_t block_
 static void dsp_process_digital_voice_rx(double *rx_baseband, uint32_t block_size, double *speech_out)
 {
     // Resample 96kHz baseband to 8kHz for RADAE modem
+    // SSB demod gives us real-valued baseband containing the RADAE OFDM waveform
+    // No carrier mixing needed - just resample and create complex IQ with Q=0
     int modem_len;
     float modem_8k[block_size / 12 + 1];
     resample_96k_to_8k(rx_baseband, block_size, modem_8k, &modem_len);
     
-    // The received signal is already in baseband (after SSB demod)
-    // We need to extract the complex IQ for RADAE
-    // Since SSB gives us real-valued baseband, we create complex IQ with Q=0
-    // and mix down from 1.5kHz center to baseband
-    
+    // Create complex IQ for RADAE: I = real signal, Q = 0
     for (int i = 0; i < modem_len; i++) {
-        double phase = 2.0 * M_PI * 1500.0 * i / RADAE_MODEM_RATE;
-        radae_modem_iq[i*2] = modem_8k[i] * cos(phase);      // I component
-        radae_modem_iq[i*2+1] = -modem_8k[i] * sin(phase);   // Q component (Hilbert-like)
+        radae_modem_iq[i*2] = modem_8k[i];      // I component = real signal
+        radae_modem_iq[i*2+1] = 0.0f;           // Q component = 0
     }
     
     // Feed modem IQ to RADAE RX

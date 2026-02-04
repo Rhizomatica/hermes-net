@@ -35,9 +35,6 @@
 #define RADAE_MODEM_RATE     8000   // RADAE modem IQ sample rate
 #define RADAE_SPEECH_RATE    16000  // RADAE speech sample rate (for lpcnet)
 
-// RADEv2 model parameters
-#define RADAE_LATENT_DIM     56
-#define RADAE_W1_DEC         128
 
 // Buffer sizes
 #define RADAE_SPEECH_BUFFER_SIZE   (RADAE_SPEECH_RATE * 2)  // 2 seconds of speech
