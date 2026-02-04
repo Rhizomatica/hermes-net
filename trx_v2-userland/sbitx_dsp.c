@@ -85,7 +85,6 @@ _Atomic bool rx_starting = false;
 // RADAE digital voice context
 static radae_context radae_ctx;
 static _Atomic bool radae_tx_active = false;
-static _Atomic bool radae_rx_active = false;
 
 // Buffers for RADAE sample rate conversion
 static float radae_speech_in[2048];   // 16kHz speech input
@@ -117,7 +116,10 @@ static void dsp_process_digital_voice_tx(double *signal_input_f, uint32_t block_
     radae_tx_write_speech(&radae_ctx, radae_speech_in, speech_16k_len);
 
     // Try to get modem IQ from RADAE TX
-    int modem_samples = radae_tx_read_modem_iq(&radae_ctx, radae_modem_iq, 1024);
+    // Limit to avoid buffer overflow: 8kHz->96kHz upsampling multiplies by 12,
+    // and radae_baseband buffer is 2048 samples, so max input is 2048/12 = 170 samples
+    int max_modem_samples = 2048 / 12;  // = 170 samples max
+    int modem_samples = radae_tx_read_modem_iq(&radae_ctx, radae_modem_iq, max_modem_samples);
 
     if (modem_samples > 0) {
         // Upsample 8kHz IQ to 96kHz baseband
@@ -178,12 +180,19 @@ static void dsp_process_digital_voice_rx(double *rx_baseband, uint32_t block_siz
     radae_rx_write_modem_iq(&radae_ctx, radae_modem_iq, modem_len);
     
     // Try to get decoded speech from RADAE RX
-    int speech_samples = radae_rx_read_speech(&radae_ctx, radae_speech_out, 1024);
+    // Limit to MAX_BINS/12 samples (170) since 16kHz->96kHz upsampling multiplies by 6,
+    // and we need output to fit in MAX_BINS/2 (1024) buffer
+    int max_speech_samples = (MAX_BINS / 2) / 6;  // = 170 samples max
+    int speech_samples = radae_rx_read_speech(&radae_ctx, radae_speech_out, max_speech_samples);
     
     if (speech_samples > 0) {
         // Upsample 16kHz speech to 96kHz for speaker output
         int output_len;
         resample_16k_to_96k(radae_speech_out, speech_samples, speech_out, &output_len);
+        // Zero remaining samples to avoid stale data if output_len < block_size
+        if ((uint32_t)output_len < block_size) {
+            memset(speech_out + output_len, 0, (block_size - output_len) * sizeof(double));
+        }
     } else {
         // No speech output yet
         memset(speech_out, 0, block_size * sizeof(double));
@@ -402,10 +411,9 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         memset(output_speaker, 0, block_size * (snd_pcm_format_width(format) / 8));
         return;
     }
-
-    // Stop RADAE TX if it was running but digital_voice is now disabled
-    if (radae_tx_active && !radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].digital_voice)
+    else if (radae_tx_active)
     {
+        // Stop RADAE TX if it was running but digital_voice is now disabled
         radae_tx_stop(&radae_ctx);
         radae_tx_active = false;
     }
@@ -567,7 +575,6 @@ void dsp_init(radio *radio_h)
     } else {
         // Start RADAE RX by default (always listening)
         radae_rx_start(&radae_ctx);
-        radae_rx_active = true;
     }
 }
 

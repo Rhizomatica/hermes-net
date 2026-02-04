@@ -29,16 +29,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <pthread.h>
-
-// Forward declaration - full definition in sbitx_core.h
-struct radio;
-typedef struct radio radio;
+#include "sbitx_core.h"
 
 // Sample rates
 #define RADAE_MODEM_RATE     8000   // RADAE modem IQ sample rate
 #define RADAE_SPEECH_RATE    16000  // RADAE speech sample rate (for lpcnet)
-#define RADIO_SAMPLE_RATE    96000  // sBitx radio sample rate
-#define LOOPBACK_SAMPLE_RATE 48000  // Loopback sample rate
 
 // RADEv2 model parameters
 #define RADAE_LATENT_DIM     56
@@ -50,30 +45,16 @@ typedef struct radio radio;
 
 // Feature extraction frame size (10ms @ 16kHz = 160 samples)
 #define RADAE_FRAME_SIZE     160
-#define RADAE_FEATURES_PER_FRAME 36
 
 // Paths to RADAE resources (relative to radae directory)
 #define RADAE_MODEL_PATH         "250725/checkpoints/checkpoint_epoch_200.pth"
-#define RADAE_SYNC_MODEL_PATH    "250725a_ml_sync"
 #define RADAE_DIR                "../radae"
 
 // RADAE context structure
 typedef struct {
     // Subprocess PIDs
-    pid_t tx_feature_pid;    // lpcnet_demo -features for TX
-    pid_t tx_encoder_pid;    // inference.py for TX
-    pid_t rx_decoder_pid;    // rx2.py for RX
-    pid_t rx_synth_pid;      // lpcnet_demo -fargan-synthesis for RX
-
-    // Pipe file descriptors for TX path
-    int tx_speech_to_features[2];    // speech -> lpcnet_demo -features
-    int tx_features_to_encoder[2];   // features -> inference.py
-    int tx_encoder_to_modem[2];      // inference.py -> modem IQ
-
-    // Pipe file descriptors for RX path
-    int rx_modem_to_decoder[2];      // modem IQ -> rx2.py
-    int rx_decoder_to_synth[2];      // features -> lpcnet_demo -fargan-synthesis
-    int rx_synth_to_speech[2];       // synthesized speech output
+    pid_t tx_encoder_pid;    // TX encoder pipeline
+    pid_t rx_decoder_pid;    // RX decoder pipeline
 
     // Circular buffers for sample rate conversion
     float *tx_speech_buffer;         // 16kHz speech input buffer
@@ -152,17 +133,10 @@ int radae_rx_write_modem_iq(radae_context *ctx, const float *iq_samples, int n_s
 // Returns number of samples read
 int radae_rx_read_speech(radae_context *ctx, float *samples, int max_samples);
 
-// Check if TX has modem IQ data available
-int radae_tx_modem_available(radae_context *ctx);
-
-// Check if RX has speech data available
-int radae_rx_speech_available(radae_context *ctx);
-
 // Sample rate conversion utilities
 void resample_96k_to_16k(const double *in, int in_len, float *out, int *out_len);
 void resample_16k_to_96k(const float *in, int in_len, double *out, int *out_len);
 void resample_48k_to_16k(const double *in, int in_len, float *out, int *out_len);
-void resample_16k_to_48k(const float *in, int in_len, double *out, int *out_len);
 void resample_96k_to_8k(const double *in, int in_len, float *out, int *out_len);
 void resample_8k_to_96k(const float *in, int in_len, double *out, int *out_len);
 

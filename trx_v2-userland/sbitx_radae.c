@@ -103,34 +103,28 @@ bool radae_init(radae_context *ctx, radio *radio_h, const char *radae_dir)
     ctx->tx_speech_buffer = (float *)calloc(RADAE_SPEECH_BUFFER_SIZE, sizeof(float));
     if (!ctx->tx_speech_buffer) {
         fprintf(stderr, "RADAE: Failed to allocate TX speech buffer\n");
-        return false;
+        goto cleanup_mutex;
     }
     
     // TX modem buffer: 8kHz complex IQ (interleaved float pairs)
     ctx->tx_modem_buffer = (float *)calloc(RADAE_MODEM_BUFFER_SIZE * 2, sizeof(float));
     if (!ctx->tx_modem_buffer) {
         fprintf(stderr, "RADAE: Failed to allocate TX modem buffer\n");
-        free(ctx->tx_speech_buffer);
-        return false;
+        goto cleanup_tx_speech;
     }
     
     // RX modem buffer: 8kHz complex IQ (interleaved float pairs)
     ctx->rx_modem_buffer = (float *)calloc(RADAE_MODEM_BUFFER_SIZE * 2, sizeof(float));
     if (!ctx->rx_modem_buffer) {
         fprintf(stderr, "RADAE: Failed to allocate RX modem buffer\n");
-        free(ctx->tx_speech_buffer);
-        free(ctx->tx_modem_buffer);
-        return false;
+        goto cleanup_tx_modem;
     }
     
     // RX speech buffer: 16kHz mono float samples
     ctx->rx_speech_buffer = (float *)calloc(RADAE_SPEECH_BUFFER_SIZE, sizeof(float));
     if (!ctx->rx_speech_buffer) {
         fprintf(stderr, "RADAE: Failed to allocate RX speech buffer\n");
-        free(ctx->tx_speech_buffer);
-        free(ctx->tx_modem_buffer);
-        free(ctx->rx_modem_buffer);
-        return false;
+        goto cleanup_rx_modem;
     }
     
     // Create FIFOs for inter-process communication
@@ -141,11 +135,7 @@ bool radae_init(radae_context *ctx, radio *radio_h, const char *radae_dir)
         create_fifo(RX_FEATURES_FIFO) < 0 ||
         create_fifo(RX_SPEECH_FIFO) < 0) {
         fprintf(stderr, "RADAE: Failed to create FIFOs\n");
-        free(ctx->tx_speech_buffer);
-        free(ctx->tx_modem_buffer);
-        free(ctx->rx_modem_buffer);
-        free(ctx->rx_speech_buffer);
-        return false;
+        goto cleanup_rx_speech;
     }
     
     ctx->initialized = true;
@@ -154,6 +144,21 @@ bool radae_init(radae_context *ctx, radio *radio_h, const char *radae_dir)
     fprintf(stderr, "RADAE: Initialized with radae_dir=%s\n", ctx->radae_dir);
     
     return true;
+
+cleanup_rx_speech:
+    free(ctx->rx_speech_buffer);
+cleanup_rx_modem:
+    free(ctx->rx_modem_buffer);
+cleanup_tx_modem:
+    free(ctx->tx_modem_buffer);
+cleanup_tx_speech:
+    free(ctx->tx_speech_buffer);
+cleanup_mutex:
+    pthread_mutex_destroy(&ctx->tx_mutex);
+    pthread_mutex_destroy(&ctx->rx_mutex);
+    pthread_cond_destroy(&ctx->tx_cond);
+    pthread_cond_destroy(&ctx->rx_cond);
+    return false;
 }
 
 void radae_shutdown(radae_context *ctx)
@@ -220,11 +225,6 @@ void radae_tx_stop(radae_context *ctx)
     pthread_join(ctx->tx_thread, NULL);
     
     // Kill any subprocess
-    if (ctx->tx_feature_pid > 0) {
-        kill(ctx->tx_feature_pid, SIGTERM);
-        waitpid(ctx->tx_feature_pid, NULL, 0);
-        ctx->tx_feature_pid = 0;
-    }
     if (ctx->tx_encoder_pid > 0) {
         kill(ctx->tx_encoder_pid, SIGTERM);
         waitpid(ctx->tx_encoder_pid, NULL, 0);
@@ -274,11 +274,6 @@ void radae_rx_stop(radae_context *ctx)
         kill(ctx->rx_decoder_pid, SIGTERM);
         waitpid(ctx->rx_decoder_pid, NULL, 0);
         ctx->rx_decoder_pid = 0;
-    }
-    if (ctx->rx_synth_pid > 0) {
-        kill(ctx->rx_synth_pid, SIGTERM);
-        waitpid(ctx->rx_synth_pid, NULL, 0);
-        ctx->rx_synth_pid = 0;
     }
     
     fprintf(stderr, "RADAE RX: Stopped\n");
@@ -376,34 +371,6 @@ int radae_rx_read_speech(radae_context *ctx, float *samples, int max_samples)
     return to_read;
 }
 
-int radae_tx_modem_available(radae_context *ctx)
-{
-    if (!ctx->tx_running)
-        return 0;
-    
-    pthread_mutex_lock(&ctx->tx_mutex);
-    int available = BUFFER_SIZE(ctx->tx_modem_buffer_write_idx, 
-                                 ctx->tx_modem_buffer_read_idx, 
-                                 RADAE_MODEM_BUFFER_SIZE * 2) / 2;
-    pthread_mutex_unlock(&ctx->tx_mutex);
-    
-    return available;
-}
-
-int radae_rx_speech_available(radae_context *ctx)
-{
-    if (!ctx->rx_running)
-        return 0;
-    
-    pthread_mutex_lock(&ctx->rx_mutex);
-    int available = BUFFER_SIZE(ctx->rx_speech_buffer_write_idx, 
-                                 ctx->rx_speech_buffer_read_idx, 
-                                 RADAE_SPEECH_BUFFER_SIZE);
-    pthread_mutex_unlock(&ctx->rx_mutex);
-    
-    return available;
-}
-
 // TX thread implementation
 // Pipeline: speech (16kHz) -> lpcnet_demo -features -> inference.py -> modem IQ (8kHz)
 static void *radae_tx_thread(void *arg)
@@ -430,8 +397,15 @@ static void *radae_tx_thread(void *arg)
     
     // Create pipes for stdin and stdout
     int stdin_pipe[2], stdout_pipe[2];
-    if (pipe(stdin_pipe) < 0 || pipe(stdout_pipe) < 0) {
-        fprintf(stderr, "RADAE TX: Failed to create pipes\n");
+    if (pipe(stdin_pipe) < 0) {
+        fprintf(stderr, "RADAE TX: Failed to create stdin pipe\n");
+        ctx->tx_running = false;
+        return NULL;
+    }
+    if (pipe(stdout_pipe) < 0) {
+        fprintf(stderr, "RADAE TX: Failed to create stdout pipe\n");
+        close(stdin_pipe[0]);
+        close(stdin_pipe[1]);
         ctx->tx_running = false;
         return NULL;
     }
@@ -582,8 +556,15 @@ static void *radae_rx_thread(void *arg)
     
     // Create pipes for stdin and stdout
     int stdin_pipe[2], stdout_pipe[2];
-    if (pipe(stdin_pipe) < 0 || pipe(stdout_pipe) < 0) {
-        fprintf(stderr, "RADAE RX: Failed to create pipes\n");
+    if (pipe(stdin_pipe) < 0) {
+        fprintf(stderr, "RADAE RX: Failed to create stdin pipe\n");
+        ctx->rx_running = false;
+        return NULL;
+    }
+    if (pipe(stdout_pipe) < 0) {
+        fprintf(stderr, "RADAE RX: Failed to create stdout pipe\n");
+        close(stdin_pipe[0]);
+        close(stdin_pipe[1]);
         ctx->rx_running = false;
         return NULL;
     }
@@ -748,17 +729,6 @@ void resample_48k_to_16k(const double *in, int in_len, float *out, int *out_len)
     for (int i = 0; i < *out_len; i++) {
         out[i] = (float)temp[i];
     }
-}
-
-void resample_16k_to_48k(const float *in, int in_len, double *out, int *out_len)
-{
-    // 16kHz to 48kHz = 1:3 interpolation
-    *out_len = in_len * 3;
-    double temp[in_len];
-    for (int i = 0; i < in_len; i++) {
-        temp[i] = (double)in[i];
-    }
-    resample_linear(temp, in_len, out, *out_len);
 }
 
 void resample_96k_to_8k(const double *in, int in_len, float *out, int *out_len)
