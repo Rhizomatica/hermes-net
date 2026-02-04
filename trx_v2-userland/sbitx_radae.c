@@ -45,45 +45,11 @@
 #define BUFFER_FREE(write_idx, read_idx, max_size) \
     ((max_size) - 1 - BUFFER_SIZE(write_idx, read_idx, max_size))
 
-// Named pipe paths (will be created in /tmp)
-#define TX_SPEECH_FIFO      "/tmp/radae_tx_speech.fifo"
-#define TX_FEATURES_FIFO    "/tmp/radae_tx_features.fifo"
-#define TX_MODEM_FIFO       "/tmp/radae_tx_modem.fifo"
-#define RX_MODEM_FIFO       "/tmp/radae_rx_modem.fifo"
-#define RX_FEATURES_FIFO    "/tmp/radae_rx_features.fifo"
-#define RX_SPEECH_FIFO      "/tmp/radae_rx_speech.fifo"
-
 // TX thread: reads from speech buffer, writes to modem buffer via RADAE pipeline
 static void *radae_tx_thread(void *arg);
 
 // RX thread: reads from modem buffer, writes to speech buffer via RADAE pipeline
 static void *radae_rx_thread(void *arg);
-
-// Create named pipe if it doesn't exist
-static int create_fifo(const char *path)
-{
-    // Remove existing FIFO if any
-    unlink(path);
-    
-    if (mkfifo(path, 0666) == -1) {
-        if (errno != EEXIST) {
-            fprintf(stderr, "RADAE: Failed to create FIFO %s: %s\n", path, strerror(errno));
-            return -1;
-        }
-    }
-    return 0;
-}
-
-// Cleanup FIFOs
-static void cleanup_fifos(void)
-{
-    unlink(TX_SPEECH_FIFO);
-    unlink(TX_FEATURES_FIFO);
-    unlink(TX_MODEM_FIFO);
-    unlink(RX_MODEM_FIFO);
-    unlink(RX_FEATURES_FIFO);
-    unlink(RX_SPEECH_FIFO);
-}
 
 bool radae_init(radae_context *ctx, radio *radio_h, const char *radae_dir)
 {
@@ -127,17 +93,6 @@ bool radae_init(radae_context *ctx, radio *radio_h, const char *radae_dir)
         goto cleanup_rx_modem;
     }
     
-    // Create FIFOs for inter-process communication
-    if (create_fifo(TX_SPEECH_FIFO) < 0 ||
-        create_fifo(TX_FEATURES_FIFO) < 0 ||
-        create_fifo(TX_MODEM_FIFO) < 0 ||
-        create_fifo(RX_MODEM_FIFO) < 0 ||
-        create_fifo(RX_FEATURES_FIFO) < 0 ||
-        create_fifo(RX_SPEECH_FIFO) < 0) {
-        fprintf(stderr, "RADAE: Failed to create FIFOs\n");
-        goto cleanup_rx_speech;
-    }
-    
     ctx->initialized = true;
     ctx->shutdown_requested = false;
     
@@ -145,8 +100,6 @@ bool radae_init(radae_context *ctx, radio *radio_h, const char *radae_dir)
     
     return true;
 
-cleanup_rx_speech:
-    free(ctx->rx_speech_buffer);
 cleanup_rx_modem:
     free(ctx->rx_modem_buffer);
 cleanup_tx_modem:
@@ -182,8 +135,6 @@ void radae_shutdown(radae_context *ctx)
     free(ctx->tx_modem_buffer);
     free(ctx->rx_modem_buffer);
     free(ctx->rx_speech_buffer);
-    
-    cleanup_fifos();
     
     ctx->initialized = false;
     fprintf(stderr, "RADAE: Shutdown complete\n");
@@ -378,20 +329,15 @@ static void *radae_tx_thread(void *arg)
     radae_context *ctx = (radae_context *)arg;
     
     // Build command for TX pipeline
-    // lpcnet_demo -features - - | python3 inference.py model features.f32 /dev/null --write_rx /dev/stdout ...
+    // RADEv2: lpcnet_demo -features -> radae_txe.py -> IQ samples
     
     char cmd[2048];
     snprintf(cmd, sizeof(cmd),
              "cd %s && "
              "build/src/lpcnet_demo -features - - | "
-             "python3 inference.py %s /dev/stdin /dev/null "
-             "--rate_Fs --latent-dim %d --peak --cp 0.004 "
-             "--time_offset -16 --correct_time_offset -16 --auxdata "
-             "--w1_dec %d --write_rx /dev/stdout 2>/dev/null",
+             "python3 radae_txe.py --model_name %s 2>/dev/null",
              ctx->radae_dir,
-             RADAE_MODEL_PATH,
-             RADAE_LATENT_DIM,
-             RADAE_W1_DEC);
+             RADAE_MODEL_PATH);
     
     fprintf(stderr, "RADAE TX: Starting pipeline: %s\n", cmd);
     
@@ -536,13 +482,7 @@ static void *radae_rx_thread(void *arg)
 {
     radae_context *ctx = (radae_context *)arg;
     
-    // For RX, we need to accumulate enough samples before processing
-    // rx2.py expects a file, so we'll use a temporary approach:
-    // Write IQ to a temp file, process, read output
-    
-    // Alternative: Create a streaming RX Python script
-    // For now, use the radae_rxe.py streaming receiver (RADE v1 style) 
-    // adapted for the task
+    // RADEv2 RX pipeline: IQ samples -> radae_rxe.py -> features -> lpcnet_demo -fargan-synthesis
     
     char cmd[2048];
     snprintf(cmd, sizeof(cmd),
@@ -550,7 +490,7 @@ static void *radae_rx_thread(void *arg)
              "python3 radae_rxe.py --model_name %s -v 0 | "
              "build/src/lpcnet_demo -fargan-synthesis - - 2>/dev/null",
              ctx->radae_dir,
-             "model19_check3/checkpoints/checkpoint_epoch_100.pth");  // Using v1 model for streaming RX
+             RADAE_MODEL_PATH);
     
     fprintf(stderr, "RADAE RX: Starting pipeline: %s\n", cmd);
     
