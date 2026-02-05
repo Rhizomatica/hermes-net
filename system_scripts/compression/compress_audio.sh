@@ -14,9 +14,31 @@ PYTHON_BIN=${PYTHON_BIN:=python3}
 # Neural codec helpers
 ENCODEC_ENC=${ENCODEC_ENC:="${SCRIPT_DIR}/encode_ecdc.py"}
 ENCODEC_BITRATE=${ENCODEC_BITRATE:=1.5}
-SNAC_MODEL=${SNAC_MODEL:=hubertsiuzdak/snac_24khz}
-SNAC_SAMPLE_RATE=${SNAC_SAMPLE_RATE:=24000}
 TORCH_THREADS=${TORCH_THREADS:=1}
+
+# SNAC model configuration
+# Support: SNAC_VARIANT can be "24khz", "32khz", or "44khz"
+# Or directly set SNAC_MODEL and SNAC_SAMPLE_RATE
+SNAC_VARIANT=${SNAC_VARIANT:=24khz}
+
+case "${SNAC_VARIANT}" in
+  24khz)
+    SNAC_MODEL=${SNAC_MODEL:=hubertsiuzdak/snac_24khz}
+    SNAC_SAMPLE_RATE=${SNAC_SAMPLE_RATE:=24000}
+    ;;
+  32khz)
+    SNAC_MODEL=${SNAC_MODEL:=hubertsiuzdak/snac_32khz}
+    SNAC_SAMPLE_RATE=${SNAC_SAMPLE_RATE:=32000}
+    ;;
+  44khz)
+    SNAC_MODEL=${SNAC_MODEL:=hubertsiuzdak/snac_44khz}
+    SNAC_SAMPLE_RATE=${SNAC_SAMPLE_RATE:=44100}
+    ;;
+  *)
+    echo "Error: Unknown SNAC_VARIANT '${SNAC_VARIANT}'. Use '24khz', '32khz', or '44khz'."
+    exit 1
+    ;;
+esac
 
 if [ $# -lt 2 ]; then
   echo "Usage: $0 audio_filename.{wav,mp3,aac,...} output.{lpcnet,nesc,ecdc,snac}"

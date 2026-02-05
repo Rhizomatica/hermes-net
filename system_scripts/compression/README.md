@@ -56,8 +56,9 @@ The scripts normalize inputs to mono and resample to the target model’s sample
 | `TORCH_THREADS` | `1` | Number of CPU threads given to PyTorch. |
 | `ENCODEC_ENC` / `ENCODEC_DEC` | Local helper paths | Override if you relocate the Python scripts. |
 | `ENCODEC_BITRATE` | `1.5` | Target kbps for EnCodec; accepts 1.5, 3, 6, 12, 24. |
-| `SNAC_MODEL` | `hubertsiuzdak/snac_24khz` | Hugging Face repo to load. Determines bitrate + architecture. |
-| `SNAC_SAMPLE_RATE` | `24000` | Resample target used before encoding and the fallback rate during decoding. |
+| `SNAC_VARIANT` | `24khz` | Quick selector for SNAC model: `24khz`, `32khz`, or `44khz`. Sets `SNAC_MODEL` and `SNAC_SAMPLE_RATE` automatically. |
+| `SNAC_MODEL` | `hubertsiuzdak/snac_24khz` | Hugging Face repo to load. Determines bitrate + architecture. (Override `SNAC_VARIANT` if you need custom models.) |
+| `SNAC_SAMPLE_RATE` | `24000` | Resample target used before encoding and the fallback rate during decoding. (Override `SNAC_VARIANT` if you need custom rates.) |
 
 ### EnCodec bandwidth examples
 
