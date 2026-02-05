@@ -1,6 +1,6 @@
 # Neural + Legacy Audio Compression Toolkit
 
-Shell helpers in this directory make it easy to move audio between regular files (`.wav`, `.mp3`, `.aac`, …) and several ultra‑low bitrate codecs. Everything runs on CPU and automatically performs the FFmpeg resampling/conversion that each codec expects.
+Shell helpers in this directory make it easy to move audio between regular files (`.wav`, `.mp3`, `.aac`, ...) and several ultra-low bitrate codecs. Everything runs on CPU and automatically performs the FFmpeg resampling/conversion that each codec expects.
 
 ## Contents
 
@@ -37,16 +37,16 @@ Shell helpers in this directory make it easy to move audio between regular files
 ./decompress_audio.sh output.snac restored.wav
 ```
 
-The scripts normalize inputs to mono and resample to the target model’s sample rate, so you can feed them AAC/MP3/WAV interchangeably.
+The scripts normalize inputs to mono and resample to the target model's sample rate, so you can feed them AAC/MP3/WAV interchangeably.
 
 ## Codec matrix
 
 | Extension | Codec | Notes |
 | --- | --- | --- |
 | `.lpcnet` | LPCNet demo binary (`/opt/lpcnet/lpcnet_demo`) | Speech-only legacy codec. |
-| `.nesc` | NESC reference binary (`/opt/nesc/nesc_enc`) | Requires 16 kHz PCM front-end. |
-| `.ecdc` | Meta EnCodec 24 kHz | Uses `encode_ecdc.py` + PyTorch. Bitrate controlled via `ENCODEC_BITRATE`. |
-| `.snac` | Hubert Siuzdak’s SNAC | Uses the compact container implemented in `encode_ecdc.py`. Defaults to `snac_24khz` (0.98 kbps speech mode). |
+| `.nesc` | NESC reference binary (`/opt/nesc/nesc_enc`) | Requires 16 kHz PCM front-end. |
+| `.ecdc` | Meta EnCodec 24 kHz | Uses `encode_ecdc.py` + PyTorch. Bitrate controlled via `ENCODEC_BITRATE`. |
+| `.snac` | Hubert Siuzdak's SNAC | Uses the compact container implemented in `encode_ecdc.py`. Defaults to `snac_24khz` (0.98 kbps speech mode). |
 
 ## Configuration knobs
 
@@ -76,29 +76,55 @@ The SNAC helper can talk to any published checkpoint; you just point it at the d
 
 | Model | Sample rate | Nominal bitrate* | Use case |
 | --- | --- | --- | --- |
-| `hubertsiuzdak/snac_24khz` | 24 kHz | **0.98 kbps** | Ultra-low bitrate speech (default). |
-| `hubertsiuzdak/snac_32khz` | 32 kHz | ~1.95 kbps | Higher fidelity speech/music. |
+| `hubertsiuzdak/snac_24khz` | 24 kHz | **0.98 kbps** | Ultra-low bitrate speech (default). |
+| `hubertsiuzdak/snac_32khz` | 32 kHz | ~1.95 kbps | Higher fidelity speech/music. |
+| `hubertsiuzdak/snac_44khz` | 44.1 kHz | ~2.6 kbps | CD-quality audio. |
 
-_* Bitrate depends on content length; numbers above are the original paper’s guidance._
+_* Bitrate depends on content length; numbers above are the original paper's guidance._
 
-### Switching modes for **encoding**
+### Using SNAC_VARIANT (recommended)
+
+The easiest way to switch between SNAC models is the `SNAC_VARIANT` variable, which automatically sets both the model and sample rate:
 
 ```bash
-# Example: move from the default 24 kHz / 0.98 kbps mode to the 32 kHz model
+# Use 24 kHz variant (default)
+./compress_audio.sh input.wav output.snac
+
+# Use 32 kHz variant
+SNAC_VARIANT=32khz ./compress_audio.sh input.wav output.snac
+
+# Use 44.1 kHz variant
+SNAC_VARIANT=44khz ./compress_audio.sh input.wav output.snac
+```
+
+### Switching modes for **encoding** (advanced)
+
+For custom model repositories or fine-tuned checkpoints, you can bypass `SNAC_VARIANT` and set the variables directly:
+
+```bash
+# Example: move from the default 24 kHz / 0.98 kbps mode to the 32 kHz model
 export SNAC_MODEL=hubertsiuzdak/snac_32khz
 export SNAC_SAMPLE_RATE=32000
 ./compress_audio.sh speech.wav speech.snac
 ```
 
-The shell script passes these env vars directly to `encode_ecdc.py`, so every `.snac` produced in that session will use the selected checkpoint. When you need to bounce back to the 0.98 kbps mode, unset or reset the variables:
+The shell script passes these env vars directly to `encode_ecdc.py`, so every `.snac` produced in that session will use the selected checkpoint. When you need to bounce back to the 0.98 kbps mode, unset or reset the variables:
 
 ```bash
 unset SNAC_MODEL SNAC_SAMPLE_RATE   # or set them back to 24k explicitly
 ```
 
-### Decoding files from different modes
+### Decoding files
 
-Each `.snac` file written by the new encoder stores its model name, sample rate, and bit-packed codebooks. `decompress_audio.sh` reads that metadata automatically. The only time you need the env vars during decoding is when you’re opening **legacy** SNAC files that were saved before the new container existed; in that case set `SNAC_MODEL`/`SNAC_SAMPLE_RATE` to match the encoder that produced them so the helper knows which checkpoint to download.
+The `.snac` file stores the model name and sample rate in its header. Just decompress without needing to set any variant:
+
+```bash
+# Compress with 32 kHz
+SNAC_VARIANT=32khz ./compress_audio.sh input.wav output.snac
+
+# Decompress—no variant needed, decoder reads it from the file
+./decompress_audio.sh output.snac decoded.wav
+```
 
 ## Troubleshooting
 
