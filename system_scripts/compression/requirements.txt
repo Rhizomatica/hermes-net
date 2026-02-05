@@ -1,17 +1,5 @@
-# Core dependencies for EnCodec/SNAC helpers
-torch>=2.0
-torchaudio>=2.0
-numpy>=1.23
-soundfile>=0.12
-encodec>=0.1.1
-huggingface-hub>=0.20
-
-# Optional/auxiliary codecs
-descript-audio-codec>=0.0.3
-
-# Git-based packages
-git+https://github.com/hubertsiuzdak/snac
-git+https://github.com/haoheliu/SemantiCodec-inference
-
-# SAC remains manual because the upstream repo does not ship wheels.
-# Follow https://github.com/Soul-AILab/SAC if you need that codec.
+torch>=2.0.0
+torchaudio>=2.0.0
+snac-audio>=0.1.0
+ffmpeg-python>=0.2.0
+numpy>=1.24.0
