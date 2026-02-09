@@ -37,3 +37,5 @@ echo -n "bit_rate "
 sbitx_client -c get_bitrate
 echo -n "snr "
 sbitx_client -c get_snr
+echo -n "power level "
+sbitx_client -c get_power
