@@ -305,14 +305,15 @@ void setup_audio_codec()
     {
         set_speaker_level(0);
         set_tx_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].tx_level);
+        set_rx_level(0);
     }
     else
     {
         set_speaker_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].speaker_level);
         set_tx_level(0);
+        set_rx_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].rx_level);
     }
     set_mic_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].mic_level);
-    set_rx_level(radio_h_snd->profiles[radio_h_snd->profile_active_idx].rx_level);
 }
 
 void sound_mixer(char *card_name, char *element, int make_on)

@@ -249,14 +249,15 @@ void set_profile(radio *radio_h, uint32_t profile)
     {
         set_speaker_level(0);
         set_tx_level(radio_h->profiles[profile].tx_level);
+        set_rx_level(0);
     }
     else
     {
         set_speaker_level(radio_h->profiles[profile].speaker_level);
         set_tx_level(0);
+        set_rx_level(radio_h->profiles[profile].rx_level);
     }
     set_mic_level(radio_h->profiles[profile].mic_level);
-    set_rx_level(radio_h->profiles[profile].rx_level);
 
     // and save the new current_profile
     char tmp[64];
@@ -470,6 +471,7 @@ void tr_switch(radio *radio_h, bool txrx_state)
 
         set_speaker_level(0);
         set_tx_level(radio_h->profiles[radio_h->profile_active_idx].tx_level);
+        set_rx_level(0);
 
         lpf_off(radio_h);
         usleep(2000);
@@ -484,6 +486,7 @@ void tr_switch(radio *radio_h, bool txrx_state)
 
         set_speaker_level(radio_h->profiles[radio_h->profile_active_idx].speaker_level);
         set_tx_level(0);
+        set_rx_level(radio_h->profiles[radio_h->profile_active_idx].rx_level);
 
         usleep(1000);
         lpf_off(radio_h);
