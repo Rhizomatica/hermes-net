@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -71,8 +72,14 @@ bool tcp_read(int sockt, uint8_t *buffer, size_t rx_size){
         int trx_size = (rx_size - rcv_counter > TCP_BLOCK)? TCP_BLOCK : rx_size - rcv_counter;
 
         len = recv(sockt, buffer + rcv_counter, trx_size, 0);
+        if (len < 0){
+            if (errno == EINTR)
+                continue;
+            fprintf(stderr, "tcp_read: socket read error (%s).\n", strerror(errno));
+            return false;
+        }
         if (len == 0){
-            fprintf(stderr, "tcp_read: socket read error.\n");
+            fprintf(stderr, "tcp_read: socket closed.\n");
             return false;
         }
         rcv_counter += len;
@@ -82,9 +89,13 @@ bool tcp_read(int sockt, uint8_t *buffer, size_t rx_size){
 }
 
 bool tcp_write(int sockt, uint8_t *buffer, size_t tx_size){
-    size_t len = send(sockt, buffer, tx_size, 0);
-    if (len != tx_size) {
-        fprintf(stderr, "tcp_write: socket write error.\n");
+    ssize_t len = send(sockt, buffer, tx_size, 0);
+    if (len < 0) {
+        fprintf(stderr, "tcp_write: socket write error (%s).\n", strerror(errno));
+        return false;
+    }
+    if ((size_t)len != tx_size) {
+        fprintf(stderr, "tcp_write: short write (%zd/%zu).\n", len, tx_size);
         return false;
     }
 
