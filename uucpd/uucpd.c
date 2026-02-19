@@ -49,6 +49,7 @@
 #include "uucpd.h"
 #include "ardop.h"
 #include "vara.h"
+#include "uucp_fasttrack.h"
 #include "shm.h"
 #include "circular_buffer.h"
 
@@ -192,6 +193,7 @@ got_callsign:
 int main (int argc, char *argv[])
 {
     rhizo_conn *connector = NULL;
+    bool enable_fasttrack = false;
 
     signal (SIGINT, finish);
     signal (SIGQUIT, finish);
@@ -223,6 +225,7 @@ int main (int argc, char *argv[])
         fprintf(stderr, "                               Supported features VARA, P2P mode: \"p\" to enable (eg. 2300p).\n");
         fprintf(stderr, " -s serial_device           Set the serial device file path for keying the radio (VARA ONLY).\n");
         fprintf(stderr, " -l                         Tell UUCICO to ask login prompt (default: disabled).\n");
+        fprintf(stderr, " -F                         Enable UUCP handshake fast-track (auto-negotiated; falls back if peer not capable; no-login chat).\n");
         fprintf(stderr, " -o [icom,ubitx,shm]        Sets radio type (supported: icom, ubitx or shm).\n");
         fprintf(stderr, " -h                         Prints this help.\n");
         exit(EXIT_FAILURE);
@@ -241,12 +244,15 @@ int main (int argc, char *argv[])
     initialize_connector(connector);
 
     int opt;
-    while ((opt = getopt(argc, argv, "hlmc:d:p:a:t:f:o:r:s:")) != -1)
+    while ((opt = getopt(argc, argv, "hlFmc:d:p:a:t:f:o:r:s:")) != -1)
     {
         switch (opt)
         {
         case 'h':
             goto manual;
+            break;
+        case 'F':
+            enable_fasttrack = true;
             break;
         case 'l':
             connector->ask_login = true;
@@ -300,6 +306,8 @@ int main (int argc, char *argv[])
             goto manual;
         }
     }
+
+    uft_set_enabled(enable_fasttrack);
 
     if (connector->call_sign[0] == 0)
     {

@@ -78,7 +78,7 @@ void *uucico_thread(void *conn){
     while (connector->shutdown == false)
     {
         while (connector->uucico_active == false)
-            usleep(10000); // 10ms
+            usleep(100000); // 0.1s
 
         fprintf(stderr, "uucico_thread: session started!\n");
 
@@ -217,7 +217,7 @@ void *uucico_read_thread(void *conn)
         while (circular_buf_size(connector->in_buffer) > BUFFER_SIZE/2)
         {
             bytes_pipe = 1; // slow down...
-            usleep(10000); // 10ms
+            usleep(100000); // 0.1s
         }
 
         num_read = read(connector->pipefd2[0], buffer, bytes_pipe);
@@ -258,7 +258,7 @@ void *uucico_write_thread(void *conn) {
         bytes_to_read = circular_buf_size(connector->out_buffer);
         if (bytes_to_read == 0)
         { // we spinlock here
-            usleep(10000); // 10ms
+            usleep(100000); // 0.1s
             if (connector->session_counter_read > connector->session_counter_write)
                 running = false;
             continue;
