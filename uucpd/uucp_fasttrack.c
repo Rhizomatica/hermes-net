@@ -26,12 +26,16 @@
 #define UFT_HOLD_MAX (64 * 1024)
 
 /* Peer capability probe. */
-#define UFT_PROBE_TIMEOUT_MS 5000
-#define UFT_MARKER_RETX_MS 1000
+#define UFT_PROBE_TIMEOUT_MS 15000
+#define UFT_MARKER_RETX_MS 5000
+#define UFT_MARKER_MAX_TX 3
 
 /* Marker MUST NOT include DLE (0x10) so uucico ignores it during handshake. */
-static const uint8_t UFT_MARKER[] = {0x1e, 'U', 'F', 'T', '1', 0x1e};
-#define UFT_MARKER_LEN (sizeof(UFT_MARKER))
+static const char UFT_MARKER_STR[] =
+    "UFT1UFT1UFT1UFT1UFT1UFT1UFT1UFT1"
+    "UFT1UFT1UFT1UFT1UFT1UFT1UFT1UFT1";
+#define UFT_MARKER ((const uint8_t *)UFT_MARKER_STR)
+#define UFT_MARKER_LEN (sizeof(UFT_MARKER_STR) - 1)
 
 typedef enum {
     UFT_STATE_OFF = 0,
@@ -278,6 +282,8 @@ static void uft_probe_request_activate(void)
 static void uft_probe_queue_marker(rhizo_conn *conn, uint64_t now_ms)
 {
     if (!conn)
+        return;
+    if (g_stat_marker_tx >= UFT_MARKER_MAX_TX)
         return;
     if (now_ms == 0)
         now_ms = uft_monotonic_ms();
@@ -686,4 +692,3 @@ bool uft_consume_hf_to_uucico(rhizo_conn *conn, const uint8_t *in, size_t in_len
 
     return true;
 }
-
