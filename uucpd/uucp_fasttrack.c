@@ -478,9 +478,12 @@ void uft_on_connected(rhizo_conn *conn, bool outgoing)
     /* Advertise marker immediately (also retried in uft_poll). */
     uft_probe_queue_marker(conn, g_probe_start_ms);
 
-    fprintf(stderr, "uucp_fasttrack: probe start (role=%s, timeout=%ums)\n",
+    fprintf(stderr, "uucp_fasttrack: probe start (role=%s, timeout=%ums, marker=%zuB, max_tx=%u, retx=%ums)\n",
             g_role == UFT_ROLE_MASTER ? "master" : "slave",
-            (unsigned)UFT_PROBE_TIMEOUT_MS);
+            (unsigned)UFT_PROBE_TIMEOUT_MS,
+            (size_t)UFT_MARKER_LEN,
+            (unsigned)UFT_MARKER_MAX_TX,
+            (unsigned)UFT_MARKER_RETX_MS);
 }
 
 void uft_on_disconnected(void)
