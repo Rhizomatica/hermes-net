@@ -54,7 +54,8 @@ FILE *log_fd;
 atomic_bool running_read;
 atomic_bool running_write;
 
-#define TIMEOUT 40
+/* 40s timeout, counted in 0.1s units to reduce connect/IO latency. */
+#define TIMEOUT 400
 
 void *read_thread(void *conn)
 {
@@ -69,7 +70,7 @@ void *read_thread(void *conn)
     {
         if (connector->connected == false)
         {
-            sleep(1);
+            usleep(100000); // 0.1s
             timeout_counter--;
             if (timeout_counter == 0)
             {
@@ -84,7 +85,7 @@ void *read_thread(void *conn)
 
         if (bytes_to_read == 0)
         { // we spinlock here
-            usleep(100000); // 0.1s
+            usleep(10000); // 10ms
             continue;
         }
 
@@ -135,7 +136,7 @@ void *write_thread(void *conn)
         // workaround to make protocol 'y' work better
         if (circular_buf_size(connector->in_buffer_p) > BUFFER_SIZE / 2)
         {
-            usleep(100000); // 0.1s
+            usleep(10000); // 10ms
             bytes_to_read = 1; // slow down...
         }
         else
@@ -163,7 +164,7 @@ void *write_thread(void *conn)
         while (circular_buf_free_size(connector->in_buffer_p) < bytes_read)
         {
             fprintf(log_fd, "Buffer full!\n");
-            usleep(100000);
+            usleep(10000);
         }
         circular_buf_put_range(connector->in_buffer_p, buffer, bytes_read);
     }
