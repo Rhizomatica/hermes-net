@@ -93,7 +93,6 @@ void *vara_data_worker_thread_tx(void *conn)
             if (connector->shutdown == true){
                 goto exit_local;
             }
-            uft_poll(connector);
             sleep(1);
         }
 
