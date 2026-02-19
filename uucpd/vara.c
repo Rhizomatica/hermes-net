@@ -44,6 +44,7 @@
 #include <errno.h>
 
 #include "uucpd.h"
+#include "uucp_fasttrack.h"
 #include "net.h"
 #include "call_uucico.h"
 #include "vara.h"
@@ -82,8 +83,8 @@ void *vara_data_worker_thread_tx(void *conn)
 {
     rhizo_conn *connector = (rhizo_conn *) conn;
     uint8_t buffer[BUFFER_SIZE];
+    uint8_t send_buf[BUFFER_SIZE];
     int bytes_to_read;
-    const useconds_t poll_us = 20000; // 20ms: keeps latency low without busy spinning
 
     while(connector->shutdown == false){
 
@@ -92,7 +93,8 @@ void *vara_data_worker_thread_tx(void *conn)
             if (connector->shutdown == true){
                 goto exit_local;
             }
-            usleep(poll_us);
+            uft_poll(connector);
+            sleep(1);
         }
 
     check_data_again:
@@ -109,28 +111,36 @@ void *vara_data_worker_thread_tx(void *conn)
 
         // fprintf(stderr, "vara_data_worker_thread_tx: Read %d for sending to VARA\n", bytes_to_read);
 
+        size_t send_len = uft_filter_uucico_to_hf(connector, buffer, (size_t)bytes_to_read,
+                                                  send_buf, sizeof(send_buf));
+        if (send_len == 0)
+        {
+            usleep(1000);
+            continue;
+        }
+
         for (;;)
         {
             /* bytes_buffered_tx is our conservative "bytes pending" estimate (socket + modem backlog). */
             int pending = atomic_load_explicit(&connector->bytes_buffered_tx, memory_order_relaxed);
-            if (pending + bytes_to_read <= MAX_VARA_BUFFER)
+            if (pending + (int)send_len <= MAX_VARA_BUFFER)
                 break;
             if (connector->shutdown == true)
                 goto exit_local;
-            usleep(poll_us);
+            sleep(1);
         }
 
-        if (tcp_write(connector->data_socket, buffer, bytes_to_read) == false)
+        if (tcp_write(connector->data_socket, send_buf, send_len) == false)
         {
             fprintf(stderr, "Error in tcp_write(data_socket)\n");
             connector->shutdown = true;
             goto exit_local;
         }
-        atomic_fetch_add_explicit(&connector->bytes_buffered_tx, bytes_to_read, memory_order_relaxed);
+        atomic_fetch_add_explicit(&connector->bytes_buffered_tx, (int)send_len, memory_order_relaxed);
 		// fprintf(stderr, "bytes_buffered %d\n", connector->bytes_buffered_tx);
 
-        // Small yield to keep control RX (BUFFER updates) responsive while avoiding 1Hz throttling.
-        usleep(1000);
+        // buffer management hack
+        sleep(1);
     }
 
 exit_local:
@@ -142,7 +152,6 @@ void *vara_data_worker_thread_rx(void *conn)
 {
     rhizo_conn *connector = (rhizo_conn *) conn;
     uint8_t buffer[MAX_VARA_PACKET_SAFE];
-    const useconds_t poll_us = 20000; // 20ms
 
     while(connector->shutdown == false){
 
@@ -151,7 +160,7 @@ void *vara_data_worker_thread_rx(void *conn)
                 goto exit_local;
             }
             atomic_store_explicit(&connector->bytes_received, 0, memory_order_relaxed);
-            usleep(poll_us);
+            sleep(1);
         }
 
         ssize_t n = recv(connector->data_socket, buffer, sizeof(buffer), 0);
@@ -163,9 +172,12 @@ void *vara_data_worker_thread_rx(void *conn)
             goto exit_local;
         }
 
+        if (uft_consume_hf_to_uucico(connector, buffer, (size_t)n))
+            continue;
+
         while (circular_buf_free_size(connector->out_buffer) < (size_t)n)
         {
-            usleep(poll_us);
+            usleep(100000); // 100ms
         }
         circular_buf_put_range(connector->out_buffer, buffer, (size_t)n);
         atomic_fetch_add_explicit(&connector->bytes_received, (int)n, memory_order_relaxed);
@@ -252,15 +264,27 @@ void *vara_control_worker_thread_rx(void *conn)
                 connector->connected = false;
                 connected_led_off(connector->serial_fd, connector->radio_type);
                 connector->waiting_for_connection = false;
+                uft_on_disconnected();
                 continue;
             }
 
             if (!memcmp(buffer, "CONNECTED", strlen("CONNECTED")))
             {
+                char call0[32] = {0};
+                char call1[32] = {0};
+                int bw = 0;
+                if (sscanf((char *)buffer, "CONNECTED %31s %31s %d", call0, call1, &bw) >= 2)
+                {
+                    if (call1[0])
+                        strncpy(connector->remote_call_sign, call1, sizeof(connector->remote_call_sign) - 1);
+                    connector->remote_call_sign[sizeof(connector->remote_call_sign) - 1] = 0;
+                }
+
                 fprintf(stderr, "TNC: %s\n", buffer);
                 connector->connected = true;
                 connected_led_on(connector->serial_fd, connector->radio_type);
-                if (connector->waiting_for_connection == false)
+                bool outgoing = connector->waiting_for_connection ? true : false;
+                if (outgoing == false)
                 { // we are receiving a connection... call uucico!
                     bool retval = call_uucico(connector);
                     if (retval == false)
@@ -268,6 +292,7 @@ void *vara_control_worker_thread_rx(void *conn)
                 }
                 connector->waiting_for_connection = false;
                 last_buffer_report = 0;
+                uft_on_connected(connector, outgoing);
                 continue;
             }
 
