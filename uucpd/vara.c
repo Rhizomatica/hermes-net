@@ -41,6 +41,7 @@
 #include <arpa/inet.h>
 #include <sched.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "uucpd.h"
 #include "net.h"
@@ -48,11 +49,41 @@
 #include "vara.h"
 #include "serial.h"
 
+static void atomic_int_clamp_sub(atomic_int *v, int dec)
+{
+    if (!v || dec <= 0)
+        return;
+
+    int cur = atomic_load_explicit(v, memory_order_relaxed);
+    while (cur > 0)
+    {
+        int next = cur - dec;
+        if (next < 0)
+            next = 0;
+        if (atomic_compare_exchange_weak_explicit(v, &cur, next, memory_order_relaxed, memory_order_relaxed))
+            return;
+    }
+}
+
+static void atomic_int_max(atomic_int *v, int min_val)
+{
+    if (!v)
+        return;
+
+    int cur = atomic_load_explicit(v, memory_order_relaxed);
+    while (cur < min_val)
+    {
+        if (atomic_compare_exchange_weak_explicit(v, &cur, min_val, memory_order_relaxed, memory_order_relaxed))
+            return;
+    }
+}
+
 void *vara_data_worker_thread_tx(void *conn)
 {
     rhizo_conn *connector = (rhizo_conn *) conn;
     uint8_t buffer[BUFFER_SIZE];
     int bytes_to_read;
+    const useconds_t poll_us = 20000; // 20ms: keeps latency low without busy spinning
 
     while(connector->shutdown == false){
 
@@ -61,7 +92,7 @@ void *vara_data_worker_thread_tx(void *conn)
             if (connector->shutdown == true){
                 goto exit_local;
             }
-            sleep(1);
+            usleep(poll_us);
         }
 
     check_data_again:
@@ -78,8 +109,16 @@ void *vara_data_worker_thread_tx(void *conn)
 
         // fprintf(stderr, "vara_data_worker_thread_tx: Read %d for sending to VARA\n", bytes_to_read);
 
-        while (connector->buffer_size + bytes_to_read >  MAX_VARA_BUFFER)
-            sleep(1);
+        for (;;)
+        {
+            /* bytes_buffered_tx is our conservative "bytes pending" estimate (socket + modem backlog). */
+            int pending = atomic_load_explicit(&connector->bytes_buffered_tx, memory_order_relaxed);
+            if (pending + bytes_to_read <= MAX_VARA_BUFFER)
+                break;
+            if (connector->shutdown == true)
+                goto exit_local;
+            usleep(poll_us);
+        }
 
         if (tcp_write(connector->data_socket, buffer, bytes_to_read) == false)
         {
@@ -87,11 +126,11 @@ void *vara_data_worker_thread_tx(void *conn)
             connector->shutdown = true;
             goto exit_local;
         }
-		connector->bytes_buffered_tx += bytes_to_read;
+        atomic_fetch_add_explicit(&connector->bytes_buffered_tx, bytes_to_read, memory_order_relaxed);
 		// fprintf(stderr, "bytes_buffered %d\n", connector->bytes_buffered_tx);
 
-        // buffer management hack
-        sleep(1);
+        // Small yield to keep control RX (BUFFER updates) responsive while avoiding 1Hz throttling.
+        usleep(1000);
     }
 
 exit_local:
@@ -103,6 +142,7 @@ void *vara_data_worker_thread_rx(void *conn)
 {
     rhizo_conn *connector = (rhizo_conn *) conn;
     uint8_t buffer[MAX_VARA_PACKET_SAFE];
+    const useconds_t poll_us = 20000; // 20ms
 
     while(connector->shutdown == false){
 
@@ -110,22 +150,25 @@ void *vara_data_worker_thread_rx(void *conn)
             if (connector->shutdown == true){
                 goto exit_local;
             }
-            connector->bytes_received = 0;
-            sleep(1);
+            atomic_store_explicit(&connector->bytes_received, 0, memory_order_relaxed);
+            usleep(poll_us);
         }
 
-        if (tcp_read(connector->data_socket, buffer, 1) == false)
+        ssize_t n = recv(connector->data_socket, buffer, sizeof(buffer), 0);
+        if (n <= 0)
         {
+            if (n < 0 && errno == EINTR)
+                continue;
             connector->shutdown = true;
             goto exit_local;
         }
 
-        while (circular_buf_free_size(connector->out_buffer) < 1)
+        while (circular_buf_free_size(connector->out_buffer) < (size_t)n)
         {
-            usleep(100000); // 100ms
+            usleep(poll_us);
         }
-        circular_buf_put_range(connector->out_buffer, buffer, 1);
-        connector->bytes_received++;
+        circular_buf_put_range(connector->out_buffer, buffer, (size_t)n);
+        atomic_fetch_add_explicit(&connector->bytes_received, (int)n, memory_order_relaxed);
     }
 
 exit_local:
@@ -143,6 +186,7 @@ void *vara_control_worker_thread_rx(void *conn)
     float snr = 0.0;
     int counter = 0;
     atomic_int last_bytes_rx = 0, last_bytes_tx = 0;
+    int last_buffer_report = 0;
     bool new_cmd = false;
 
     while(connector->shutdown == false)
@@ -200,6 +244,7 @@ void *vara_control_worker_thread_rx(void *conn)
                 connector->bytes_received = 0;
                 connector->bytes_transmitted = 0;
                 connector->bytes_buffered_tx = 0;
+                last_buffer_report = 0;
                 modem_bytes_received(connector->bytes_received);
                 modem_bytes_transmitted(connector->bytes_transmitted);
 
@@ -222,26 +267,31 @@ void *vara_control_worker_thread_rx(void *conn)
                         fprintf(stderr, "Error calling call_uucico()!\n");
                 }
                 connector->waiting_for_connection = false;
+                last_buffer_report = 0;
                 continue;
             }
 
             if (!memcmp(buffer, "BUFFER", strlen("BUFFER")))
             {
-                sscanf( (char *) buffer, "BUFFER %d", &connector->buffer_size);
-                if (connector->buffer_size == 0)
-                {
-                    last_bytes_tx = connector->bytes_transmitted;
-                    connector->bytes_transmitted += connector->bytes_buffered_tx;
-                    connector->bytes_buffered_tx = 0;
-                }
-                else if (connector->buffer_size < connector->bytes_buffered_tx)
-                {
-                    last_bytes_tx = connector->bytes_transmitted;
-                    connector->bytes_transmitted += connector->bytes_buffered_tx - connector->buffer_size;
-                    connector->bytes_buffered_tx -= connector->bytes_buffered_tx - connector->buffer_size;
-                }
+                int new_buf = 0;
+                if (sscanf((char *)buffer, "BUFFER %d", &new_buf) != 1)
+                    continue;
 
-                fprintf(stderr, "BUFFER: %d\n", connector->buffer_size);
+                atomic_store_explicit(&connector->buffer_size, new_buf, memory_order_relaxed);
+
+                int drained = 0;
+                if (new_buf < last_buffer_report)
+                {
+                    drained = last_buffer_report - new_buf;
+                    connector->bytes_transmitted += drained;
+                    atomic_int_clamp_sub(&connector->bytes_buffered_tx, drained);
+                }
+                last_buffer_report = new_buf;
+
+                /* Never let our estimate drop below what the TNC reports. */
+                atomic_int_max(&connector->bytes_buffered_tx, new_buf);
+
+                fprintf(stderr, "BUFFER: %d\n", new_buf);
                 continue;
             }
 
