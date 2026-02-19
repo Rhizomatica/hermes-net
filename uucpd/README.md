@@ -34,7 +34,7 @@ Options:
                                Supported features VARA, P2P mode: "p" to enable (eg. 2300p).
  -s serial_device           Set the serial device file path for keying the radio (VARA ONLY).
  -l                         Tell UUCICO to ask login prompt (default: disabled).
- -F                         Enable UUCP handshake fast-track (auto-negotiated; falls back if peer not capable; no-login chat).
+ -F                         Enable UUCP handshake fast-track (requires both ends; no-login chat).
  -o [icom,ubitx,shm]        Sets radio type (supported: icom, ubitx or shm)
  -h                         Prints this help.
 ```
@@ -116,13 +116,11 @@ pre-protocol commands (each command is sent as `<DLE>ASCII...<NUL>`, e.g. `\020S
 Requirements / notes:
 - Intended for **protocol `y`** (same as current recommended configuration).
 - **No login prompt** mode only (do not use `uucpd -l`).
-- Enable `-F` on **both ends** to get the benefit (it is auto-negotiated; if the peer is not capable it falls back
-  to normal pass-through).
+- Enable `-F` on **both ends** (if only one end enables it, the session will fail).
 
 What you should see in logs:
-- `uucp_fasttrack: probe start ...`
-- then either `peer marker seen, activating` and `done (...)` (fast-track used),
-- or `fallback to pass-through (...)` (normal UUCP handshake used).
+- `uucp_fasttrack: master injected Shere=...` (caller side) or `uucp_fasttrack: slave waiting Shere` (called side)
+- `uucp_fasttrack: done (...)` once uucico has entered protocol `y`
 
 ### UUCP with "shared_messages.patch" for Raspberry OS (64 bits)
 

@@ -225,7 +225,7 @@ int main (int argc, char *argv[])
         fprintf(stderr, "                               Supported features VARA, P2P mode: \"p\" to enable (eg. 2300p).\n");
         fprintf(stderr, " -s serial_device           Set the serial device file path for keying the radio (VARA ONLY).\n");
         fprintf(stderr, " -l                         Tell UUCICO to ask login prompt (default: disabled).\n");
-        fprintf(stderr, " -F                         Enable UUCP handshake fast-track (auto-negotiated; falls back if peer not capable; no-login chat).\n");
+        fprintf(stderr, " -F                         Enable UUCP handshake fast-track (requires both ends; no-login chat).\n");
         fprintf(stderr, " -o [icom,ubitx,shm]        Sets radio type (supported: icom, ubitx or shm).\n");
         fprintf(stderr, " -h                         Prints this help.\n");
         exit(EXIT_FAILURE);
