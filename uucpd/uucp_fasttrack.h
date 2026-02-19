@@ -26,9 +26,6 @@ bool uft_is_enabled(void);
 void uft_on_connected(rhizo_conn *conn, bool outgoing);
 void uft_on_disconnected(void);
 
-/* Periodic poll hook (used to drive probe timeout / marker retransmit). */
-void uft_poll(rhizo_conn *conn);
-
 /* Filter bytes flowing from local uucico toward HF. Returns number of bytes to actually TX. */
 size_t uft_filter_uucico_to_hf(rhizo_conn *conn,
                                const uint8_t *in,
