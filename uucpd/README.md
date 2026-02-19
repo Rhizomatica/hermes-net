@@ -114,6 +114,9 @@ Use `-o icom7300` for IC-7300 defaults (115200 baud, address `0x94`).
 Fast-track reduces over-the-air roundtrips by locally shortcutting the **pre-protocol UUCP DLE handshake**
 (`Shere/S/ROK/P/U`). It is **OFF by default**.
 
+`DLE` is the ASCII **Data Link Escape** character (`0x10`, octal `\020`, Ctrl-P) used by UUCP to frame these
+pre-protocol commands (each command is sent as `<DLE>ASCII...<NUL>`, e.g. `\020Shere=hostname\000`).
+
 Requirements / notes:
 - Intended for **protocol `y`** (same as current recommended configuration).
 - **No login prompt** mode only (do not use `uucpd -l`).
