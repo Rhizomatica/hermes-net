@@ -362,8 +362,9 @@ size_t uft_filter_uucico_to_hf(rhizo_conn *conn,
                 continue; // swallow DLE
             }
 
-            if (out_len < out_cap)
-                out[out_len++] = b;
+            /* During fast-track we also suppress any pre-protocol chat noise (e.g. "\r")
+             * so it doesn't end up corrupting protocol 'y' framing on the peer. */
+            g_stat_tx_swallowed_bytes++;
             continue;
         }
 
