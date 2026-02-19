@@ -42,6 +42,7 @@ static pthread_mutex_t g_hold_mutex = PTHREAD_MUTEX_INITIALIZER;
 static uint8_t g_hold_buf[UFT_HOLD_MAX];
 static size_t g_hold_len = 0;
 static bool g_hold_incoming = false;
+static bool g_release_hold_pending = false;
 
 static bool g_slave_seen_r = false;
 static bool g_slave_seen_p = false;
@@ -68,6 +69,7 @@ static void uft_reset_session_state(void)
     g_hold_len = 0;
     pthread_mutex_unlock(&g_hold_mutex);
     g_hold_incoming = false;
+    g_release_hold_pending = false;
 
     g_slave_seen_r = false;
     g_slave_seen_p = false;
@@ -182,13 +184,27 @@ static void uft_flush_hold_locked(rhizo_conn *conn)
     free(tmp);
 }
 
+static void uft_release_rx_hold(rhizo_conn *conn, const char *reason)
+{
+    if (!g_release_hold_pending)
+        return;
+    if (!conn)
+        return;
+
+    g_release_hold_pending = false;
+    g_hold_incoming = false;
+
+    fprintf(stderr, "uucp_fasttrack: releasing HF RX hold (%s)\n", reason ? reason : "protocol tx");
+    uft_flush_hold_locked(conn);
+    uft_log_stats("released");
+}
+
 static void uft_mark_done(rhizo_conn *conn, const char *reason)
 {
     g_state = UFT_STATE_DONE;
-    g_hold_incoming = false;
-    fprintf(stderr, "uucp_fasttrack: done (%s), releasing HF RX hold\n", reason ? reason : "ok");
-    uft_flush_hold_locked(conn);
-    uft_log_stats("done");
+    g_release_hold_pending = true;
+    fprintf(stderr, "uucp_fasttrack: done (%s), waiting protocol TX to release HF RX hold\n",
+            reason ? reason : "ok");
 }
 
 void uft_on_connected(rhizo_conn *conn, bool outgoing)
@@ -314,8 +330,18 @@ size_t uft_filter_uucico_to_hf(rhizo_conn *conn,
     if (!in || in_len == 0 || !out || out_cap == 0)
         return 0;
 
-    if (!g_enabled || g_state == UFT_STATE_OFF || g_state == UFT_STATE_DONE)
+    if (!g_enabled || g_state == UFT_STATE_OFF)
     {
+        if (in_len > out_cap)
+            in_len = out_cap;
+        memcpy(out, in, in_len);
+        return in_len;
+    }
+
+    if (g_state == UFT_STATE_DONE)
+    {
+        if (g_release_hold_pending)
+            uft_release_rx_hold(conn, "protocol tx");
         if (in_len > out_cap)
             in_len = out_cap;
         memcpy(out, in, in_len);
@@ -358,6 +384,8 @@ size_t uft_filter_uucico_to_hf(rhizo_conn *conn,
             /* If we just switched to DONE, stop intercepting and pass-through remaining bytes. */
             if (g_state == UFT_STATE_DONE)
             {
+                if (g_release_hold_pending)
+                    uft_release_rx_hold(conn, "protocol tx");
                 size_t remaining = in_len - (i + 1);
                 size_t cap_remaining = out_cap - out_len;
                 if (remaining > cap_remaining)
@@ -396,7 +424,7 @@ bool uft_consume_hf_to_uucico(rhizo_conn *conn, const uint8_t *in, size_t in_len
     if (!conn || !in || in_len == 0)
         return false;
 
-    if (!g_enabled || !g_hold_incoming || g_state == UFT_STATE_OFF || g_state == UFT_STATE_DONE)
+    if (!g_enabled || !g_hold_incoming || g_state == UFT_STATE_OFF)
         return false;
 
     pthread_mutex_lock(&g_hold_mutex);
@@ -415,4 +443,3 @@ bool uft_consume_hf_to_uucico(rhizo_conn *conn, const uint8_t *in, size_t in_len
     g_stat_rx_held_bytes += in_len;
     return true;
 }
-
