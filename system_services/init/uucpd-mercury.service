@@ -5,7 +5,7 @@ Requires=modem.service sbitx.service
 
 [Service]
 Type=exec
-ExecStart=/usr/bin/uucpd -a 127.0.0.1 -p 8300 -r vara -o shm
+ExecStart=/usr/bin/uucpd -a 127.0.0.1 -p 8300 -r vara -o shm -m -F
 KillSignal=SIGTERM
 IgnoreSIGPIPE=no
 Restart=always
