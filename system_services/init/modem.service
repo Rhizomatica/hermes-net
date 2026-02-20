@@ -1,21 +1,11 @@
 [Unit]
 Description=HERMES open modem (mercury) daemon
-After=sound.target
-Wants=sound.target
 
 [Service]
 Type=exec
 User=root
 Group=root
-Environment=AUDIO_BACKEND=alsa
-Environment=CAPTURE_DEV=dsp
-Environment=PLAYBACK_DEV=dsp
-Environment=ARQ_TCP_BASE_PORT=8300
-Environment=BROADCAST_TCP_PORT=8100
-Environment=FREEDV_VERBOSITY=0
-Environment=RX_INPUT_CHANNEL=left
-EnvironmentFile=-/etc/default/hermes-modem
-ExecStart=/usr/bin/mercury -x ${AUDIO_BACKEND} -i ${CAPTURE_DEV} -o ${PLAYBACK_DEV} -p ${ARQ_TCP_BASE_PORT} -b ${BROADCAST_TCP_PORT} -f ${FREEDV_VERBOSITY} -k ${RX_INPUT_CHANNEL}
+ExecStart=/usr/bin/mercury
 KillSignal=SIGTERM
 IgnoreSIGPIPE=no
 Restart=always
