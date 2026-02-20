@@ -5,7 +5,11 @@ Description=HERMES open modem (mercury) daemon
 Type=exec
 User=root
 Group=root
+<<<<<<< HEAD
 ExecStart=/usr/bin/mercury -v
+=======
+ExecStart=/usr/bin/mercury
+>>>>>>> a516f03 (systemd: simplify modem.service)
 KillSignal=SIGTERM
 IgnoreSIGPIPE=no
 Restart=always
