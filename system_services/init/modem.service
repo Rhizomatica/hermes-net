@@ -7,13 +7,18 @@ Wants=sound.target
 Type=exec
 User=root
 Group=root
-WorkingDirectory=/opt/hermes-modem
+Environment=AUDIO_BACKEND=alsa
+Environment=CAPTURE_DEV=dsp
+Environment=PLAYBACK_DEV=dsp
+Environment=ARQ_TCP_BASE_PORT=8300
+Environment=BROADCAST_TCP_PORT=8100
+Environment=FREEDV_VERBOSITY=0
+Environment=RX_INPUT_CHANNEL=left
 EnvironmentFile=-/etc/default/hermes-modem
-ExecStart=/opt/hermes-modem/run_mercury.sh
+ExecStart=/usr/bin/mercury -x ${AUDIO_BACKEND} -i ${CAPTURE_DEV} -o ${PLAYBACK_DEV} -p ${ARQ_TCP_BASE_PORT} -b ${BROADCAST_TCP_PORT} -f ${FREEDV_VERBOSITY} -k ${RX_INPUT_CHANNEL}
 KillSignal=SIGTERM
 IgnoreSIGPIPE=no
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
-
