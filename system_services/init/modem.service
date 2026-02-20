@@ -1,0 +1,19 @@
+[Unit]
+Description=HERMES open modem (mercury) daemon
+After=sound.target
+Wants=sound.target
+
+[Service]
+Type=exec
+User=root
+Group=root
+WorkingDirectory=/opt/hermes-modem
+EnvironmentFile=-/etc/default/hermes-modem
+ExecStart=/opt/hermes-modem/run_mercury.sh
+KillSignal=SIGTERM
+IgnoreSIGPIPE=no
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
