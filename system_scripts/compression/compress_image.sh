@@ -47,7 +47,7 @@ TEMPFILEYUV=/tmp/temp-$$.yuv
 RCFILE=/tmp/temp-$$.rc
 
 # resolution=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${input_file}" | sed 's/,/x/g')
-resolution=$(identify-im6 -format "%[w]x%[h]" "${input_file}")
+resolution=$(identify -format "%[w]x%[h]" "${input_file}")
 width=$(echo -n ${resolution} | cut -f 1 -d x)
 height=$(echo -n ${resolution} | cut -f 2 -d x)
 
@@ -99,11 +99,11 @@ echo "Final Resolution = ${resolution}"
 
 if [ ${changed_resolution} -eq "1" ]; then
   echo "Content will be downscaled"
-  convert-im6 -resize "${resolution}!" "${input_file}" -sampling-factor 4:2:0 -depth 8 -colorspace Rec709YCbCr ${TEMPFILEYUV}
+  convert -resize "${resolution}!" "${input_file}" -sampling-factor 4:2:0 -depth 8 -colorspace Rec709YCbCr ${TEMPFILEYUV}
   # ffmpeg  -y -i "${input_file}" -color_range 2 -vf scale=in_range=full:out_range=full:width=${width}:height=${height}:out_color_matrix=bt709,format=yuv420p10le -f rawvideo ${TEMPFILEYUV}
   # ffmpeg -y -i "${input_file}"  -f rawvideo -vf scale=width=${width}:height=${height}:out_color_matrix=bt709:flags=full_chroma_int+accurate_rnd,format=yuv420p10le ${TEMPFILEYUV}
 else
-  convert-im6 "${input_file}" -sampling-factor 4:2:0 -depth 8 -colorspace Rec709YCbCr ${TEMPFILEYUV}
+  convert "${input_file}" -sampling-factor 4:2:0 -depth 8 -colorspace Rec709YCbCr ${TEMPFILEYUV}
   # ffmpeg  -y -i "${input_file}" -color_range 2 -vf scale=in_range=full:out_range=full:out_color_matrix=bt709,format=yuv420p10le -f rawvideo ${TEMPFILEYUV}
   # ffmpeg -y -i "${input_file}"  -f rawvideo -vf scale=out_color_matrix=bt709:flags=full_chroma_int+accurate_rnd,format=yuv420p10le ${TEMPFILEYUV}
 fi
@@ -136,7 +136,7 @@ elif [ ${IMAGE_FORMAT} = "vvc" ]; then
 
 	    echo "Downscaling even more to: ${resolution}"
 	    rm -f ${TEMPFILEYUV}
-	    convert-im6 -resize "${resolution}!" "${input_file}" -sampling-factor 4:2:0 -depth 8 -colorspace Rec709YCbCr ${TEMPFILEYUV}
+	    convert -resize "${resolution}!" "${input_file}" -sampling-factor 4:2:0 -depth 8 -colorspace Rec709YCbCr ${TEMPFILEYUV}
 	    QP=$( ${VVC_ENC} -i ${TEMPFILEYUV} --profile main_10_still_picture --qpa 1 -f 1 --rcstatsfile ${RCFILE} -c yuv420 --internal-bitdepth 8 -t 2 -r 1 -b ${TARGET_SIZE} -s ${resolution} --preset medium -o  ${TEMPFILE} | grep "frame I" | grep "AvgQP" |  cut -d ":" -f 6 | cut -d "." -f 1 |  tr -dc '0-9' )
 	    echo "QP 2 = ${QP}"
 
