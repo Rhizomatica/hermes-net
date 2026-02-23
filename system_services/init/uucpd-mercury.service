@@ -5,7 +5,8 @@ Requires=modem.service sbitx.service
 
 [Service]
 Type=exec
-ExecStart=/usr/bin/uucpd -a 127.0.0.1 -p 8300 -r vara -o shm -m -F
+# add -F when fast-track feature is ready
+ExecStart=/usr/bin/uucpd -a 127.0.0.1 -p 8300 -r vara -o shm -m
 KillSignal=SIGTERM
 IgnoreSIGPIPE=no
 Restart=always
