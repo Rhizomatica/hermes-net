@@ -88,7 +88,7 @@ void *vara_data_worker_thread_tx(void *conn)
             continue;
         }
 
-        while (connector->buffer_size + bytes_to_read >  MAX_VARA_BUFFER)
+        while (connector->buffer_size + send_len > MAX_VARA_BUFFER)
             sleep(1);
 
         if (tcp_write(connector->data_socket, send_buf, send_len) == false)
