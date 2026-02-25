@@ -1,6 +1,6 @@
 /*
  * UUCP fast-track (uucpd):
- * - Intercepts the pre-protocol UUCP handshake framed with DLE (0x10): Shere/S/ROK/P/U.
+ * - Intercepts the pre-protocol UUCP DLE handshake framed with DLE (0x10): Shere/S/ROK/P/U.
  * - Generates the minimum set of peer commands locally so uucico can enter protocol 'y'
  *   without sending the handshake over the HF byte stream.
  *
@@ -13,9 +13,11 @@
 
 #include <inttypes.h>
 #include <pthread.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "circular_buffer.h"
@@ -24,6 +26,9 @@
 
 /* Hold incoming bytes until uucico has switched from zget_uucp_cmd() to protocol start. */
 #define UFT_HOLD_MAX (64 * 1024)
+
+/* Abort the handshake if it hasn't completed within this many seconds. */
+#define UFT_HANDSHAKE_TIMEOUT 30
 
 typedef enum {
     UFT_STATE_OFF = 0,
@@ -34,55 +39,62 @@ typedef enum {
     UFT_STATE_DONE,
 } uft_state_t;
 
-static bool g_enabled = false;
-static uft_role_t g_role = UFT_ROLE_NONE;
-static uft_state_t g_state = UFT_STATE_OFF;
+static bool       g_enabled = false;
+static uft_role_t g_role    = UFT_ROLE_NONE;
 
-static pthread_mutex_t g_hold_mutex = PTHREAD_MUTEX_INITIALIZER;
-static uint8_t g_hold_buf[UFT_HOLD_MAX];
-static size_t g_hold_len = 0;
-static bool g_hold_incoming = false;
-static bool g_release_hold_pending = false;
+/* Shared across the control thread (uft_on_connected/disconnected) and the data TX thread
+ * (uft_filter_uucico_to_hf).  Use atomic_int so reads on the data RX thread are safe. */
+static atomic_int g_state         = UFT_STATE_OFF;
+static time_t     g_handshake_start = 0;
+
+/*
+ * Hold buffer — protects g_hold_buf, g_hold_len, and g_hold_incoming.
+ * ALL reads and writes of these three variables must be done under g_hold_mutex.
+ */
+static pthread_mutex_t g_hold_mutex    = PTHREAD_MUTEX_INITIALIZER;
+static uint8_t         g_hold_buf[UFT_HOLD_MAX];
+static size_t          g_hold_len      = 0;
+static bool            g_hold_incoming = false; /* protected by g_hold_mutex */
 
 static bool g_slave_seen_r = false;
 static bool g_slave_seen_p = false;
 
 /* Stream parser state for uucico->HF direction (DLE commands can span reads). */
-static bool g_tx_in_cmd = false;
-static char g_tx_cmd[256];
+static bool   g_tx_in_cmd  = false;
+static char   g_tx_cmd[256];
 static size_t g_tx_cmd_len = 0;
 
 /* Session stats (for field logs). */
 static uint64_t g_stat_tx_swallowed_bytes = 0;
-static uint64_t g_stat_rx_held_bytes = 0;
+static uint64_t g_stat_rx_held_bytes      = 0;
 static uint64_t g_stat_hold_flushed_bytes = 0;
 static uint64_t g_stat_injected_cmd_bytes = 0;
-static unsigned g_stat_injected_cmds = 0;
-static unsigned g_stat_cmds_swallowed = 0;
+static unsigned g_stat_injected_cmds      = 0;
+static unsigned g_stat_cmds_swallowed     = 0;
 
 static void uft_reset_session_state(void)
 {
-    g_role = UFT_ROLE_NONE;
+    g_role  = UFT_ROLE_NONE;
     g_state = UFT_STATE_OFF;
+    g_handshake_start = 0;
 
     pthread_mutex_lock(&g_hold_mutex);
-    g_hold_len = 0;
-    pthread_mutex_unlock(&g_hold_mutex);
+    g_hold_len      = 0;
     g_hold_incoming = false;
-    g_release_hold_pending = false;
+    pthread_mutex_unlock(&g_hold_mutex);
 
     g_slave_seen_r = false;
     g_slave_seen_p = false;
 
-    g_tx_in_cmd = false;
+    g_tx_in_cmd  = false;
     g_tx_cmd_len = 0;
 
     g_stat_tx_swallowed_bytes = 0;
-    g_stat_rx_held_bytes = 0;
+    g_stat_rx_held_bytes      = 0;
     g_stat_hold_flushed_bytes = 0;
     g_stat_injected_cmd_bytes = 0;
-    g_stat_injected_cmds = 0;
-    g_stat_cmds_swallowed = 0;
+    g_stat_injected_cmds      = 0;
+    g_stat_cmds_swallowed     = 0;
 }
 
 void uft_set_enabled(bool enabled)
@@ -134,14 +146,14 @@ static bool uft_write_to_uucico(rhizo_conn *conn, const uint8_t *data, size_t le
 static bool uft_inject_uucp_cmd(rhizo_conn *conn, const char *cmd)
 {
     uint8_t buf[512];
-    size_t cmd_len;
-    size_t total;
+    size_t  cmd_len;
+    size_t  total;
 
     if (!conn || !cmd)
         return false;
 
     cmd_len = strlen(cmd);
-    total = cmd_len + 2; // DLE + payload + NUL
+    total   = cmd_len + 2; // DLE + payload + NUL
     if (total > sizeof(buf))
         return false;
 
@@ -157,12 +169,18 @@ static bool uft_inject_uucp_cmd(rhizo_conn *conn, const char *cmd)
     return true;
 }
 
+/*
+ * Flush the hold buffer to uucico and disarm the hold.
+ * g_hold_incoming is set to false *inside* the lock so no new bytes can slip in
+ * between the copy and the write.
+ */
 static void uft_flush_hold_locked(rhizo_conn *conn)
 {
     uint8_t *tmp = NULL;
-    size_t len = 0;
+    size_t   len = 0;
 
     pthread_mutex_lock(&g_hold_mutex);
+    g_hold_incoming = false; /* stop accumulation before we copy */
     if (g_hold_len > 0)
     {
         len = g_hold_len;
@@ -186,25 +204,21 @@ static void uft_flush_hold_locked(rhizo_conn *conn)
 
 static void uft_release_rx_hold(rhizo_conn *conn, const char *reason)
 {
-    if (!g_release_hold_pending)
-        return;
-    if (!conn)
-        return;
-
-    g_release_hold_pending = false;
-    g_hold_incoming = false;
-
-    fprintf(stderr, "uucp_fasttrack: releasing HF RX hold (%s)\n", reason ? reason : "protocol tx");
+    fprintf(stderr, "uucp_fasttrack: releasing HF RX hold (%s)\n", reason ? reason : "done");
     uft_flush_hold_locked(conn);
     uft_log_stats("released");
 }
 
+/*
+ * Mark the fast-track handshake complete and immediately release the RX hold.
+ * Releasing here (rather than deferring to the next TX event) removes the
+ * dependency on uucico sending a protocol byte before held data is delivered.
+ */
 static void uft_mark_done(rhizo_conn *conn, const char *reason)
 {
     g_state = UFT_STATE_DONE;
-    g_release_hold_pending = true;
-    fprintf(stderr, "uucp_fasttrack: done (%s), waiting protocol TX to release HF RX hold\n",
-            reason ? reason : "ok");
+    fprintf(stderr, "uucp_fasttrack: done (%s)\n", reason ? reason : "ok");
+    uft_release_rx_hold(conn, reason);
 }
 
 void uft_on_connected(rhizo_conn *conn, bool outgoing)
@@ -218,12 +232,15 @@ void uft_on_connected(rhizo_conn *conn, bool outgoing)
     if (!outgoing && conn->ask_login)
     {
         fprintf(stderr, "uucp_fasttrack: disabled (incoming login prompt enabled)\n");
-        uft_reset_session_state();
         return;
     }
 
+    pthread_mutex_lock(&g_hold_mutex);
     g_hold_incoming = true;
+    pthread_mutex_unlock(&g_hold_mutex);
+
     g_role = outgoing ? UFT_ROLE_MASTER : UFT_ROLE_SLAVE;
+    g_handshake_start = time(NULL);
 
     if (g_role == UFT_ROLE_MASTER)
     {
@@ -261,11 +278,12 @@ static void uft_handle_master_cmd(rhizo_conn *conn, const char *cmd)
 
     if (g_state == UFT_STATE_MASTER_WAIT_S && cmd[0] == 'S')
     {
-        /* Reply as if peer accepted introduction + offered only protocol y. */
-        (void)uft_inject_uucp_cmd(conn, "ROKN");
+        /* Use ROK (not ROKN) so master uucico knows the slave may have queued files
+         * and will attempt to receive them during the session. */
+        (void)uft_inject_uucp_cmd(conn, "ROK");
         (void)uft_inject_uucp_cmd(conn, "Py");
         g_state = UFT_STATE_MASTER_WAIT_U;
-        fprintf(stderr, "uucp_fasttrack: master swallowed S..., injected ROKN/Py\n");
+        fprintf(stderr, "uucp_fasttrack: master swallowed S..., injected ROK/Py\n");
         return;
     }
 
@@ -340,8 +358,19 @@ size_t uft_filter_uucico_to_hf(rhizo_conn *conn,
 
     if (g_state == UFT_STATE_DONE)
     {
-        if (g_release_hold_pending)
-            uft_release_rx_hold(conn, "protocol tx");
+        if (in_len > out_cap)
+            in_len = out_cap;
+        memcpy(out, in, in_len);
+        return in_len;
+    }
+
+    /* Abort if the handshake is stuck — remote end may not be running -F. */
+    if (g_handshake_start > 0 && time(NULL) - g_handshake_start > UFT_HANDSHAKE_TIMEOUT)
+    {
+        fprintf(stderr, "uucp_fasttrack: handshake timeout, disabling\n");
+        uft_log_stats("timeout");
+        uft_flush_hold_locked(conn);
+        uft_reset_session_state();
         if (in_len > out_cap)
             in_len = out_cap;
         memcpy(out, in, in_len);
@@ -385,9 +414,7 @@ size_t uft_filter_uucico_to_hf(rhizo_conn *conn,
             /* If we just switched to DONE, stop intercepting and pass-through remaining bytes. */
             if (g_state == UFT_STATE_DONE)
             {
-                if (g_release_hold_pending)
-                    uft_release_rx_hold(conn, "protocol tx");
-                size_t remaining = in_len - (i + 1);
+                size_t remaining     = in_len - (i + 1);
                 size_t cap_remaining = out_cap - out_len;
                 if (remaining > cap_remaining)
                     remaining = cap_remaining;
@@ -425,10 +452,16 @@ bool uft_consume_hf_to_uucico(rhizo_conn *conn, const uint8_t *in, size_t in_len
     if (!conn || !in || in_len == 0)
         return false;
 
-    if (!g_enabled || !g_hold_incoming || g_state == UFT_STATE_OFF)
+    if (!g_enabled || g_state == UFT_STATE_OFF)
         return false;
 
     pthread_mutex_lock(&g_hold_mutex);
+    if (!g_hold_incoming)
+    {
+        pthread_mutex_unlock(&g_hold_mutex);
+        return false;
+    }
+
     if (g_hold_len + in_len > sizeof(g_hold_buf))
     {
         pthread_mutex_unlock(&g_hold_mutex);
