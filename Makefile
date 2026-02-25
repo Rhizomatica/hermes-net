@@ -18,7 +18,7 @@
 # Boston, MA 02110-1301, USA.
 #
 
-.PHONY: clean install install_gateway install_v1 install_v2 trx_v1-firmware trx_v1-userland trx_v2-userland uuxcomp uucpd uucpd-v1 uucpd-v1 v1 v2
+.PHONY: clean install install_gateway install_v1 install_v2 install_mercury trx_v1-firmware trx_v1-userland trx_v2-userland uuxcomp uucpd uucpd-v1 uucpd-v1 v1 v2
 
 prefix=/usr
 
@@ -94,6 +94,7 @@ install_gateway:
 	install system_scripts/uucpd/caller.sh $(DESTDIR)$(prefix)/bin
 
 install_mercury:
+	install -m 644 -D system_services/init/modem.service $(DESTDIR)/etc/systemd/system/modem.service
 	install -m 644 -D system_services/init/uucpd-mercury.service $(DESTDIR)/etc/systemd/system/uucpd.service
 
 

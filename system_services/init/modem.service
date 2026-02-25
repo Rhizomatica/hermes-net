@@ -1,0 +1,14 @@
+[Unit]
+Description=HERMES open modem (mercury) daemon
+
+[Service]
+Type=exec
+User=root
+Group=root
+ExecStart=/usr/bin/mercury -v
+KillSignal=SIGTERM
+IgnoreSIGPIPE=no
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
