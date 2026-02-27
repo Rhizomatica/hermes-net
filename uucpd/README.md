@@ -34,6 +34,7 @@ Options:
                                Supported features VARA, P2P mode: "p" to enable (eg. 2300p).
  -s serial_device           Set the serial device file path for keying the radio (VARA ONLY).
  -l                         Tell UUCICO to ask login prompt (default: disabled).
+ -F                         Enable UUCP handshake fast-track (requires both ends; no-login chat).
  -o [icom,ubitx,shm]        Sets radio type (supported: icom, ubitx or shm)
  -h                         Prints this help.
 ```
@@ -103,6 +104,23 @@ Examples of uucpd invocation:
 
     $ uucpd -a 127.0.0.1 -c PU2BBB -p 8515 -t 60 -r ardop
     $ uucpd -a 127.0.0.1 -p 8300 -r vara -o icom -s /dev/ttyUSB0 -f 2750
+
+### Fast-track (-F)
+
+Fast-track reduces over-the-air roundtrips by locally shortcutting the **pre-protocol UUCP DLE handshake**
+(`Shere/S/ROK/P/U`). It is **OFF by default**.
+
+`DLE` is the ASCII **Data Link Escape** character (`0x10`, octal `\020`, Ctrl-P) used by UUCP to frame these
+pre-protocol commands (each command is sent as `<DLE>ASCII...<NUL>`, e.g. `\020Shere=hostname\000`).
+
+Requirements / notes:
+- Intended for **protocol `y`** (same as current recommended configuration).
+- **No login prompt** mode only (do not use `uucpd -l`).
+- Enable `-F` on **both ends** (if only one end enables it, the session will fail).
+
+What you should see in logs:
+- `uucp_fasttrack: master injected Shere=...` (caller side) or `uucp_fasttrack: slave waiting Shere` (called side)
+- `uucp_fasttrack: done (...)` once uucico has entered protocol `y`
 
 ### UUCP with "shared_messages.patch" for Raspberry OS (64 bits)
 
