@@ -44,6 +44,7 @@
 #include "sbitx_dsp.h"
 #include "sbitx_core.h"
 #include "sbitx_alsa.h"
+#include "sbitx_radae.h"
 
 // set 0 for production
 #ifndef DEBUG_DSP_
@@ -80,6 +81,112 @@ struct vfo tone; // vfo
 
 _Atomic bool tx_starting = false;
 _Atomic bool rx_starting = false;
+
+// RADAE digital voice context
+static radae_context radae_ctx;
+static _Atomic bool radae_tx_active = false;
+
+// Buffers for RADAE sample rate conversion
+static float radae_speech_in[2048];   // 16kHz speech input
+static float radae_speech_out[2048];  // 16kHz speech output
+static float radae_modem_iq[4096];    // 8kHz complex IQ (interleaved I,Q)
+static double radae_baseband[2048];   // intermediate buffer for sample rate conversion
+
+// Digital voice TX processing using RADAE
+// Takes 96kHz or 48kHz speech input, produces 96kHz modulated output
+static void dsp_process_digital_voice_tx(double *signal_input_f, uint32_t block_size, int32_t *signal_output_int, bool input_is_48k_stereo)
+{
+    // Start RADAE TX if not already running
+    if (!radae_tx_active) {
+        radae_tx_start(&radae_ctx);
+        radae_tx_active = true;
+    }
+
+    // Resample input to 16kHz for RADAE
+    // signal_input_f is always 96kHz: either directly from mic, or after 2x interpolation from 48kHz loopback
+    (void)input_is_48k_stereo;  // Not needed - signal_input_f is always 96kHz
+    int speech_16k_len;
+    resample_96k_to_16k(signal_input_f, block_size, radae_speech_in, &speech_16k_len);
+
+    // Feed speech to RADAE TX
+    radae_tx_write_speech(&radae_ctx, radae_speech_in, speech_16k_len);
+
+    // Try to get modem IQ from RADAE TX
+    // Limit to avoid buffer overflow: 8kHz->96kHz upsampling multiplies by 12,
+    // and radae_baseband buffer is 2048 samples, so max input is 2048/12 = 170 samples
+    int max_modem_samples = 2048 / 12;  // = 170 samples max
+    int modem_samples = radae_tx_read_modem_iq(&radae_ctx, radae_modem_iq, max_modem_samples);
+
+    if (modem_samples > 0) {
+        // RADAE outputs complex IQ at 8kHz - the OFDM waveform is already in baseband
+        // Just extract the real part (I component) and upsample to 96kHz for SSB TX
+        // No carrier mixing needed - RADAE waveform already fits in SSB passband
+        
+        int baseband_len;
+        float real_part[modem_samples];
+        for (int i = 0; i < modem_samples; i++) {
+            real_part[i] = radae_modem_iq[i*2];  // Just take I component
+        }
+        
+        resample_8k_to_96k(real_part, modem_samples, radae_baseband, &baseband_len);
+        
+        // Output to radio TX
+        double multiplier = get_band_multiplier() * (double) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].power_level_percentage / 100.0;
+        int output_samples = (baseband_len < MAX_BINS/2) ? baseband_len : MAX_BINS/2;
+        
+        for (int i = 0; i < output_samples; i++) {
+            signal_output_int[i] = (int32_t)(radae_baseband[i] * 4000.0 * multiplier);
+            signal_output_int[i] <<= 8;
+        }
+        // Zero pad the rest if needed
+        for (int i = output_samples; i < MAX_BINS/2; i++) {
+            signal_output_int[i] = 0;
+        }
+    } else {
+        // No modem output yet, output silence
+        memset(signal_output_int, 0, MAX_BINS/2 * sizeof(int32_t));
+    }
+}
+
+// Digital voice RX processing using RADAE
+// Takes 96kHz received signal, extracts RADAE modem signal, outputs decoded speech
+static void dsp_process_digital_voice_rx(double *rx_baseband, uint32_t block_size, double *speech_out)
+{
+    // Resample 96kHz baseband to 8kHz for RADAE modem
+    // SSB demod gives us real-valued baseband containing the RADAE OFDM waveform
+    // No carrier mixing needed - just resample and create complex IQ with Q=0
+    int modem_len;
+    float modem_8k[block_size / 12 + 1];
+    resample_96k_to_8k(rx_baseband, block_size, modem_8k, &modem_len);
+    
+    // Create complex IQ for RADAE: I = real signal, Q = 0
+    for (int i = 0; i < modem_len; i++) {
+        radae_modem_iq[i*2] = modem_8k[i];      // I component = real signal
+        radae_modem_iq[i*2+1] = 0.0f;           // Q component = 0
+    }
+    
+    // Feed modem IQ to RADAE RX
+    radae_rx_write_modem_iq(&radae_ctx, radae_modem_iq, modem_len);
+    
+    // Try to get decoded speech from RADAE RX
+    // Limit to MAX_BINS/12 samples (170) since 16kHz->96kHz upsampling multiplies by 6,
+    // and we need output to fit in MAX_BINS/2 (1024) buffer
+    int max_speech_samples = (MAX_BINS / 2) / 6;  // = 170 samples max
+    int speech_samples = radae_rx_read_speech(&radae_ctx, radae_speech_out, max_speech_samples);
+    
+    if (speech_samples > 0) {
+        // Upsample 16kHz speech to 96kHz for speaker output
+        int output_len;
+        resample_16k_to_96k(radae_speech_out, speech_samples, speech_out, &output_len);
+        // Zero remaining samples to avoid stale data if output_len < block_size
+        if ((uint32_t)output_len < block_size) {
+            memset(speech_out + output_len, 0, (block_size - output_len) * sizeof(double));
+        }
+    } else {
+        // No speech output yet
+        memset(speech_out, 0, block_size * sizeof(double));
+    }
+}
 
 // - signal_input: 96 kHz mono from radio, get the "slice" between 24 kHz and 27 kHz (USB) or 21 kHz to 24 kHz (LSB), and bring this slice to 0 and 3 kHz
 // - out output_speaker: 96 kHz mono output for speaker
@@ -174,6 +281,40 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].agc != AGC_OFF)
         dsp_process_agc();
 
+    // STEP 8.5: Digital voice RX processing using RADAE
+    if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].digital_voice)
+    {
+        // Extract demodulated baseband for RADAE processing
+        static double rx_baseband[MAX_BINS/2];
+        static double speech_out[MAX_BINS/2];
+        
+        for (int k = 0; k < MAX_BINS/2; k++)
+        {
+            rx_baseband[k] = cimag(fft_time[k + (MAX_BINS/2)]);
+        }
+        
+        // Process through RADAE digital voice decoder
+        dsp_process_digital_voice_rx(rx_baseband, block_size, speech_out);
+        
+        // Output decoded speech
+        int32_t *output_speaker_int = (int32_t *)output_speaker;
+        int32_t *output_loopback_int = (int32_t *)output_loopback;
+        
+        for (int k = 0; k < block_size; k++)
+        {
+            output_speaker_int[k] = (int32_t)(speech_out[k] * MAX_SAMPLE_VALUE);
+            if ((k % 2) == 0)
+            {
+                output_loopback_int[k] = output_speaker_int[k] << 4;
+                output_loopback_int[k + 1] = output_loopback_int[k];
+            }
+            output_speaker_int[k] <<= 8;
+        }
+        
+        memset(output_tx, 0, block_size * (snd_pcm_format_width(format) / 8));
+        return;
+    }
+
 	//STEP 9: send the output back to where it needs to go
     int32_t *output_speaker_int = (int32_t *)output_speaker;
     int32_t *output_loopback_int = (int32_t *) output_loopback;
@@ -249,6 +390,21 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         {
             signal_input_f[i] = (1.0 * (signal_input_int[i] >> 8)) / MAX_SAMPLE_VALUE;
         }
+    }
+
+    // Digital voice mode using RADAE
+    if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].digital_voice)
+    {
+        dsp_process_digital_voice_tx(signal_input_f, block_size, signal_output_int, input_is_48k_stereo);
+        memset(output_loopback, 0, block_size * (snd_pcm_format_width(format) / 8));
+        memset(output_speaker, 0, block_size * (snd_pcm_format_width(format) / 8));
+        return;
+    }
+    else if (radae_tx_active)
+    {
+        // Stop RADAE TX if it was running but digital_voice is now disabled
+        radae_tx_stop(&radae_ctx);
+        radae_tx_active = false;
     }
 
 #if DEBUG_DSP_ == 1
@@ -400,12 +556,24 @@ void dsp_init(radio *radio_h)
     // init vfo for tone generation
     vfo_init_phase_table();
     vfo_start(&tone, 1000, 0);
+
+    // Initialize RADAE digital voice subsystem
+    printf("Initializing RADAE digital voice subsystem\n");
+    if (!radae_init(&radae_ctx, radio_h, RADAE_DIR)) {
+        fprintf(stderr, "Warning: RADAE initialization failed, digital voice will not be available\n");
+    } else {
+        // Start RADAE RX by default (always listening)
+        radae_rx_start(&radae_ctx);
+    }
 }
 
 void dsp_free(radio *radio_h)
 {
     if (radio_h->profiles[radio_h->profile_active_idx].operating_mode == OPERATING_MODE_CONTROLS_ONLY)
         return;
+
+    // Shutdown RADAE digital voice subsystem
+    radae_shutdown(&radae_ctx);
 
     fftw_destroy_plan(plan_rev);
     fftw_destroy_plan(plan_fwd);
