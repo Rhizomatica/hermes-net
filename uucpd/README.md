@@ -110,13 +110,7 @@ The "-m" option should only be used with patched uucp available in:
 https://github.com/Rhizomatica/uucp
 
 UUCPD support for the modified uucp (which has the "-m" patch to enable status messages) is optional. If you don't need this feature, just do not use "-m" option.
-Packages of uucp with the shared memory for Raspberry OS's Debian 12 arm64 are available at:
-
-    $ wget http://www.telemidia.puc-rio.br/~rafaeldiniz/public_files/hermes-repo/rafaeldiniz.gpg.key
-    $ apt-key add rafaeldiniz.gpg.key
-    $ echo deb http://www.telemidia.puc-rio.br/~rafaeldiniz/public_files/hermes-repo/ buster main >> /etc/apt/sources.list
-    $ apt-get update
-    $ apt-get install uucp
+Packages of uucp with the shared memory for Debian 13 arm64 (RaspiOS) and amd64 are available at: https://debian.hermes.radio
 
 ## C compiler defines
 
