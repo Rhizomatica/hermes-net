@@ -54,7 +54,7 @@ FILE *log_fd;
 atomic_bool running_read;
 atomic_bool running_write;
 
-#define TIMEOUT 40
+#define TIMEOUT 120
 
 void *read_thread(void *conn)
 {
