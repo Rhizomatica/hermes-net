@@ -41,6 +41,7 @@
 #include <arpa/inet.h>
 #include <sched.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "uucpd.h"
 #include "uucp_fasttrack.h"
@@ -113,6 +114,7 @@ void *vara_data_worker_thread_rx(void *conn)
 {
     rhizo_conn *connector = (rhizo_conn *) conn;
     uint8_t buffer[MAX_VARA_PACKET_SAFE];
+    bool was_disconnected = true;
 
     while(connector->shutdown == false){
 
@@ -121,7 +123,23 @@ void *vara_data_worker_thread_rx(void *conn)
                 goto exit_local;
             }
             connector->bytes_received = 0;
+            was_disconnected = true;
             sleep(1);
+        }
+
+        /* Drain stale data left in the TCP data socket from the previous
+         * HF session.  VARA keeps the data socket open across sessions,
+         * so residual bytes (e.g. old 'y' protocol packets) would be read
+         * as if they belonged to the new session, causing sequence errors. */
+        if (was_disconnected)
+        {
+            uint8_t drain[1024];
+            int flags = fcntl(connector->data_socket, F_GETFL, 0);
+            fcntl(connector->data_socket, F_SETFL, flags | O_NONBLOCK);
+            while (recv(connector->data_socket, drain, sizeof(drain), 0) > 0)
+                ; /* discard */
+            fcntl(connector->data_socket, F_SETFL, flags);
+            was_disconnected = false;
         }
 
         if (tcp_read(connector->data_socket, buffer, 1) == false)
