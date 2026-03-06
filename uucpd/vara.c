@@ -238,35 +238,6 @@ void *vara_control_worker_thread_rx(void *conn)
                     connector->remote_call_sign[sizeof(connector->remote_call_sign) - 1] = 0;
                 }
 
-                /* Drain stale data from the previous session before activating
-                 * the fasttrack hold and setting connected=true.
-                 *
-                 * The VARA protocol guarantees DISCONNECTED is always sent
-                 * before a new CONNECTED, so connected==false here in normal
-                 * operation (including mid-session drops due to propagation
-                 * loss) and vara_data_worker_thread_rx is sleeping in its
-                 * while(connected==false) loop — safe to touch the socket.
-                 *
-                 * If connected is still true (protocol violation or race),
-                 * clear connected and out_buffer defensively; the data RX
-                 * thread is likely blocked in tcp_read and may deliver one
-                 * more stale byte before noticing, but that is a degenerate
-                 * case that cannot be fixed without interrupting the blocking
-                 * read (out_buffer reset discards any such byte). */
-                if (connector->connected == true)
-                {
-                    connector->connected = false;
-                    circular_buf_reset(connector->out_buffer);
-                }
-                {
-                    uint8_t drain_buf[1024];
-                    int dflags = fcntl(connector->data_socket, F_GETFL, 0);
-                    fcntl(connector->data_socket, F_SETFL, dflags | O_NONBLOCK);
-                    while (recv(connector->data_socket, drain_buf, sizeof(drain_buf), 0) > 0)
-                        ; /* discard */
-                    fcntl(connector->data_socket, F_SETFL, dflags);
-                }
-
                 fprintf(stderr, "TNC: %s\n", buffer);
                 connector->connected = true;
                 connected_led_on(connector->serial_fd, connector->radio_type);
@@ -420,6 +391,19 @@ void *vara_control_worker_thread_tx(void *conn)
 
 //            fprintf(stderr, "Killing uuport.\n");
             system("killall uuport");
+
+            /* Drain any stale bytes from the data socket that mercury's TCP
+             * writer flushed after the session ended.  By this point the data
+             * RX thread is guaranteed to be in its sleep(1) loop (connected is
+             * false), so there is no race with its blocking tcp_read call. */
+            {
+                uint8_t drain_buf[1024];
+                int dflags = fcntl(connector->data_socket, F_GETFL, 0);
+                fcntl(connector->data_socket, F_SETFL, dflags | O_NONBLOCK);
+                while (recv(connector->data_socket, drain_buf, sizeof(drain_buf), 0) > 0)
+                    ; /* discard */
+                fcntl(connector->data_socket, F_SETFL, dflags);
+            }
 
 //            fprintf(stderr, "Connection closed - Cleaning internal buffers.\n");
             circular_buf_reset(connector->in_buffer);
