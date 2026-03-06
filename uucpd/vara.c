@@ -239,8 +239,6 @@ void *vara_control_worker_thread_rx(void *conn)
                 }
 
                 fprintf(stderr, "TNC: %s\n", buffer);
-                connector->connected = true;
-                connected_led_on(connector->serial_fd, connector->radio_type);
                 bool outgoing = connector->waiting_for_connection ? true : false;
                 if (outgoing == false)
                 { // we are receiving a connection... call uucico!
@@ -249,7 +247,14 @@ void *vara_control_worker_thread_rx(void *conn)
                         fprintf(stderr, "Error calling call_uucico()!\n");
                 }
                 connector->waiting_for_connection = false;
+                /* Activate fasttrack BEFORE setting connected=true.
+                 * vara_data_worker_thread_rx exits its sleep(1) loop only
+                 * when connected becomes true; by completing uft_on_connected()
+                 * first we guarantee g_hold_incoming and g_state are fully set
+                 * before the data thread reads the first HF byte. */
                 uft_on_connected(connector, outgoing);
+                connector->connected = true;
+                connected_led_on(connector->serial_fd, connector->radio_type);
                 continue;
             }
 
