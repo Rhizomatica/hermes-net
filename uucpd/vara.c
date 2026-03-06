@@ -114,7 +114,6 @@ void *vara_data_worker_thread_rx(void *conn)
 {
     rhizo_conn *connector = (rhizo_conn *) conn;
     uint8_t buffer[MAX_VARA_PACKET_SAFE];
-    bool was_disconnected = true;
 
     while(connector->shutdown == false){
 
@@ -123,23 +122,7 @@ void *vara_data_worker_thread_rx(void *conn)
                 goto exit_local;
             }
             connector->bytes_received = 0;
-            was_disconnected = true;
             sleep(1);
-        }
-
-        /* Drain stale data left in the TCP data socket from the previous
-         * HF session.  VARA keeps the data socket open across sessions,
-         * so residual bytes (e.g. old 'y' protocol packets) would be read
-         * as if they belonged to the new session, causing sequence errors. */
-        if (was_disconnected)
-        {
-            uint8_t drain[1024];
-            int flags = fcntl(connector->data_socket, F_GETFL, 0);
-            fcntl(connector->data_socket, F_SETFL, flags | O_NONBLOCK);
-            while (recv(connector->data_socket, drain, sizeof(drain), 0) > 0)
-                ; /* discard */
-            fcntl(connector->data_socket, F_SETFL, flags);
-            was_disconnected = false;
         }
 
         if (tcp_read(connector->data_socket, buffer, 1) == false)
@@ -253,6 +236,35 @@ void *vara_control_worker_thread_rx(void *conn)
                     if (call1[0])
                         strncpy(connector->remote_call_sign, call1, sizeof(connector->remote_call_sign) - 1);
                     connector->remote_call_sign[sizeof(connector->remote_call_sign) - 1] = 0;
+                }
+
+                /* Drain stale data from the previous session before activating
+                 * the fasttrack hold and setting connected=true.
+                 *
+                 * The VARA protocol guarantees DISCONNECTED is always sent
+                 * before a new CONNECTED, so connected==false here in normal
+                 * operation (including mid-session drops due to propagation
+                 * loss) and vara_data_worker_thread_rx is sleeping in its
+                 * while(connected==false) loop — safe to touch the socket.
+                 *
+                 * If connected is still true (protocol violation or race),
+                 * clear connected and out_buffer defensively; the data RX
+                 * thread is likely blocked in tcp_read and may deliver one
+                 * more stale byte before noticing, but that is a degenerate
+                 * case that cannot be fixed without interrupting the blocking
+                 * read (out_buffer reset discards any such byte). */
+                if (connector->connected == true)
+                {
+                    connector->connected = false;
+                    circular_buf_reset(connector->out_buffer);
+                }
+                {
+                    uint8_t drain_buf[1024];
+                    int dflags = fcntl(connector->data_socket, F_GETFL, 0);
+                    fcntl(connector->data_socket, F_SETFL, dflags | O_NONBLOCK);
+                    while (recv(connector->data_socket, drain_buf, sizeof(drain_buf), 0) > 0)
+                        ; /* discard */
+                    fcntl(connector->data_socket, F_SETFL, dflags);
                 }
 
                 fprintf(stderr, "TNC: %s\n", buffer);
