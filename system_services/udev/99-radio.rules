@@ -1,1 +1,7 @@
-KERNEL=="ttyUSB0", SYMLINK="ttyUSB0", TAG+="systemd"
+# ICOM IC-7100 — Port A (CI-V / CAT control)
+# CP2102 (idProduct ea60) is the IC-7100 built-in USB
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", SYMLINK+="ICOM-CAT"
+
+# Yaesu via SCU-17 — Enhanced Com Port (CAT control)
+# CP2105 (idProduct ea70) is the SCU-17; interface 00 = CAT, 01 = data
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea70", ENV{ID_USB_INTERFACE_NUM}=="00", SYMLINK+="YAESU-CAT"
