@@ -176,13 +176,13 @@ void *vara_control_worker_thread_rx(void *conn)
                 {
                     // fprintf(stderr, "bytes_received %d\n", connector->bytes_received);
                     last_bytes_rx = connector->bytes_received;
-                    modem_bytes_received(connector->bytes_received);
+                    modem_bytes_received(connector->bytes_received, connector->radio_type);
                 }
                 if (connector->bytes_transmitted != last_bytes_tx)
                 {
                     // fprintf(stderr, "bytes_transmitted %d\n", connector->bytes_transmitted);
                     last_bytes_tx = connector->bytes_transmitted;
-                    modem_bytes_transmitted(connector->bytes_transmitted);
+                    modem_bytes_transmitted(connector->bytes_transmitted, connector->radio_type);
                 }
             }
 
@@ -200,8 +200,8 @@ void *vara_control_worker_thread_rx(void *conn)
                 connector->bytes_received = 0;
                 connector->bytes_transmitted = 0;
                 connector->bytes_buffered_tx = 0;
-                modem_bytes_received(connector->bytes_received);
-                modem_bytes_transmitted(connector->bytes_transmitted);
+                modem_bytes_received(connector->bytes_received, connector->radio_type);
+                modem_bytes_transmitted(connector->bytes_transmitted, connector->radio_type);
 
                 connector->clean_buffers = true;
                 connector->connected = false;
@@ -267,7 +267,7 @@ void *vara_control_worker_thread_rx(void *conn)
                 {
                     sscanf( (char *) buffer, "BITRATE (%d) %d", &bitrate_index, &bitrate);
                     fprintf(stderr, "BITRATE (%d) %d bps\n", bitrate_index, bitrate);
-                    modem_bitrate(bitrate);
+                    modem_bitrate(bitrate, connector->radio_type);
                     continue;
                 }
 
@@ -275,7 +275,7 @@ void *vara_control_worker_thread_rx(void *conn)
                 {
                     sscanf( (char *) buffer, "SN %f", &snr);
                     fprintf(stderr, "SN %.1f\n", snr);
-                    modem_snr(snr * 10);
+                    modem_snr(snr * 10, connector->radio_type);
                     continue;
                 }
             }

@@ -75,14 +75,16 @@ void finish(int s){
         }
     }
 
-    // clean buffers...
-    circular_buf_reset(tmp_conn->in_buffer);
-    circular_buf_reset(tmp_conn->out_buffer);
+    // clean buffers and state if tmp_conn is valid
+    if (tmp_conn) {
+        circular_buf_reset(tmp_conn->in_buffer);
+        circular_buf_reset(tmp_conn->out_buffer);
 
-    tmp_conn->shutdown = true;
+        tmp_conn->shutdown = true;
 
-    connected_led_off(tmp_conn->serial_fd, tmp_conn->radio_type);
-    sys_led_off(tmp_conn->serial_fd, tmp_conn->radio_type);
+        connected_led_off(tmp_conn->serial_fd, tmp_conn->radio_type);
+        sys_led_off(tmp_conn->serial_fd, tmp_conn->radio_type);
+    }
 
     // TODO: close the pipes here
     // join all the threads?

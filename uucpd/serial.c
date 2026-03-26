@@ -231,6 +231,8 @@ void connected_led_off(int serial_fd, int radio_type)
 
     if (radio_type == RADIO_TYPE_SHM)
     {
+        if (radio_conn == NULL)
+            return;
         uint8_t srv_cmd[5];
         uint8_t response[5];
         srv_cmd[0] = 0x00; // led off
@@ -239,8 +241,8 @@ void connected_led_off(int serial_fd, int radio_type)
         radio_cmd(radio_conn, srv_cmd, response);
 
         // clean up bitrate and snr values
-        modem_bitrate(0);
-        modem_snr(0);
+        modem_bitrate(0, radio_type);
+        modem_snr(0, radio_type);
 
     }
 }
@@ -250,6 +252,8 @@ void sys_led_on(int serial_fd, int radio_type)
 
     if (radio_type == RADIO_TYPE_SHM)
     {
+        if (radio_conn == NULL)
+            return;
         uint8_t srv_cmd[5];
         uint8_t response[5];
         srv_cmd[0] = 0x01; // led on
@@ -266,6 +270,8 @@ void sys_led_off(int serial_fd, int radio_type)
 
     if (radio_type == RADIO_TYPE_SHM)
     {
+        if (radio_conn == NULL)
+            return;
         uint8_t srv_cmd[5];
         uint8_t response[5];
         srv_cmd[0] = 0x00; // led off
@@ -276,8 +282,11 @@ void sys_led_off(int serial_fd, int radio_type)
 
 }
 
-void modem_snr(int32_t snr)
+void modem_snr(int32_t snr, int radio_type)
 {
+    if (radio_type != RADIO_TYPE_SHM || radio_conn == NULL)
+        return;
+
     uint8_t srv_cmd[5];
     uint8_t response[5];
     memcpy(srv_cmd, &snr, 4);
@@ -285,8 +294,11 @@ void modem_snr(int32_t snr)
     radio_cmd(radio_conn, srv_cmd, response);
 }
 
-void modem_bitrate(uint32_t bitrate)
+void modem_bitrate(uint32_t bitrate, int radio_type)
 {
+    if (radio_type != RADIO_TYPE_SHM || radio_conn == NULL)
+        return;
+
     uint8_t srv_cmd[5];
     uint8_t response[5];
     memcpy(srv_cmd, &bitrate, 4);
@@ -294,8 +306,11 @@ void modem_bitrate(uint32_t bitrate)
     radio_cmd(radio_conn, srv_cmd, response);
 }
 
-void modem_bytes_received(int32_t bytes)
+void modem_bytes_received(int32_t bytes, int radio_type)
 {
+    if (radio_type != RADIO_TYPE_SHM || radio_conn == NULL)
+        return;
+
     uint8_t srv_cmd[5];
     uint8_t response[5];
     memcpy(srv_cmd, &bytes, 4);
@@ -303,8 +318,11 @@ void modem_bytes_received(int32_t bytes)
     radio_cmd(radio_conn, srv_cmd, response);
 }
 
-void modem_bytes_transmitted(int32_t bytes)
+void modem_bytes_transmitted(int32_t bytes, int radio_type)
 {
+    if (radio_type != RADIO_TYPE_SHM || radio_conn == NULL)
+        return;
+
     uint8_t srv_cmd[5];
     uint8_t response[5];
     memcpy(srv_cmd, &bytes, 4);
