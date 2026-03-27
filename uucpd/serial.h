@@ -31,6 +31,7 @@
 #define RADIO_TYPE_ICOM 0
 #define RADIO_TYPE_UBITX 1
 #define RADIO_TYPE_SHM 2
+#define RADIO_TYPE_NONE 3
 
 void key_on(int serial_fd, int radio_type);
 void key_off(int serial_fd, int radio_type);
@@ -44,10 +45,10 @@ void sys_led_off(int serial_fd, int radio_type);
 int open_serial_port(char *ttyport);
 void set_fixed_baudrate(char *baudname, int target_fd);
 
-void modem_snr(int32_t snr);
-void modem_bitrate(uint32_t bitrate);
+void modem_snr(int32_t snr, int radio_type);
+void modem_bitrate(uint32_t bitrate, int radio_type);
 
-void modem_bytes_received(int32_t bytes);
-void modem_bytes_transmitted(int32_t bytes);
+void modem_bytes_received(int32_t bytes, int radio_type);
+void modem_bytes_transmitted(int32_t bytes, int radio_type);
 
 #endif // HAVE_SERIAL_H__
