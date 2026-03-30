@@ -466,7 +466,6 @@ size_t modem_read_buffer_all(cbuf_handle_t cbuf, uint8_t *data)
     size_t size = 0;
     size_t len = 0;
 
- try_again_read:
     MUTEX_LOCK( &cbuf->internal->mutex );
 
     size = cbuf->internal->max;
@@ -490,9 +489,17 @@ size_t modem_read_buffer_all(cbuf_handle_t cbuf, uint8_t *data)
     }
     else
     {
-        COND_WAIT( &cbuf->internal->cond, &cbuf->internal->mutex );
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_nsec += 100000000; // 100ms
+        if (ts.tv_nsec >= 1000000000) {
+            ts.tv_sec += 1;
+            ts.tv_nsec -= 1000000000;
+        }
+        COND_TIMED_WAIT( &cbuf->internal->cond, &cbuf->internal->mutex, &ts );
         MUTEX_UNLOCK( &cbuf->internal->mutex );
-        goto try_again_read;
+        // return 0 so the caller can check for shutdown
+        return 0;
     }
 
     return len;
@@ -595,7 +602,6 @@ int modem_write_buffer(cbuf_handle_t cbuf, uint8_t * data, size_t len)
 
     int r = -1;
 
-try_again_write:
     MUTEX_LOCK( &cbuf->internal->mutex );
 
     size_t size = cbuf->internal->max;
@@ -619,9 +625,16 @@ try_again_write:
     }
     else
     {
-        COND_WAIT( &cbuf->internal->cond, &cbuf->internal->mutex );
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_nsec += 100000000; // 100ms
+        if (ts.tv_nsec >= 1000000000) {
+            ts.tv_sec += 1;
+            ts.tv_nsec -= 1000000000;
+        }
+        COND_TIMED_WAIT( &cbuf->internal->cond, &cbuf->internal->mutex, &ts );
         MUTEX_UNLOCK( &cbuf->internal->mutex );
-        goto try_again_write;
+        // return -1 so the caller can check for shutdown
     }
 
     return r;

@@ -60,7 +60,7 @@ void circular_buf_free_shm(cbuf_handle_t cbuf);
 // returns 0 on success, -1 on error (blocking version)
 int modem_read_buffer(cbuf_handle_t cbuf, uint8_t *data, size_t len);
 
-// returns the number of bytes read on success, -1 on error (blocking version)
+// returns the number of bytes read on success, 0 on timeout/empty (non-blocking timed version)
 size_t modem_read_buffer_all(cbuf_handle_t cbuf, uint8_t *data);
 
 // returns 0 on success, -1 on error (blocking version)
