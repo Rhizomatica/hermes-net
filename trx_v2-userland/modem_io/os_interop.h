@@ -9,7 +9,6 @@
 
 #pragma once
 
-
 // threading support
 #if defined(_WIN32)
 
@@ -18,10 +17,22 @@
 #include <io.h>
 #include <time.h>
 
+#else
+
+#include <pthread.h>
+#include <sys/resource.h>
+#include <sys/shm.h>
+#include <sys/mman.h>
+#include <sys/stat.h>        /* For mode constants */
+#include <unistd.h>
+
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#if defined(_WIN32)
 
 union sigval {
     int           sival_int;     /* integer value */
@@ -60,19 +71,7 @@ int COND_SIGNAL(HANDLE *mqh_wait);
 
 #define S_IXUSR  0000100
 
-#ifdef __cplusplus
-}
-#endif
-
-
 #else
-
-#include <pthread.h>
-#include <sys/resource.h>
-#include <sys/shm.h>
-#include <sys/mman.h>
-#include <sys/stat.h>        /* For mode constants */
-#include <unistd.h>
 
 #define MUTEX_LOCK(x)   pthread_mutex_lock(x)
 #define MUTEX_UNLOCK(x) pthread_mutex_unlock(x)
@@ -83,5 +82,5 @@ int COND_SIGNAL(HANDLE *mqh_wait);
 #endif
 
 #ifdef __cplusplus
-};
+}
 #endif
