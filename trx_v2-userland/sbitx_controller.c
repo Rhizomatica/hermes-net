@@ -49,6 +49,17 @@ void exit_radio(int sig)
     exit(EXIT_FAILURE);
 }
 
+static void print_usage(const char *prog)
+{
+    printf("Usage modes: \n");
+    printf("%s [-c cpu_nr] [-m aloop|shm]\n", prog);
+    printf("%s [-h]\n", prog);
+    printf("\nOptions:\n");
+    printf(" -c [cpu_nr]                Run on CPU [cpu_nr]. Defaults to CPU 3. Use -1 to disable CPU selection\n");
+    printf(" -m [aloop, shm]            Modem I/O using ALSA loopback or shared memory for signal IO. Defaults to alsa loopback (aloop).\n");
+    printf(" -h                         Prints this help.\n");
+}
+
 int main(int argc, char* argv[])
 {
     radio radio_h; // radio handler
@@ -58,18 +69,6 @@ int main(int argc, char* argv[])
     pthread_t web_tid; // websocket thread id
     pthread_t shm_tid; // shared memory interface thread id
     pthread_t control_tid, radio_capture, radio_playback, loop_capture, loop_playback; // audio threads
-
-   if (argc > 3)
-    {
-    manual:
-        fprintf(stderr, "Usage modes: \n%s\n%s -c [cpu_nr] -m [aloop, shm]\n", argv[0], argv[0]);
-        fprintf(stderr, "%s -h\n", argv[0]);
-        fprintf(stderr, "\nOptions:\n");
-        fprintf(stderr, " -c [cpu_nr]                Run on CPU [cpu_br]. Defaults to CPU 3. Use -1 to disable CPU selection\n");
-        fprintf(stderr, " -m [aloop, shm]            Modem I/O using ALSA loopback or shared memory for signal IO. Defaults to alsa loopback (aloop).\n");
-        fprintf(stderr, " -h                         Prints this help.\n");
-        return EXIT_FAILURE;
-    }
 
    // hermes defaults is 3
    int cpu_nr = 3;
@@ -91,19 +90,23 @@ int main(int argc, char* argv[])
                    io_mode = MODEM_IO_SHM;
                else
                {
-                   fprintf(stderr, "Invalid mode: %s\n", optarg);
-                   goto manual;
+                   print_usage(argv[0]);
+                   return EXIT_FAILURE;
                }
            }
            else
            {
-               fprintf(stderr, "Invalid mode.\n");
-               goto manual;
+                fprintf(stderr, "Invalid mode.\n");
+                print_usage(argv[0]);
+                return EXIT_FAILURE;
            }
            break;
        case 'h':
+           print_usage(argv[0]);
+           return EXIT_SUCCESS;
        default:
-           goto manual;
+            print_usage(argv[0]);
+            return EXIT_FAILURE;
        }
    }
 
