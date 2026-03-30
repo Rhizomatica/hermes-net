@@ -459,7 +459,7 @@ bool circular_buf_full(cbuf_handle_t cbuf)
     return is_full;
 }
 
-size_t modem_read_buffer_all(cbuf_handle_t cbuf, uint8_t *data)
+size_t modem_read_buffer_all(cbuf_handle_t cbuf, uint8_t *data, size_t max_len)
 {
     assert(cbuf && data && cbuf->internal && cbuf->buffer);
 
@@ -470,6 +470,9 @@ size_t modem_read_buffer_all(cbuf_handle_t cbuf, uint8_t *data)
 
     size = cbuf->internal->max;
     len = circular_buf_size_internal(cbuf);
+
+    if (len > max_len)
+        len = max_len;
 
     if(len > 0)
     {

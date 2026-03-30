@@ -776,7 +776,7 @@ void *shm_capture_thread(void *device_ptr)
 
     while (!shutdown_)
     {
-        size_t bytes_read = modem_read_buffer_all(capture_buffer, buffer);
+        size_t bytes_read = modem_read_buffer_all(capture_buffer, buffer, buffer_size);
         if (bytes_read == 0)
             continue;
 
