@@ -146,7 +146,15 @@ cbuf_handle_t circular_buf_init_shm(size_t size, char *base_name)
     close(fd1);
 #endif
 
-    assert(cbuf->buffer);
+    if (cbuf->buffer == NULL || cbuf->buffer == (uint8_t *) MAP_FAILED)
+    {
+        fprintf(stderr, "circular_buf_init_shm: shm_map failed for buffer\n");
+        strcpy(tmp, base_name);
+        strcat(tmp, "-1");
+        shm_unlink(tmp);
+        free(cbuf);
+        return NULL;
+    }
 
 
     strcpy(tmp, base_name);
@@ -157,7 +165,19 @@ cbuf_handle_t circular_buf_init_shm(size_t size, char *base_name)
     close(fd2);
 #endif
 
-    assert(cbuf->internal);
+    if (cbuf->internal == NULL || cbuf->internal == (struct circular_buf_t_aux *) MAP_FAILED)
+    {
+        fprintf(stderr, "circular_buf_init_shm: shm_map failed for internal\n");
+        shm_unmap(cbuf->buffer, size);
+        strcpy(tmp, base_name);
+        strcat(tmp, "-1");
+        shm_unlink(tmp);
+        strcpy(tmp, base_name);
+        strcat(tmp, "-2");
+        shm_unlink(tmp);
+        free(cbuf);
+        return NULL;
+    }
 
     cbuf->internal->max = size;
 
@@ -234,24 +254,41 @@ cbuf_handle_t circular_buf_connect_shm(size_t size, char *base_name)
     fd1 = shm_open_and_get_fd(tmp);
 
     if (fd1 < 0)
+    {
+        free(cbuf);
         return NULL;
+    }
     cbuf->buffer = (uint8_t *) shm_map(fd1, size);
     close(fd1);
 
-    assert(cbuf->buffer);
-
+    if (cbuf->buffer == NULL || cbuf->buffer == (uint8_t *) MAP_FAILED)
+    {
+        fprintf(stderr, "circular_buf_connect_shm: shm_map failed for buffer\n");
+        free(cbuf);
+        return NULL;
+    }
 
     strcpy(tmp, base_name);
     strcat(tmp, "-2");
     fd2 = shm_open_and_get_fd(tmp);
     if (fd2 < 0)
+    {
+        shm_unmap(cbuf->buffer, size);
+        free(cbuf);
         return NULL;
+    }
     cbuf->internal = (struct circular_buf_t_aux *) shm_map(fd2, sizeof(struct circular_buf_t_aux));
     close(fd2);
 
-    assert(cbuf->internal);
+    if (cbuf->internal == NULL || cbuf->internal == (struct circular_buf_t_aux *) MAP_FAILED)
+    {
+        fprintf(stderr, "circular_buf_connect_shm: shm_map failed for internal\n");
+        shm_unmap(cbuf->buffer, size);
+        free(cbuf);
+        return NULL;
+    }
 
-    assert (cbuf->internal->max == size);
+    assert(cbuf->internal->max == size);
 
     return cbuf;
 }
