@@ -239,9 +239,10 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     // prepare data from loopback or shared memory... 48kHz stereo to 96 kHz mono
     if (radio_h_dsp->tone_generation)
     {
-        for (i = 0; i < block_size; i++)
+        /* Generate tone at the resampler input rate (block_size / 2 samples) */
+        for (i = 0; i < block_size / 2; i++)
         {
-            signal_input_f[i] = (1.0 * vfo_read(&tone)) / 4800000000.0;
+            loopback_in[i] = (1.0 * vfo_read(&tone)) / 4800000000.0;
         }
         rational_resampler(loopback_in, block_size / 2, signal_input_f, 2, INTERPOLATION);
 
