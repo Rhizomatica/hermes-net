@@ -820,7 +820,19 @@ void *shm_playback_thread(void *device_ptr)
     uint32_t buffer_size_8k = buffer_size_96k / 12;
 
     uint8_t *buffer_96k = malloc(buffer_size_96k);
+    if (buffer_96k == NULL)
+    {
+        fprintf(stderr, "shm_playback_thread: failed to allocate %u bytes for 96k buffer\n", buffer_size_96k);
+        return NULL;
+    }
+
     uint8_t *buffer_8k = malloc(buffer_size_8k);
+    if (buffer_8k == NULL)
+    {
+        fprintf(stderr, "shm_playback_thread: failed to allocate %u bytes for 8k buffer\n", buffer_size_8k);
+        free(buffer_96k);
+        return NULL;
+    }
 
     while (!shutdown_)
     {
