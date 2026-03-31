@@ -859,8 +859,26 @@ void *shm_playback_thread(void *device_ptr)
         size_t bytes_playback_a = modem_size_buffer(playback_buffer);
         printf("shm_playback_thread: modem playback buffer size is %zu bytes\n", bytes_playback_a);
 #endif
-        // Write the downconverted 8kHz data
-        modem_write_buffer(playback_buffer, buffer_8k, samples_to_write * sample_size);
+        // Write the downconverted 8kHz data, handling partial writes and errors
+        size_t bytes_to_write = samples_to_write * sample_size;
+        size_t total_written = 0;
+        while (total_written < bytes_to_write && !shutdown_)
+        {
+            ssize_t ret = modem_write_buffer(
+                playback_buffer,
+                buffer_8k + total_written,
+                bytes_to_write - total_written
+            );
+            if (ret < 0)
+            {
+                fprintf(stderr,
+                        "shm_playback_thread: modem_write_buffer failed, "
+                        "dropping %zu remaining bytes for this iteration\n",
+                        bytes_to_write - total_written);
+                break;
+            }
+            total_written += (size_t)ret;
+        }    
     }
 
     free(buffer_96k);
