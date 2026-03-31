@@ -1145,7 +1145,10 @@ void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_
 
     if (radio_h->io_mode == MODEM_IO_SHM)
     {
-        modem_create_shm();
+        if (modem_create_shm() != 0) {
+            fprintf(stderr, "sound_system_init: modem SHM init failed, falling back to ALSA\n");
+            radio_h->io_mode = MODEM_IO_ALSA;
+        }
     }
 
     pthread_create(radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
