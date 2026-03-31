@@ -29,6 +29,8 @@
 #include "sbitx_alsa.h"
 #include "sbitx_dsp.h"
 #include "sbitx_buffer.h"
+#include "sbitx_modem.h"
+#include "ring_buffer_posix.h"
 
 char *radio_capture_dev = "hw:0,0";
 char *radio_playback_dev = "hw:0,0";
@@ -757,6 +759,140 @@ void *loop_capture_thread(void *device_ptr)
     return NULL;
 }
 
+
+
+// we read 8kHz mono s32le from the modem, and write it to the loopback_to_dsp
+void *shm_capture_thread(void *device_ptr)
+{
+    (void)device_ptr;
+    const int sample_size = 4;
+    const int up = 12;
+
+    size_t buffer_size = sample_size * 8000 * 15;
+    uint8_t *buffer = malloc(buffer_size);
+    if (buffer == NULL)
+        return NULL;
+
+    uint8_t *buffer_96k = malloc(buffer_size * up);
+    if (buffer_96k == NULL) {
+        free(buffer);
+        return NULL;
+    }
+
+    while (!shutdown_)
+    {
+        size_t bytes_read = modem_read_buffer_all(capture_buffer, buffer, buffer_size);
+        if (bytes_read == 0)
+            continue;
+
+        size_t in_samples  = bytes_read / sample_size;
+        size_t out_samples = in_samples * up;
+
+        int32_t *in  = (int32_t *)buffer;
+        int32_t *out = (int32_t *)buffer_96k;
+
+        for (size_t n = 0; n < in_samples; n++)
+        {
+            int32_t a = in[n];
+            int32_t b = (n + 1 < in_samples) ? in[n + 1] : a;
+
+            for (int k = 0; k < up; k++)
+            {
+                out[n * up + k] =
+                    (int32_t)(((int64_t)a * (up - k) +
+                               (int64_t)b * k) / up);
+            }
+        }
+
+        write_buffer(loopback_to_dsp,
+                     buffer_96k,
+                     out_samples * sample_size);
+    }
+
+    free(buffer);
+    free(buffer_96k);
+    return NULL;
+}
+
+
+// we read 96kHz mono s32le and write it to the modem 8kHz mono s32le
+void *shm_playback_thread(void *device_ptr)
+{
+    (void)device_ptr;
+    int sample_size = 4; // signed 32 little endian
+    uint32_t buffer_size_96k = 128 * sample_size * 12;
+
+    // Calculate the exact buffer size for 8kHz data
+    uint32_t buffer_size_8k = buffer_size_96k / 12;
+
+    uint8_t *buffer_96k = malloc(buffer_size_96k);
+    if (buffer_96k == NULL)
+    {
+        fprintf(stderr, "shm_playback_thread: failed to allocate %u bytes for 96k buffer\n", buffer_size_96k);
+        return NULL;
+    }
+
+    uint8_t *buffer_8k = malloc(buffer_size_8k);
+    if (buffer_8k == NULL)
+    {
+        fprintf(stderr, "shm_playback_thread: failed to allocate %u bytes for 8k buffer\n", buffer_size_8k);
+        free(buffer_96k);
+        return NULL;
+    }
+
+    while (!shutdown_)
+    {
+        size_t bytes_to_read = buffer_size_96k;
+
+#ifdef DEBUG
+        // Read 96kHz data
+        size_t dsp_to_loopback_a = size_buffer(dsp_to_loopback);
+        printf("shm_playback_thread: reading %zu bytes from dsp_to_loopback buffer (size %zu)\n", bytes_to_read, dsp_to_loopback_a);
+#endif
+        read_buffer(dsp_to_loopback, buffer_96k, bytes_to_read);
+
+        // Downconvert to 8kHz by selecting every 12th sample
+        size_t samples_to_read = bytes_to_read / sample_size;
+        size_t samples_to_write = samples_to_read / 12;
+
+        for (size_t i = 0; i < samples_to_write; i++)
+        {
+            ((int32_t *)buffer_8k)[i] = ((int32_t *)buffer_96k)[i * 12];
+        }
+
+#ifdef DEBUG
+        // get size of playback buffer
+        size_t bytes_playback_a = modem_size_buffer(playback_buffer);
+        printf("shm_playback_thread: modem playback buffer size is %zu bytes\n", bytes_playback_a);
+#endif
+        // Write the downconverted 8kHz data, handling partial writes and errors
+        size_t bytes_to_write = samples_to_write * sample_size;
+        size_t total_written = 0;
+        while (total_written < bytes_to_write && !shutdown_)
+        {
+            ssize_t ret = modem_write_buffer(
+                playback_buffer,
+                buffer_8k + total_written,
+                bytes_to_write - total_written
+            );
+            if (ret < 0)
+            {
+                fprintf(stderr,
+                        "shm_playback_thread: modem_write_buffer failed, "
+                        "dropping %zu remaining bytes for this iteration\n",
+                        bytes_to_write - total_written);
+                break;
+            }
+            total_written += (size_t)ret;
+        }    
+    }
+
+    free(buffer_96k);
+    free(buffer_8k);
+
+    return NULL;
+}
+
 void *loop_playback_thread(void *device_ptr)
 {
     char *device = (char *) device_ptr;
@@ -921,26 +1057,23 @@ void *control_thread(void *device_ptr)
 
     while (!shutdown_)
     {
-        // TODO: finish external DSP integration
-        // halt this loop on external DSP
-        // check_external_dsp(radio_h_snd);
-
         _Atomic bool use_loopback = (radio_h_snd->profiles[radio_h_snd->profile_active_idx].operating_mode == OPERATING_MODE_FULL_LOOPBACK) ? true : false;
 
         read_buffer(radio_to_dsp, buffer_radio_to_dsp, buffer_size); // mono
         read_buffer(mic_to_dsp, buffer_mic_to_dsp, buffer_size); // mono
 
+        // in case the alsa loopback device is not started, it will block in the read()
         if (use_loopback)
         {
-            // in case the alsa loopback device is not started, it will block in the read()
             if (size_buffer(loopback_to_dsp) >= buffer_size)
             {
-                read_buffer(loopback_to_dsp, buffer_loop_to_dsp, buffer_size); // stereo interleaved
+                read_buffer(loopback_to_dsp, buffer_loop_to_dsp, buffer_size); // stereo interleaved or 96 kHz mono
                 signal_to_tx = buffer_loop_to_dsp;
             }
             else
             {
-                printf("No data from loopback capture device. Skipping.\n");
+                // TODO: we should never transmit zeros in the middle of the transmit frame - check this
+                // printf("No data from loopback capture device. Skipping.\n");
                 signal_to_tx = buffer_null;
             }
         }
@@ -956,7 +1089,7 @@ void *control_thread(void *device_ptr)
         }
         else
         {
-            dsp_process_tx(signal_to_tx, output_speaker, output_loopback, output_tx, block_size, use_loopback);
+            dsp_process_tx(signal_to_tx, output_speaker, output_loopback, output_tx, block_size, radio_h_snd->io_mode == MODEM_IO_SHM ? 0 : use_loopback);
         }
 
         if (free_size_buffer(dsp_to_loopback) >= buffer_size)
@@ -1010,13 +1143,27 @@ void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_
 
     initialize_buffers();
 
+    if (radio_h->io_mode == MODEM_IO_SHM)
+    {
+        if (modem_create_shm() != 0) {
+            fprintf(stderr, "sound_system_init: modem SHM init failed, falling back to ALSA\n");
+            radio_h->io_mode = MODEM_IO_ALSA;
+        }
+    }
+
     pthread_create(radio_playback, NULL, radio_playback_thread, (void*)radio_playback_dev);
-    pthread_create(loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
+    if (radio_h->io_mode == MODEM_IO_SHM)
+        pthread_create(loop_playback, NULL, shm_playback_thread, (void*)NULL);
+    else
+        pthread_create(loop_playback, NULL, loop_playback_thread, (void*)loop_playback_dev);
 
     pthread_create(control_tid, NULL, control_thread, NULL);
 
     pthread_create(radio_capture, NULL, radio_capture_thread, (void*)radio_capture_dev);
-    pthread_create(loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
+    if (radio_h->io_mode == MODEM_IO_SHM)
+        pthread_create(loop_capture, NULL, shm_capture_thread, (void*)NULL);
+    else
+        pthread_create(loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
 
 
     struct sched_param sch;
@@ -1042,4 +1189,9 @@ void sound_system_shutdown(radio *radio_h, pthread_t *control_tid, pthread_t *ra
 
     pthread_join(*radio_capture, NULL);
     pthread_join(*loop_capture, NULL);
+
+    if (radio_h->io_mode == MODEM_IO_SHM)
+    {
+        modem_destroy_shm();
+    }
 }

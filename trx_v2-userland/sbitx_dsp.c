@@ -44,6 +44,7 @@
 #include "sbitx_dsp.h"
 #include "sbitx_core.h"
 #include "sbitx_alsa.h"
+#include "sbitx_modem.h"
 
 // set 0 for production
 #ifndef DEBUG_DSP_
@@ -155,15 +156,15 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         fft_freq[i] = fft_out[b];
     }
 
-	// STEP 5:zero out the other sideband
-	if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].mode == MODE_LSB)
+    // STEP 5:zero out the other sideband
+    if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].mode == MODE_LSB)
         memset(fft_freq, 0, sizeof(fftw_complex) * (MAX_BINS/2));
-	else
+    else
         memset((void *) fft_freq + (MAX_BINS/2 * sizeof(fftw_complex)), 0, sizeof(fftw_complex) * (MAX_BINS/2));
 
-	// STEP 6: apply the filter to the signal,
-	// in frequency domain we just multiply the filter
-	// coefficients with the frequency domain samples
+    // STEP 6: apply the filter to the signal,
+    // in frequency domain we just multiply the filter
+    // coefficients with the frequency domain samples
     for (i = 0; i < MAX_BINS; i++)
         fft_freq[i] *= rx_filter->fir_coeff[i];
 
@@ -174,16 +175,25 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].agc != AGC_OFF)
         dsp_process_agc();
 
-	//STEP 9: send the output back to where it needs to go
-    int32_t *output_speaker_int = (int32_t *)output_speaker;
+    //STEP 9: send the output back to where it needs to go
+    int32_t *output_speaker_int = (int32_t *) output_speaker;
     int32_t *output_loopback_int = (int32_t *) output_loopback;
+
     for (i = 0; i < block_size; i++)
     {
         output_speaker_int[i] = (int32_t) (cimag(fft_time[i+(MAX_BINS/2)]) * MAX_SAMPLE_VALUE);
-        if ((i % 2) == 0)
+        if (radio_h_dsp->io_mode == MODEM_IO_SHM)
         {
-            output_loopback_int[i] = output_speaker_int[i] << 4; // we give a small gain here for the loopback
-            output_loopback_int[i + 1] = output_loopback_int[i];     // 96 kHz mono to 48 kHz stereo decimation, L=R        }
+            output_loopback_int[i] = output_speaker_int[i] << 8;
+        }
+        else
+        {
+            // ALSA loopback 96 kHz mono to 48 kHz stereo decimation, L=R 
+            if ((i % 2) == 0)
+            {
+                output_loopback_int[i] = output_speaker_int[i] << 4; // we give a small gain here for the loopback
+                output_loopback_int[i + 1] = output_loopback_int[i];
+            }
         }
         // we shift 8 bit right to revert to wm8731 32-bit sample format (only 24-bit MSB valid)
         output_speaker_int[i] <<= 8;
@@ -226,14 +236,18 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
     double i_sample;
     int i, j = 0;
-    // prepare data from loopback... 48kHz stereo to 96 kHz mono
+    // prepare data from loopback or shared memory... 48kHz stereo to 96 kHz mono
     if (radio_h_dsp->tone_generation)
     {
-        for (i = 0; i < block_size; i++)
+        /* Generate tone at the resampler input rate (block_size / 2 samples) */
+        for (i = 0; i < block_size / 2; i++)
         {
-            signal_input_f[i] = (1.0 * vfo_read(&tone)) / 4800000000.0;
+            loopback_in[i] = (1.0 * vfo_read(&tone)) / 4800000000.0;
         }
+        rational_resampler(loopback_in, block_size / 2, signal_input_f, 2, INTERPOLATION);
+
     }
+    // this is when we can using the alsa loopback device
     else if (input_is_48k_stereo)
     {
         for (i = 0; i < block_size; i = i + 2)
@@ -243,11 +257,23 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         }
         rational_resampler(loopback_in, block_size / 2, signal_input_f, 2, INTERPOLATION);
     }
-    else // mic input from wm8731
+    else // mic input from wm8731 or shm input
     {
-        for (i = 0; i < block_size; i++)
+        // SHM
+        if (radio_h_dsp->io_mode == MODEM_IO_SHM)
         {
-            signal_input_f[i] = (1.0 * (signal_input_int[i] >> 8)) / MAX_SAMPLE_VALUE;
+            for (i = 0; i < block_size; i++)
+            {
+                signal_input_f[i] = (1.0 * (signal_input_int[i] >> 8)) / MAX_SAMPLE_VALUE;
+            }
+        }
+        // MIC
+        else
+        {
+            for (i = 0; i < block_size; i++)
+            {
+                signal_input_f[i] = (1.0 * (signal_input_int[i] >> 8)) / MAX_SAMPLE_VALUE;
+            }
         }
     }
 
