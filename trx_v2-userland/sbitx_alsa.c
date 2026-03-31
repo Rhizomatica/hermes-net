@@ -764,15 +764,20 @@ void *loop_capture_thread(void *device_ptr)
 // we read 8kHz mono s32le from the modem, and write it to the loopback_to_dsp
 void *shm_capture_thread(void *device_ptr)
 {
+    (void)device_ptr;
     const int sample_size = 4;
     const int up = 12;
 
     size_t buffer_size = sample_size * 8000 * 15;
     uint8_t *buffer = malloc(buffer_size);
-    uint8_t *buffer_96k = malloc(buffer_size * up);
-
-    if (!buffer || !buffer_96k)
+    if (buffer == NULL)
         return NULL;
+
+    uint8_t *buffer_96k = malloc(buffer_size * up);
+    if (buffer_96k == NULL) {
+        free(buffer);
+        return NULL;
+    }
 
     while (!shutdown_)
     {
@@ -813,6 +818,7 @@ void *shm_capture_thread(void *device_ptr)
 // we read 96kHz mono s32le and write it to the modem 8kHz mono s32le
 void *shm_playback_thread(void *device_ptr)
 {
+    (void)device_ptr;
     int sample_size = 4; // signed 32 little endian
     uint32_t buffer_size_96k = 128 * sample_size * 12;
 
