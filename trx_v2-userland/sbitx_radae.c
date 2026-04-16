@@ -156,7 +156,6 @@ bool radae_tx_start(radae_context *ctx)
     
     ctx->tx_running = true;
     ctx->tx_speech_buffer_write_idx = 0;
-            if (radae_debug) fprintf(stderr, "RADAE TX: debug enabled\n");
     ctx->tx_speech_buffer_read_idx = 0;
     ctx->tx_modem_buffer_write_idx = 0;
     ctx->tx_modem_buffer_read_idx = 0;
@@ -410,7 +409,12 @@ static void *radae_tx_thread(void *arg)
     
     // Buffer for reading IQ from pipe
     float iq_buffer[4096];
-    
+
+    // Rate-limit per-loop debug prints so RADAE_DEBUG=1 doesn't flood stderr.
+    // One line every DBG_PERIOD iterations (~2s at RADAE_FRAME_SIZE=160 @ 16kHz).
+    const int DBG_PERIOD = 200;
+    int dbg_wr_count = 0, dbg_rd_count = 0;
+
     while (ctx->tx_running && !ctx->shutdown_requested) {
         // Check for speech data in buffer
         pthread_mutex_lock(&ctx->tx_mutex);
@@ -455,10 +459,11 @@ static void *radae_tx_thread(void *arg)
             fprintf(stderr, "RADAE TX: Write error: %s\n", strerror(errno));
             break;
         }
-        if (written >= 0 && radae_debug) {
-            fprintf(stderr, "RADAE TX: wrote %zd bytes to encoder stdin (%zd frames)\n", written, written / sizeof(int16_t));
+        if (written >= 0 && radae_debug && (dbg_wr_count++ % DBG_PERIOD) == 0) {
+            fprintf(stderr, "RADAE TX: wrote %zd bytes to encoder stdin (%zd frames) [every %d]\n",
+                    written, written / sizeof(int16_t), DBG_PERIOD);
         }
-        
+
     read_output:
         // Try to read modem IQ output
         ssize_t bytes_read = read(read_fd, iq_buffer, sizeof(iq_buffer));
@@ -476,15 +481,16 @@ static void *radae_tx_thread(void *arg)
                 ctx->tx_modem_buffer_write_idx = (ctx->tx_modem_buffer_write_idx + 1) % (RADAE_MODEM_BUFFER_SIZE * 2);
             }
             pthread_mutex_unlock(&ctx->tx_mutex);
-            if (radae_debug) {
-                fprintf(stderr, "RADAE TX: read %zd bytes (%d floats) from encoder stdout, wrote %d floats to tx_modem_buffer (free %d)\n", bytes_read, n_floats, to_write, free_space);
+            if (radae_debug && (dbg_rd_count++ % DBG_PERIOD) == 0) {
+                fprintf(stderr, "RADAE TX: read %zd bytes (%d floats) from encoder stdout, wrote %d floats to tx_modem_buffer (free %d) [every %d]\n",
+                        bytes_read, n_floats, to_write, free_space, DBG_PERIOD);
             }
         }
     }
-    
+
     close(write_fd);
     close(read_fd);
-    
+
     // Wait for child process
     waitpid(pid, NULL, 0);
     ctx->tx_encoder_pid = 0;
@@ -567,7 +573,11 @@ static void *radae_rx_thread(void *arg)
     
     float iq_buffer[4096];
     int16_t pcm_buffer[2048];
-    
+
+    // Rate-limit per-loop debug prints (see TX thread for rationale).
+    const int DBG_PERIOD = 200;
+    int dbg_wr_count = 0, dbg_rd_count = 0;
+
     while (ctx->rx_running && !ctx->shutdown_requested) {
         // Check for modem IQ data in buffer
         pthread_mutex_lock(&ctx->rx_mutex);
@@ -604,10 +614,11 @@ static void *radae_rx_thread(void *arg)
             fprintf(stderr, "RADAE RX: Write error: %s\n", strerror(errno));
             break;
         }
-        if (written >= 0 && radae_debug) {
-            fprintf(stderr, "RADAE RX: wrote %zd bytes to decoder stdin (%zd floats)\n", written, written / sizeof(float));
+        if (written >= 0 && radae_debug && (dbg_wr_count++ % DBG_PERIOD) == 0) {
+            fprintf(stderr, "RADAE RX: wrote %zd bytes to decoder stdin (%zd floats) [every %d]\n",
+                    written, written / sizeof(float), DBG_PERIOD);
         }
-        
+
     read_output_rx:
         // Try to read speech output (16-bit PCM)
         ssize_t bytes_read = read(read_fd, pcm_buffer, sizeof(pcm_buffer));
@@ -625,8 +636,9 @@ static void *radae_rx_thread(void *arg)
                 ctx->rx_speech_buffer_write_idx = (ctx->rx_speech_buffer_write_idx + 1) % RADAE_SPEECH_BUFFER_SIZE;
             }
             pthread_mutex_unlock(&ctx->rx_mutex);
-            if (radae_debug) {
-                fprintf(stderr, "RADAE RX: read %zd bytes (%d samples) from decoder stdout, wrote %d samples to rx_speech_buffer (free %d)\n", bytes_read, n_samples, to_write, free_space);
+            if (radae_debug && (dbg_rd_count++ % DBG_PERIOD) == 0) {
+                fprintf(stderr, "RADAE RX: read %zd bytes (%d samples) from decoder stdout, wrote %d samples to rx_speech_buffer (free %d) [every %d]\n",
+                        bytes_read, n_samples, to_write, free_space, DBG_PERIOD);
             }
         }
     }
