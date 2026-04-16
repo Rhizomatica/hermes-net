@@ -333,19 +333,19 @@ int radae_rx_read_speech(radae_context *ctx, float *samples, int max_samples)
 }
 
 // TX thread implementation
-// Pipeline: speech (16kHz) -> lpcnet_demo -features -> inference.py -> modem IQ (8kHz)
+// Pipeline: speech (16kHz) -> lpcnet_demo -features -> radae_txe2.py -> modem IQ (8kHz)
 static void *radae_tx_thread(void *arg)
 {
     radae_context *ctx = (radae_context *)arg;
     
     // Build command for TX pipeline
-    // RADEv2: lpcnet_demo -features -> radae_txe.py -> IQ samples
-    
+    // RADEv2: lpcnet_demo -features -> radae_txe2.py -> IQ samples
+
     char cmd[2048];
     snprintf(cmd, sizeof(cmd),
              "cd %s && "
              "build/src/lpcnet_demo -features - - | "
-             "python3 radae_txe.py --model_name %s 2>/dev/null",
+             "python3 radae_txe2.py --model_name %s 2>/dev/null",
              ctx->radae_dir,
              RADAE_MODEL_PATH);
     
@@ -494,20 +494,21 @@ static void *radae_tx_thread(void *arg)
 }
 
 // RX thread implementation
-// Pipeline: modem IQ (8kHz) -> rx2.py -> lpcnet_demo -fargan-synthesis -> speech (16kHz)
+// Pipeline: modem IQ (8kHz) -> radae_rxe2.py -> lpcnet_demo -fargan-synthesis -> speech (16kHz)
 static void *radae_rx_thread(void *arg)
 {
     radae_context *ctx = (radae_context *)arg;
     
-    // RADEv2 RX pipeline: IQ samples -> radae_rxe.py -> features -> lpcnet_demo -fargan-synthesis
-    
+    // RADEv2 RX pipeline: IQ samples -> radae_rxe2.py -> features -> lpcnet_demo -fargan-synthesis
+
     char cmd[2048];
     snprintf(cmd, sizeof(cmd),
              "cd %s && "
-             "python3 radae_rxe.py --model_name %s -v 0 | "
+             "python3 radae_rxe2.py --model_name %s --frame_sync_model_name %s 2>/dev/null | "
              "build/src/lpcnet_demo -fargan-synthesis - - 2>/dev/null",
              ctx->radae_dir,
-             RADAE_MODEL_PATH);
+             RADAE_MODEL_PATH,
+             RADAE_SYNC_MODEL_PATH);
     
     fprintf(stderr, "RADAE RX: Starting pipeline: %s\n", cmd);
     if (radae_debug) fprintf(stderr, "RADAE RX: debug enabled\n");

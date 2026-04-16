@@ -126,7 +126,11 @@ pip3 install torch numpy matplotlib
 
 4. Ensure the RADEv2 model files are present:
    - `radae/250725/checkpoints/checkpoint_epoch_200.pth` (main model)
-   - `radae/250725a_ml_sync` (frame sync model)
+   - `radae/250725a_ml_sync` (ML frame sync model, passed to the RX wrapper
+     via `--frame_sync_model_name`)
+
+   The paths are hard-coded in `sbitx_radae.h` as `RADAE_MODEL_PATH` and
+   `RADAE_SYNC_MODEL_PATH`; override them there if you relocate the files.
 
 ## Building with RADEv2 Support
 
@@ -154,15 +158,25 @@ When digital voice is enabled:
 
 ## Technical Details
 
-- Speech sample rate: 16kHz (LPCNet)
-- Modem sample rate: 8kHz (RADAE)
-- Radio sample rate: 96kHz
-- RADEv2 parameters: latent_dim=56, w1_dec=128
-- Model: 250725 checkpoint
+- Speech sample rate: 16 kHz (LPCNet / FARGAN)
+- Modem sample rate: 8 kHz (RADAE, complex baseband)
+- Radio sample rate: 96 kHz
+- RADEv2 waveform: OFDM with Nc=14 carriers, Ns=2 symbols/frame, M=128,
+  Ncp=32 (4 ms cyclic prefix), no pilots
+- RADEv2 ML parameters: latent_dim=56, Nzmf=1, w1_dec=128, auxdata enabled,
+  peak+bottleneck=3 hard clipper (constant-envelope output)
+- Frame sync via the `250725a_ml_sync` ML classifier
+- Models: `250725/checkpoints/checkpoint_epoch_200.pth` + `250725a_ml_sync`
 
-The digital voice processing runs as subprocess pipelines:
-- TX: `lpcnet_demo -features` → `inference.py` → modem
-- RX: `radae_rxe.py` → `lpcnet_demo -fargan-synthesis` → speech
+The digital voice processing runs as subprocess pipelines backed by the
+streaming V2 wrappers in `../radae`:
+
+- TX: `lpcnet_demo -features` → `radae_txe2.py` → modem IQ
+- RX: `radae_rxe2.py` → `lpcnet_demo -fargan-synthesis` → speech
+
+Both wrappers exchange 36-float FARGAN feature vectors with `lpcnet_demo`
+and complex `float32` IQ at 8 kHz with the radio, so they drop into the
+pipes without any extra reshape stage on the C side.
 
 # Author
 
