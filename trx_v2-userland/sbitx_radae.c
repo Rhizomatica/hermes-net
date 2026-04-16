@@ -37,6 +37,8 @@
 
 #include "sbitx_core.h"
 #include "sbitx_radae.h"
+/* Enable verbose debug logging when RADAE_DEBUG env var is set to 1 or true */
+static int radae_debug = 0;
 
 // Helper macros for circular buffer operations
 #define BUFFER_SIZE(write_idx, read_idx, max_size) \
@@ -95,9 +97,16 @@ bool radae_init(radae_context *ctx, radio *radio_h, const char *radae_dir)
     
     ctx->initialized = true;
     ctx->shutdown_requested = false;
-    
+
+    /* enable runtime debug logging if requested */
+    char *dbg = getenv("RADAE_DEBUG");
+    if (dbg && (strcmp(dbg, "1") == 0 || dbg[0] == 't' || dbg[0] == 'T')) {
+        radae_debug = 1;
+        fprintf(stderr, "RADAE: debug logging enabled\n");
+    }
+
     fprintf(stderr, "RADAE: Initialized with radae_dir=%s\n", ctx->radae_dir);
-    
+
     return true;
 
 cleanup_rx_modem:
@@ -147,6 +156,7 @@ bool radae_tx_start(radae_context *ctx)
     
     ctx->tx_running = true;
     ctx->tx_speech_buffer_write_idx = 0;
+            if (radae_debug) fprintf(stderr, "RADAE TX: debug enabled\n");
     ctx->tx_speech_buffer_read_idx = 0;
     ctx->tx_modem_buffer_write_idx = 0;
     ctx->tx_modem_buffer_read_idx = 0;
@@ -340,6 +350,7 @@ static void *radae_tx_thread(void *arg)
              RADAE_MODEL_PATH);
     
     fprintf(stderr, "RADAE TX: Starting pipeline: %s\n", cmd);
+    if (radae_debug) fprintf(stderr, "RADAE TX: debug enabled\n");
     
     // Create pipes for stdin and stdout
     int stdin_pipe[2], stdout_pipe[2];
@@ -444,6 +455,9 @@ static void *radae_tx_thread(void *arg)
             fprintf(stderr, "RADAE TX: Write error: %s\n", strerror(errno));
             break;
         }
+        if (written >= 0 && radae_debug) {
+            fprintf(stderr, "RADAE TX: wrote %zd bytes to encoder stdin (%zd frames)\n", written, written / sizeof(int16_t));
+        }
         
     read_output:
         // Try to read modem IQ output
@@ -462,6 +476,9 @@ static void *radae_tx_thread(void *arg)
                 ctx->tx_modem_buffer_write_idx = (ctx->tx_modem_buffer_write_idx + 1) % (RADAE_MODEM_BUFFER_SIZE * 2);
             }
             pthread_mutex_unlock(&ctx->tx_mutex);
+            if (radae_debug) {
+                fprintf(stderr, "RADAE TX: read %zd bytes (%d floats) from encoder stdout, wrote %d floats to tx_modem_buffer (free %d)\n", bytes_read, n_floats, to_write, free_space);
+            }
         }
     }
     
@@ -493,6 +510,7 @@ static void *radae_rx_thread(void *arg)
              RADAE_MODEL_PATH);
     
     fprintf(stderr, "RADAE RX: Starting pipeline: %s\n", cmd);
+    if (radae_debug) fprintf(stderr, "RADAE RX: debug enabled\n");
     
     // Create pipes for stdin and stdout
     int stdin_pipe[2], stdout_pipe[2];
@@ -585,6 +603,9 @@ static void *radae_rx_thread(void *arg)
             fprintf(stderr, "RADAE RX: Write error: %s\n", strerror(errno));
             break;
         }
+        if (written >= 0 && radae_debug) {
+            fprintf(stderr, "RADAE RX: wrote %zd bytes to decoder stdin (%zd floats)\n", written, written / sizeof(float));
+        }
         
     read_output_rx:
         // Try to read speech output (16-bit PCM)
@@ -603,6 +624,9 @@ static void *radae_rx_thread(void *arg)
                 ctx->rx_speech_buffer_write_idx = (ctx->rx_speech_buffer_write_idx + 1) % RADAE_SPEECH_BUFFER_SIZE;
             }
             pthread_mutex_unlock(&ctx->rx_mutex);
+            if (radae_debug) {
+                fprintf(stderr, "RADAE RX: read %zd bytes (%d samples) from decoder stdout, wrote %d samples to rx_speech_buffer (free %d)\n", bytes_read, n_samples, to_write, free_space);
+            }
         }
     }
     
