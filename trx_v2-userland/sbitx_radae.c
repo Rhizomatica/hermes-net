@@ -34,6 +34,8 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <math.h>
+#include <time.h>
+#include <stdint.h>
 
 #include "sbitx_core.h"
 #include "sbitx_radae.h"
@@ -46,6 +48,35 @@ static int radae_debug = 0;
 
 #define BUFFER_FREE(write_idx, read_idx, max_size) \
     ((max_size) - 1 - BUFFER_SIZE(write_idx, read_idx, max_size))
+
+// Sample-rate instrumentation: accumulates counts and prints once per second to
+// stderr when radae_debug is on. `tag` is a literal string identifying the
+// measurement point, `units` is a literal string naming what `n` counts
+// (e.g. "samp", "csamp", "B"), `expect` is the nominal rate shown alongside
+// the measured one so drift is obvious at a glance.
+#define RADAE_RATE_LOG(tag, units, n, expect) do {                             \
+    if (radae_debug) {                                                         \
+        static uint64_t _st_count = 0;                                         \
+        static uint64_t _st_calls = 0;                                         \
+        static struct timespec _st_t0 = {0, 0};                                \
+        struct timespec _st_now;                                               \
+        clock_gettime(CLOCK_MONOTONIC, &_st_now);                              \
+        if (_st_t0.tv_sec == 0 && _st_t0.tv_nsec == 0) _st_t0 = _st_now;       \
+        _st_count += (uint64_t)(n);                                            \
+        _st_calls += 1;                                                        \
+        double _st_dt = (_st_now.tv_sec  - _st_t0.tv_sec) +                    \
+                        (_st_now.tv_nsec - _st_t0.tv_nsec) / 1e9;              \
+        if (_st_dt >= 1.0) {                                                   \
+            fprintf(stderr,                                                    \
+                "RADAE rate [%s]: %.0f %s/s (%.1f call/s, expect %s)\n",       \
+                (tag), (double)_st_count/_st_dt, (units),                      \
+                (double)_st_calls/_st_dt, (expect));                           \
+            _st_count = 0;                                                     \
+            _st_calls = 0;                                                     \
+            _st_t0    = _st_now;                                               \
+        }                                                                      \
+    }                                                                          \
+} while (0)
 
 // TX thread: reads from speech buffer, writes to modem buffer via RADAE pipeline
 static void *radae_tx_thread(void *arg);
@@ -255,10 +286,12 @@ int radae_tx_write_speech(radae_context *ctx, const float *samples, int n_sample
         ctx->tx_speech_buffer[ctx->tx_speech_buffer_write_idx] = samples[i];
         ctx->tx_speech_buffer_write_idx = (ctx->tx_speech_buffer_write_idx + 1) % RADAE_SPEECH_BUFFER_SIZE;
     }
-    
+
     pthread_cond_signal(&ctx->tx_cond);
     pthread_mutex_unlock(&ctx->tx_mutex);
-    
+
+    RADAE_RATE_LOG("tx_in  radio->ctx", "samp", to_write, "16000 samp/s");
+
     return to_write;
 }
 
@@ -279,9 +312,11 @@ int radae_tx_read_modem_iq(radae_context *ctx, float *iq_samples, int max_sample
         iq_samples[i] = ctx->tx_modem_buffer[ctx->tx_modem_buffer_read_idx];
         ctx->tx_modem_buffer_read_idx = (ctx->tx_modem_buffer_read_idx + 1) % (RADAE_MODEM_BUFFER_SIZE * 2);
     }
-    
+
     pthread_mutex_unlock(&ctx->tx_mutex);
-    
+
+    RADAE_RATE_LOG("tx_out ctx->radio", "csamp", to_read, "8000 csamp/s");
+
     return to_read;
 }
 
@@ -302,10 +337,12 @@ int radae_rx_write_modem_iq(radae_context *ctx, const float *iq_samples, int n_s
         ctx->rx_modem_buffer[ctx->rx_modem_buffer_write_idx] = iq_samples[i];
         ctx->rx_modem_buffer_write_idx = (ctx->rx_modem_buffer_write_idx + 1) % (RADAE_MODEM_BUFFER_SIZE * 2);
     }
-    
+
     pthread_cond_signal(&ctx->rx_cond);
     pthread_mutex_unlock(&ctx->rx_mutex);
-    
+
+    RADAE_RATE_LOG("rx_in  radio->ctx", "csamp", to_write, "8000 csamp/s");
+
     return to_write;
 }
 
@@ -325,9 +362,11 @@ int radae_rx_read_speech(radae_context *ctx, float *samples, int max_samples)
         samples[i] = ctx->rx_speech_buffer[ctx->rx_speech_buffer_read_idx];
         ctx->rx_speech_buffer_read_idx = (ctx->rx_speech_buffer_read_idx + 1) % RADAE_SPEECH_BUFFER_SIZE;
     }
-    
+
     pthread_mutex_unlock(&ctx->rx_mutex);
-    
+
+    RADAE_RATE_LOG("rx_out ctx->radio", "samp", to_read, "16000 samp/s");
+
     return to_read;
 }
 
@@ -410,11 +449,6 @@ static void *radae_tx_thread(void *arg)
     // Buffer for reading IQ from pipe
     float iq_buffer[4096];
 
-    // Rate-limit per-loop debug prints so RADAE_DEBUG=1 doesn't flood stderr.
-    // One line every DBG_PERIOD iterations (~2s at RADAE_FRAME_SIZE=160 @ 16kHz).
-    const int DBG_PERIOD = 200;
-    int dbg_wr_count = 0, dbg_rd_count = 0;
-
     while (ctx->tx_running && !ctx->shutdown_requested) {
         // Check for speech data in buffer
         pthread_mutex_lock(&ctx->tx_mutex);
@@ -459,9 +493,9 @@ static void *radae_tx_thread(void *arg)
             fprintf(stderr, "RADAE TX: Write error: %s\n", strerror(errno));
             break;
         }
-        if (written >= 0 && radae_debug && (dbg_wr_count++ % DBG_PERIOD) == 0) {
-            fprintf(stderr, "RADAE TX: wrote %zd bytes to encoder stdin (%zd frames) [every %d]\n",
-                    written, written / sizeof(int16_t), DBG_PERIOD);
+        if (written > 0) {
+            RADAE_RATE_LOG("tx_py_stdin  ctx->py",  "samp",
+                           (int)(written / sizeof(int16_t)), "16000 samp/s");
         }
 
     read_output:
@@ -481,10 +515,9 @@ static void *radae_tx_thread(void *arg)
                 ctx->tx_modem_buffer_write_idx = (ctx->tx_modem_buffer_write_idx + 1) % (RADAE_MODEM_BUFFER_SIZE * 2);
             }
             pthread_mutex_unlock(&ctx->tx_mutex);
-            if (radae_debug && (dbg_rd_count++ % DBG_PERIOD) == 0) {
-                fprintf(stderr, "RADAE TX: read %zd bytes (%d floats) from encoder stdout, wrote %d floats to tx_modem_buffer (free %d) [every %d]\n",
-                        bytes_read, n_floats, to_write, free_space, DBG_PERIOD);
-            }
+            // n_floats is interleaved I/Q, so csamp count = n_floats/2
+            RADAE_RATE_LOG("tx_py_stdout py->ctx",  "csamp",
+                           n_floats / 2, "8000 csamp/s");
         }
     }
 
@@ -574,10 +607,6 @@ static void *radae_rx_thread(void *arg)
     float iq_buffer[4096];
     int16_t pcm_buffer[2048];
 
-    // Rate-limit per-loop debug prints (see TX thread for rationale).
-    const int DBG_PERIOD = 200;
-    int dbg_wr_count = 0, dbg_rd_count = 0;
-
     while (ctx->rx_running && !ctx->shutdown_requested) {
         // Check for modem IQ data in buffer
         pthread_mutex_lock(&ctx->rx_mutex);
@@ -614,9 +643,10 @@ static void *radae_rx_thread(void *arg)
             fprintf(stderr, "RADAE RX: Write error: %s\n", strerror(errno));
             break;
         }
-        if (written >= 0 && radae_debug && (dbg_wr_count++ % DBG_PERIOD) == 0) {
-            fprintf(stderr, "RADAE RX: wrote %zd bytes to decoder stdin (%zd floats) [every %d]\n",
-                    written, written / sizeof(float), DBG_PERIOD);
+        if (written > 0) {
+            // iq_buffer is interleaved I/Q floats, so csamp count = floats/2
+            RADAE_RATE_LOG("rx_py_stdin  ctx->py",  "csamp",
+                           (int)(written / sizeof(float)) / 2, "8000 csamp/s");
         }
 
     read_output_rx:
@@ -636,16 +666,14 @@ static void *radae_rx_thread(void *arg)
                 ctx->rx_speech_buffer_write_idx = (ctx->rx_speech_buffer_write_idx + 1) % RADAE_SPEECH_BUFFER_SIZE;
             }
             pthread_mutex_unlock(&ctx->rx_mutex);
-            if (radae_debug && (dbg_rd_count++ % DBG_PERIOD) == 0) {
-                fprintf(stderr, "RADAE RX: read %zd bytes (%d samples) from decoder stdout, wrote %d samples to rx_speech_buffer (free %d) [every %d]\n",
-                        bytes_read, n_samples, to_write, free_space, DBG_PERIOD);
-            }
+            RADAE_RATE_LOG("rx_py_stdout py->ctx", "samp",
+                           n_samples, "16000 samp/s (when synced)");
         }
     }
-    
+
     close(write_fd);
     close(read_fd);
-    
+
     waitpid(pid, NULL, 0);
     ctx->rx_decoder_pid = 0;
     
