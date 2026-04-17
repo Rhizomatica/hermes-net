@@ -344,7 +344,7 @@ static void *radae_tx_thread(void *arg)
     snprintf(cmd, sizeof(cmd),
              "cd %s && "
              "build/src/lpcnet_demo -features - - | "
-             "python3 radae_txe2.py --model_name %s 2>/dev/null",
+             "python3 radae_txe2.py --model_name %s",
              ctx->radae_dir,
              RADAE_MODEL_PATH);
     
@@ -510,8 +510,8 @@ static void *radae_rx_thread(void *arg)
     char cmd[2048];
     snprintf(cmd, sizeof(cmd),
              "cd %s && "
-             "python3 radae_rxe2.py --model_name %s --frame_sync_model_name %s 2>/dev/null | "
-             "build/src/lpcnet_demo -fargan-synthesis - - 2>/dev/null",
+             "python3 radae_rxe2.py --model_name %s --frame_sync_model_name %s | "
+             "build/src/lpcnet_demo -fargan-synthesis - -",
              ctx->radae_dir,
              RADAE_MODEL_PATH,
              RADAE_SYNC_MODEL_PATH);

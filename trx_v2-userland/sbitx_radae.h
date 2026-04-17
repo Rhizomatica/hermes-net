@@ -46,7 +46,7 @@
 // Paths to RADAE resources (relative to radae directory)
 #define RADAE_MODEL_PATH         "250725/checkpoints/checkpoint_epoch_200.pth"
 #define RADAE_SYNC_MODEL_PATH    "250725a_ml_sync"
-#define RADAE_DIR                "../radae"
+#define RADAE_DIR                "/opt/radae"
 
 // RADAE context structure
 typedef struct {
