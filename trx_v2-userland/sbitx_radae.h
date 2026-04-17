@@ -138,4 +138,43 @@ void resample_48k_to_16k(const double *in, int in_len, float *out, int *out_len)
 void resample_96k_to_8k(const double *in, int in_len, float *out, int *out_len);
 void resample_8k_to_96k(const float *in, int in_len, double *out, int *out_len);
 
+// True when RADAE_DEBUG env var was set to 1/true at radae_init time.
+bool radae_is_debug(void);
+
+// Amplitude instrumentation: tracks |peak| and mean |val| over a 1 s window
+// for a stream of int64-able samples (so it works for int32, double, float).
+// Gated by radae_is_debug(); silent in production.
+#include <stdio.h>
+#include <stdint.h>
+#include <time.h>
+#include <math.h>
+#define RADAE_AMPL_LOG(tag, val) do {                                          \
+    if (radae_is_debug()) {                                                    \
+        static double   _ap_sum  = 0.0;                                        \
+        static double   _ap_peak = 0.0;                                        \
+        static uint64_t _ap_n    = 0;                                          \
+        static struct timespec _ap_t0 = {0, 0};                                \
+        struct timespec _ap_now;                                               \
+        clock_gettime(CLOCK_MONOTONIC, &_ap_now);                              \
+        if (_ap_t0.tv_sec == 0 && _ap_t0.tv_nsec == 0) _ap_t0 = _ap_now;       \
+        double _ap_v = fabs((double)(val));                                    \
+        _ap_sum += _ap_v;                                                      \
+        if (_ap_v > _ap_peak) _ap_peak = _ap_v;                                \
+        _ap_n += 1;                                                            \
+        double _ap_dt = (_ap_now.tv_sec  - _ap_t0.tv_sec) +                    \
+                        (_ap_now.tv_nsec - _ap_t0.tv_nsec) / 1e9;              \
+        if (_ap_dt >= 1.0) {                                                   \
+            double _ap_mean = _ap_n ? _ap_sum / (double)_ap_n : 0.0;           \
+            fprintf(stderr,                                                    \
+                "RADAE ampl [%s]: peak=%.3g mean=%.3g n=%llu\n",               \
+                (tag), _ap_peak, _ap_mean,                                     \
+                (unsigned long long)_ap_n);                                    \
+            _ap_sum  = 0.0;                                                    \
+            _ap_peak = 0.0;                                                    \
+            _ap_n    = 0;                                                      \
+            _ap_t0   = _ap_now;                                                \
+        }                                                                      \
+    }                                                                          \
+} while (0)
+
 #endif // SBITX_RADAE_H_

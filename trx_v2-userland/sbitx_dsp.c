@@ -133,10 +133,21 @@ static void dsp_process_digital_voice_tx(double *signal_input_f, uint32_t block_
         // Output to radio TX
         double multiplier = get_band_multiplier() * (double) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].power_level_percentage / 100.0;
         int output_samples = (baseband_len < MAX_BINS/2) ? baseband_len : MAX_BINS/2;
-        
+
+        // One-line summary of the gain stages every 1s so we can tell
+        // multiplier=0 apart from signal=0 at a glance.
+        RADAE_AMPL_LOG("tx_dv mult*pct", multiplier);
+
         for (int i = 0; i < output_samples; i++) {
             signal_output_int[i] = (int32_t)(radae_baseband[i] * 4000.0 * multiplier);
             signal_output_int[i] <<= 8;
+            // Peak/mean |int32| reaching the TX DAC (post-scale, post-<<8).
+            RADAE_AMPL_LOG("tx_dv dac_int32", signal_output_int[i]);
+        }
+        // Also track the pre-scale upsampled baseband, so we can isolate
+        // whether the signal lost amplitude before or during the scale step.
+        for (int i = 0; i < output_samples; i++) {
+            RADAE_AMPL_LOG("tx_dv baseband96k", radae_baseband[i]);
         }
         // Zero pad the rest if needed
         for (int i = output_samples; i < MAX_BINS/2; i++) {

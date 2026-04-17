@@ -42,6 +42,8 @@
 /* Enable verbose debug logging when RADAE_DEBUG env var is set to 1 or true */
 static int radae_debug = 0;
 
+bool radae_is_debug(void) { return radae_debug != 0; }
+
 // Helper macros for circular buffer operations
 #define BUFFER_SIZE(write_idx, read_idx, max_size) \
     (((write_idx) - (read_idx) + (max_size)) % (max_size))
