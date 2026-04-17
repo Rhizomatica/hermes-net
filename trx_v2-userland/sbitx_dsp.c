@@ -138,8 +138,14 @@ static void dsp_process_digital_voice_tx(double *signal_input_f, uint32_t block_
         // multiplier=0 apart from signal=0 at a glance.
         RADAE_AMPL_LOG("tx_dv mult*pct", multiplier);
 
+        // RADAE hard-clipper produces unit-amplitude baseband (|tx|=1), whereas
+        // the SSB path's FFT-domain values can be orders of magnitude larger.
+        // Re-using 4000.0 left the DV signal ~0.03% of int32 full-scale ->
+        // essentially no RF. Bump by 100x; still headroom (post-<<8 peak ~6e7
+        // is ~3% FS) and we can fine-tune once SSB amplitude is characterised.
+        const double dv_scale = 4000.0 * 100.0;
         for (int i = 0; i < output_samples; i++) {
-            signal_output_int[i] = (int32_t)(radae_baseband[i] * 4000.0 * multiplier);
+            signal_output_int[i] = (int32_t)(radae_baseband[i] * dv_scale * multiplier);
             signal_output_int[i] <<= 8;
             // Peak/mean |int32| reaching the TX DAC (post-scale, post-<<8).
             RADAE_AMPL_LOG("tx_dv dac_int32", signal_output_int[i]);
@@ -486,10 +492,14 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     fftw_execute(plan_rev);
 
     double multiplier = get_band_multiplier() * (double) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].power_level_percentage / 100.0;
+    RADAE_AMPL_LOG("tx_ssb mult*pct", multiplier);
     for (i = 0; i < MAX_BINS / 2; i++)
     {
-        signal_output_int[i] = (int32_t) (creal(fft_time[i+(MAX_BINS/2)]) * 4000.0 * multiplier); // we just chose an appropriate level...
+        double _ssb_pre = creal(fft_time[i+(MAX_BINS/2)]);
+        RADAE_AMPL_LOG("tx_ssb fft_time_re", _ssb_pre);
+        signal_output_int[i] = (int32_t) (_ssb_pre * 4000.0 * multiplier); // we just chose an appropriate level...
         signal_output_int[i] <<= 8;
+        RADAE_AMPL_LOG("tx_ssb dac_int32", signal_output_int[i]);
     }
 
     memset(output_loopback, 0, block_size * (snd_pcm_format_width(format) / 8));
