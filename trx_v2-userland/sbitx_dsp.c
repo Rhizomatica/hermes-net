@@ -138,12 +138,11 @@ static void dsp_process_digital_voice_tx(double *signal_input_f, uint32_t block_
         // multiplier=0 apart from signal=0 at a glance.
         RADAE_AMPL_LOG("tx_dv mult*pct", multiplier);
 
-        // RADAE hard-clipper produces unit-amplitude baseband (|tx|=1), whereas
-        // the SSB path's FFT-domain values can be orders of magnitude larger.
-        // Re-using 4000.0 left the DV signal ~0.03% of int32 full-scale ->
-        // essentially no RF. Bump by 100x; still headroom (post-<<8 peak ~6e7
-        // is ~3% FS) and we can fine-tune once SSB amplitude is characterised.
-        const double dv_scale = 4000.0 * 100.0;
+        // RADAE hard-clipper produces unit-amplitude baseband (|tx|=1). SSB
+        // voice peaks measured at ~4.5e8 post-<<8; to give DV the same PEP
+        // (and since DV is constant-envelope, equivalent continuous output)
+        // we scale 700x over the SSB constant of 4000.0 -> peak ~4.3e8.
+        const double dv_scale = 4000.0 * 700.0;
         for (int i = 0; i < output_samples; i++) {
             signal_output_int[i] = (int32_t)(radae_baseband[i] * dv_scale * multiplier);
             signal_output_int[i] <<= 8;
