@@ -87,80 +87,80 @@ static radae_context radae_ctx;
 static _Atomic bool radae_tx_active = false;
 
 // Buffers for RADAE sample rate conversion
-static float radae_speech_in[2048];   // 16kHz speech input
-static float radae_speech_out[2048];  // 16kHz speech output
-static float radae_modem_iq[4096];    // 8kHz complex IQ (interleaved I,Q)
-static double radae_baseband[2048];   // intermediate buffer for sample rate conversion
+static float radae_speech_in[2048];     // 16kHz speech input
+static float radae_speech_out[2048];    // 16kHz speech output
+static float radae_modem_iq[4096];      // 8kHz complex IQ (interleaved I,Q)
+static double radae_baseband_i[2048];   // 96kHz I component (complex IQ, upsampled)
+static double radae_baseband_q[2048];   // 96kHz Q component (complex IQ, upsampled)
 
-// Digital voice TX processing using RADAE
-// Takes 96kHz or 48kHz speech input, produces 96kHz modulated output
-static void dsp_process_digital_voice_tx(double *signal_input_f, uint32_t block_size, int32_t *signal_output_int, bool input_is_48k_stereo)
+// Digital voice TX preparation using RADAE.
+//
+// Loads fft_in (and fft_m for overlap-save) with upsampled complex RADAE IQ so
+// the normal SSB TX pipeline (FFT -> tx_filter -> zero sideband -> TUNED_BINS
+// rotate -> IFFT -> creal) places the OFDM at the same IF (+/-24 kHz) the
+// analog front end expects for voice.  Key differences vs. real-audio load:
+//
+//   - Both I and Q are kept (fft_in real=I, imag=Q).  RADAE V2 is complex
+//     baseband with asymmetric spectrum; dropping Q halves energy and
+//     introduces a mirror image.
+//   - For LSB profiles we conjugate (flip Q sign), which puts the positive-
+//     baseband OFDM content on the *negative* side of the FFT.  That way the
+//     SSB zero-sideband step (LSB zeros positive freqs) keeps the signal
+//     instead of destroying it.
+//
+// RADAE Python pipeline still needs 16 kHz speech from the mic/loopback, so
+// the speech feed is unchanged.
+static void dsp_prepare_digital_voice_tx(double *signal_input_f, uint32_t block_size, bool input_is_48k_stereo)
 {
-    // Start RADAE TX if not already running
     if (!radae_tx_active) {
         radae_tx_start(&radae_ctx);
         radae_tx_active = true;
     }
 
-    // Resample input to 16kHz for RADAE
-    // signal_input_f is always 96kHz: either directly from mic, or after 2x interpolation from 48kHz loopback
-    (void)input_is_48k_stereo;  // Not needed - signal_input_f is always 96kHz
+    // signal_input_f is always 96 kHz (upsampled from loopback in the caller)
+    (void)input_is_48k_stereo;
     int speech_16k_len;
     resample_96k_to_16k(signal_input_f, block_size, radae_speech_in, &speech_16k_len);
-
-    // Feed speech to RADAE TX
     radae_tx_write_speech(&radae_ctx, radae_speech_in, speech_16k_len);
 
-    // Try to get modem IQ from RADAE TX
-    // Limit to avoid buffer overflow: 8kHz->96kHz upsampling multiplies by 12,
-    // and radae_baseband buffer is 2048 samples, so max input is 2048/12 = 170 samples
-    int max_modem_samples = 2048 / 12;  // = 170 samples max
+    // Read RADAE IQ.  Cap by block_size/12 so the 1:12 upsample cannot
+    // overflow radae_baseband_*; any extra stays in the ring buffer for
+    // the next call.  Undersupply is fine -- we zero-pad.
+    int max_modem_samples = (int)block_size / 12;
     int modem_samples = radae_tx_read_modem_iq(&radae_ctx, radae_modem_iq, max_modem_samples);
 
+    int n = 0;
     if (modem_samples > 0) {
-        // RADAE outputs complex IQ at 8kHz - the OFDM waveform is already in baseband
-        // Just extract the real part (I component) and upsample to 96kHz for SSB TX
-        // No carrier mixing needed - RADAE waveform already fits in SSB passband
-        
-        int baseband_len;
-        float real_part[modem_samples];
-        for (int i = 0; i < modem_samples; i++) {
-            real_part[i] = radae_modem_iq[i*2];  // Just take I component
+        float iq_i_8k[modem_samples];
+        float iq_q_8k[modem_samples];
+        for (int s = 0; s < modem_samples; s++) {
+            iq_i_8k[s] = radae_modem_iq[s*2];
+            iq_q_8k[s] = radae_modem_iq[s*2+1];
         }
-        
-        resample_8k_to_96k(real_part, modem_samples, radae_baseband, &baseband_len);
-        
-        // Output to radio TX
-        double multiplier = get_band_multiplier() * (double) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].power_level_percentage / 100.0;
-        int output_samples = (baseband_len < MAX_BINS/2) ? baseband_len : MAX_BINS/2;
+        int len_i, len_q;
+        resample_8k_to_96k(iq_i_8k, modem_samples, radae_baseband_i, &len_i);
+        resample_8k_to_96k(iq_q_8k, modem_samples, radae_baseband_q, &len_q);
+        n = len_i < len_q ? len_i : len_q;
+        if (n > (int)block_size) n = (int)block_size;
+    }
 
-        // One-line summary of the gain stages every 1s so we can tell
-        // multiplier=0 apart from signal=0 at a glance.
-        RADAE_AMPL_LOG("tx_dv mult*pct", multiplier);
+    bool is_lsb = (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].mode == MODE_LSB);
+    double q_sign = is_lsb ? -1.0 : 1.0;
 
-        // RADAE hard-clipper produces unit-amplitude baseband (|tx|=1). SSB
-        // voice peaks measured at ~4.5e8 post-<<8; to give DV the same PEP
-        // (and since DV is constant-envelope, equivalent continuous output)
-        // we scale 700x over the SSB constant of 4000.0 -> peak ~4.3e8.
-        const double dv_scale = 4000.0 * 700.0;
-        for (int i = 0; i < output_samples; i++) {
-            signal_output_int[i] = (int32_t)(radae_baseband[i] * dv_scale * multiplier);
-            signal_output_int[i] <<= 8;
-            // Peak/mean |int32| reaching the TX DAC (post-scale, post-<<8).
-            RADAE_AMPL_LOG("tx_dv dac_int32", signal_output_int[i]);
-        }
-        // Also track the pre-scale upsampled baseband, so we can isolate
-        // whether the signal lost amplitude before or during the scale step.
-        for (int i = 0; i < output_samples; i++) {
-            RADAE_AMPL_LOG("tx_dv baseband96k", radae_baseband[i]);
-        }
-        // Zero pad the rest if needed
-        for (int i = output_samples; i < MAX_BINS/2; i++) {
-            signal_output_int[i] = 0;
-        }
-    } else {
-        // No modem output yet, output silence
-        memset(signal_output_int, 0, MAX_BINS/2 * sizeof(int32_t));
+    // Overlap-save: fft_in[0..MAX_BINS/2) was just filled from previous block's
+    // fft_m via memcpy in the caller.  We fill the *new* half (MAX_BINS/2..MAX_BINS)
+    // and update fft_m for the next block.
+    for (int k = 0; k < n; k++) {
+        __real__ fft_m[k]               = radae_baseband_i[k];
+        __imag__ fft_m[k]               = q_sign * radae_baseband_q[k];
+        __real__ fft_in[MAX_BINS/2 + k] = radae_baseband_i[k];
+        __imag__ fft_in[MAX_BINS/2 + k] = q_sign * radae_baseband_q[k];
+
+        RADAE_AMPL_LOG("tx_dv baseband96k_i", radae_baseband_i[k]);
+    }
+    for (int k = n; k < (int)block_size; k++) {
+        fft_m[k]               = 0;
+        fft_in[MAX_BINS/2 + k] = 0;
     }
 }
 
@@ -174,29 +174,70 @@ static void dsp_process_digital_voice_rx(double *rx_baseband, uint32_t block_siz
     int modem_len;
     float modem_8k[block_size / 12 + 1];
     resample_96k_to_8k(rx_baseband, block_size, modem_8k, &modem_len);
-    
+
+    // Amplitude of the real baseband entering the RADAE decoder. Peak > 0
+    // means *something* is coming in (carrier, noise, or a DV signal); peak
+    // near 0 means the SSB demod path is delivering silence.
+    for (int i = 0; i < modem_len; i++) {
+        RADAE_AMPL_LOG("rx_dv baseband_in", modem_8k[i]);
+    }
+
+    // Optional raw 8 kHz float32 dump of the real baseband that feeds the
+    // RADAE RX. Enabled by touching /tmp/radae_rx_dump (file's presence is
+    // checked once per call). Lets us capture a live over-the-air signal
+    // and offline-decode it with radae_rxe2.py to separate a pipeline
+    // issue from a sync/SNR issue.
+    {
+        static FILE *dump_fp = NULL;
+        static int dump_checked = 0;
+        if (!dump_checked) {
+            dump_checked = 1;
+            if (access("/tmp/radae_rx_dump", F_OK) == 0) {
+                dump_fp = fopen("/tmp/radae_rx_dump.f32", "wb");
+                if (dump_fp)
+                    fprintf(stderr, "RADAE RX dump: writing /tmp/radae_rx_dump.f32\n");
+            }
+        }
+        if (dump_fp) {
+            fwrite(modem_8k, sizeof(float), modem_len, dump_fp);
+        }
+    }
+
     // Create complex IQ for RADAE: I = real signal, Q = 0
     for (int i = 0; i < modem_len; i++) {
         radae_modem_iq[i*2] = modem_8k[i];      // I component = real signal
         radae_modem_iq[i*2+1] = 0.0f;           // Q component = 0
     }
-    
+
     // Feed modem IQ to RADAE RX
     radae_rx_write_modem_iq(&radae_ctx, radae_modem_iq, modem_len);
-    
+
     // Try to get decoded speech from RADAE RX
     // Limit to MAX_BINS/12 samples (170) since 16kHz->96kHz upsampling multiplies by 6,
     // and we need output to fit in MAX_BINS/2 (1024) buffer
     int max_speech_samples = (MAX_BINS / 2) / 6;  // = 170 samples max
     int speech_samples = radae_rx_read_speech(&radae_ctx, radae_speech_out, max_speech_samples);
-    
+
     if (speech_samples > 0) {
+        // Amplitude of the 16 kHz speech the decoder produced this block.
+        // If rx_dv baseband_in is non-zero but speech_out stays at 0, the
+        // RADAE decoder is receiving signal but failing to sync/decode.
+        for (int i = 0; i < speech_samples; i++) {
+            RADAE_AMPL_LOG("rx_dv speech_out", radae_speech_out[i]);
+        }
+
         // Upsample 16kHz speech to 96kHz for speaker output
         int output_len;
         resample_16k_to_96k(radae_speech_out, speech_samples, speech_out, &output_len);
         // Zero remaining samples to avoid stale data if output_len < block_size
         if ((uint32_t)output_len < block_size) {
             memset(speech_out + output_len, 0, (block_size - output_len) * sizeof(double));
+        }
+
+        // Amplitude of the 96 kHz speech heading to the speaker ALSA device,
+        // post scale to int32. This is what the user would actually hear.
+        for (int i = 0; i < (int)block_size; i++) {
+            RADAE_AMPL_LOG("rx_dv speaker_i32", (int64_t)(speech_out[i] * MAX_SAMPLE_VALUE));
         }
     } else {
         // No speech output yet
@@ -408,51 +449,56 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         }
     }
 
-    // Digital voice mode using RADAE
-    if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].digital_voice)
+    bool digital_voice = radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].digital_voice;
+
+    // Digital voice mode using RADAE: load fft_in/fft_m with upsampled complex
+    // RADAE IQ, then fall through to the shared SSB pipeline (FFT, filter,
+    // zero-sideband, TUNED_BINS rotate, IFFT, DAC) so the OFDM lands at the
+    // same IF the analog front end expects for voice.
+    if (digital_voice)
     {
-        dsp_process_digital_voice_tx(signal_input_f, block_size, signal_output_int, input_is_48k_stereo);
-        memset(output_loopback, 0, block_size * (snd_pcm_format_width(format) / 8));
-        memset(output_speaker, 0, block_size * (snd_pcm_format_width(format) / 8));
-        return;
+        dsp_prepare_digital_voice_tx(signal_input_f, block_size, input_is_48k_stereo);
     }
-    else if (radae_tx_active)
+    else
     {
-        // Stop RADAE TX if it was running but digital_voice is now disabled
-        radae_tx_stop(&radae_ctx);
-        radae_tx_active = false;
-    }
+        if (radae_tx_active)
+        {
+            // Stop RADAE TX if it was running but digital_voice is now disabled
+            radae_tx_stop(&radae_ctx);
+            radae_tx_active = false;
+        }
 
 #if DEBUG_DSP_ == 1
-    static double max_i_sample = -100000000;
-    static double min_i_sample = 100000000;
+        static double max_i_sample = -100000000;
+        static double min_i_sample = 100000000;
 #endif
 
-    //gather the samples into a time domain array
-    for (i = MAX_BINS/2; i < MAX_BINS; i++, j++)
-    {
-        i_sample = signal_input_f[j];
+        //gather the samples into a time domain array
+        for (i = MAX_BINS/2; i < MAX_BINS; i++, j++)
+        {
+            i_sample = signal_input_f[j];
 
 #if DEBUG_DSP_ == 1
-        if (max_i_sample < i_sample)
-        {
-            max_i_sample = i_sample;
-            printf("input_tx %d\n", signal_input_int[j]);
-            printf("max_tx_sample %f\n\n", max_i_sample);
-        }
-        if (min_i_sample > i_sample)
-        {
-            min_i_sample = i_sample;
-            printf("input_tx %d\n", signal_input_int[j]);
-            printf("min_tx_sample %f\n\n", min_i_sample);
-        }
+            if (max_i_sample < i_sample)
+            {
+                max_i_sample = i_sample;
+                printf("input_tx %d\n", signal_input_int[j]);
+                printf("max_tx_sample %f\n\n", max_i_sample);
+            }
+            if (min_i_sample > i_sample)
+            {
+                min_i_sample = i_sample;
+                printf("input_tx %d\n", signal_input_int[j]);
+                printf("min_tx_sample %f\n\n", min_i_sample);
+            }
 #endif
 
-        __real__ fft_m[j] = i_sample;
-        __imag__ fft_m[j] = 0;
+            __real__ fft_m[j] = i_sample;
+            __imag__ fft_m[j] = 0;
 
-        __real__ fft_in[i]  = i_sample;
-        __imag__ fft_in[i]  = 0;
+            __real__ fft_in[i]  = i_sample;
+            __imag__ fft_in[i]  = 0;
+        }
     }
 
     //convert to frequency
