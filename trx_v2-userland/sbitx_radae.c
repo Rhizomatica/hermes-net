@@ -138,10 +138,22 @@ bool radae_init(radae_context *ctx, radio *radio_h, const char *radae_dir)
         fprintf(stderr, "RADAE: debug logging enabled\n");
     }
 
+    // Start the persistent TX thread.  The thread forks the python
+    // pipeline, pre-warms it (torch + numpy imports, model load, first
+    // inference JIT) in the background, then sits idle until PTT.  See
+    // radae_tx_thread for the gating on ctx->tx_running.
+    ctx->tx_running = false;
+    if (pthread_create(&ctx->tx_thread, NULL, radae_tx_thread, ctx) != 0) {
+        fprintf(stderr, "RADAE: Failed to create TX thread\n");
+        goto cleanup_rx_speech;
+    }
+
     fprintf(stderr, "RADAE: Initialized with radae_dir=%s\n", ctx->radae_dir);
 
     return true;
 
+cleanup_rx_speech:
+    free(ctx->rx_speech_buffer);
 cleanup_rx_modem:
     free(ctx->rx_modem_buffer);
 cleanup_tx_modem:
@@ -160,71 +172,74 @@ void radae_shutdown(radae_context *ctx)
 {
     if (!ctx->initialized)
         return;
-    
+
     ctx->shutdown_requested = true;
-    
-    // Stop TX and RX if running
+
+    // Flip flow-control flags first so the threads observe shutdown
+    // on their next loop iteration.
     radae_tx_stop(ctx);
     radae_rx_stop(ctx);
-    
-    // Cleanup
+
+    // Tear down the persistent TX pipeline: kill the subprocess, then
+    // join the thread.  The thread's own cleanup path waitpid()s, so
+    // the SIGTERM is a belt-and-suspenders for the case where Python
+    // is stuck (e.g. blocked on read with no EOF yet).
+    pthread_cond_signal(&ctx->tx_cond);
+    if (ctx->tx_encoder_pid > 0) {
+        kill(ctx->tx_encoder_pid, SIGTERM);
+    }
+    pthread_join(ctx->tx_thread, NULL);
+
     pthread_mutex_destroy(&ctx->tx_mutex);
     pthread_mutex_destroy(&ctx->rx_mutex);
     pthread_cond_destroy(&ctx->tx_cond);
     pthread_cond_destroy(&ctx->rx_cond);
-    
+
     free(ctx->tx_speech_buffer);
     free(ctx->tx_modem_buffer);
     free(ctx->rx_modem_buffer);
     free(ctx->rx_speech_buffer);
-    
+
     ctx->initialized = false;
     fprintf(stderr, "RADAE: Shutdown complete\n");
 }
 
+// Flow-control only.  The TX thread and Python subprocess were started
+// at radae_init time and stay alive for the service lifetime; this
+// function just resets the ring buffers and flips the gating flag so
+// radae_tx_write_speech / radae_tx_read_modem_iq begin accepting
+// samples.  The ring-buffer reset is essential — without it, stale IQ
+// from the end of a prior PTT could play at the start of the next one.
 bool radae_tx_start(radae_context *ctx)
 {
     if (!ctx->initialized || ctx->tx_running)
         return false;
-    
-    ctx->tx_running = true;
+
+    pthread_mutex_lock(&ctx->tx_mutex);
     ctx->tx_speech_buffer_write_idx = 0;
-    ctx->tx_speech_buffer_read_idx = 0;
-    ctx->tx_modem_buffer_write_idx = 0;
-    ctx->tx_modem_buffer_read_idx = 0;
-    
-    // Start TX processing thread
-    if (pthread_create(&ctx->tx_thread, NULL, radae_tx_thread, ctx) != 0) {
-        fprintf(stderr, "RADAE: Failed to create TX thread\n");
-        ctx->tx_running = false;
-        return false;
-    }
-    
-    fprintf(stderr, "RADAE TX: Started\n");
+    ctx->tx_speech_buffer_read_idx  = 0;
+    ctx->tx_modem_buffer_write_idx  = 0;
+    ctx->tx_modem_buffer_read_idx   = 0;
+    ctx->tx_running = true;
+    pthread_cond_signal(&ctx->tx_cond);
+    pthread_mutex_unlock(&ctx->tx_mutex);
+
+    fprintf(stderr, "RADAE TX: flow enabled\n");
     return true;
 }
 
+// Flow-control only.  Leave the Python subprocess and TX thread alive
+// so the next PTT can start producing IQ within one modem frame
+// instead of re-paying the ~6 s torch/numpy/JIT warmup.  Teardown is
+// handled in radae_shutdown.
 void radae_tx_stop(radae_context *ctx)
 {
     if (!ctx->tx_running)
         return;
-    
+
     ctx->tx_running = false;
-    
-    // Signal the thread to wake up
     pthread_cond_signal(&ctx->tx_cond);
-    
-    // Wait for thread to finish
-    pthread_join(ctx->tx_thread, NULL);
-    
-    // Kill any subprocess
-    if (ctx->tx_encoder_pid > 0) {
-        kill(ctx->tx_encoder_pid, SIGTERM);
-        waitpid(ctx->tx_encoder_pid, NULL, 0);
-        ctx->tx_encoder_pid = 0;
-    }
-    
-    fprintf(stderr, "RADAE TX: Stopped\n");
+    fprintf(stderr, "RADAE TX: flow disabled\n");
 }
 
 bool radae_rx_start(radae_context *ctx)
@@ -381,11 +396,18 @@ static void *radae_tx_thread(void *arg)
     // Build command for TX pipeline
     // RADEv2: lpcnet_demo -features -> radae_txe2.py -> IQ samples
 
+    // stdbuf -o0 forces lpcnet_demo's stdout to be unbuffered.  When glibc
+    // detects a non-TTY (i.e. a pipe), it defaults stdout to full block
+    // buffering (~64 KiB).  At ~14.4 KiB/s of feature data that means ~4.5 s
+    // of silence from the Python script after PTT — observed as "py stdout
+    // STARVED 6.35s" with out/in=0.0032 after a 10 s key-down.
+    // python3 -u is defensive; the script already calls stdout.flush() each
+    // frame but -u guarantees unbuffered I/O in all future code paths.
     char cmd[2048];
     snprintf(cmd, sizeof(cmd),
              "cd %s && "
-             "build/src/lpcnet_demo -features - - | "
-             "python3 radae_txe2.py --model_name %s",
+             "stdbuf -o0 build/src/lpcnet_demo -features - - | "
+             "python3 -u radae_txe2.py --model_name %s",
              ctx->radae_dir,
              RADAE_MODEL_PATH);
     
@@ -434,24 +456,129 @@ static void *radae_tx_thread(void *arg)
     // Parent process
     close(stdin_pipe[0]);  // Close read end of stdin pipe
     close(stdout_pipe[1]); // Close write end of stdout pipe
-    
+
     ctx->tx_encoder_pid = pid;
-    
+
     int write_fd = stdin_pipe[1];
     int read_fd = stdout_pipe[0];
-    
+
     // Set non-blocking on read
     int flags = fcntl(read_fd, F_GETFL, 0);
     fcntl(read_fd, F_SETFL, flags | O_NONBLOCK);
-    
+
     // Buffer for reading speech and writing to pipe (16-bit PCM)
     int16_t pcm_buffer[RADAE_FRAME_SIZE];
     float speech_buffer[RADAE_FRAME_SIZE];
-    
+
     // Buffer for reading IQ from pipe
     float iq_buffer[4096];
 
-    while (ctx->tx_running && !ctx->shutdown_requested) {
+    // Starvation detector for the Python pipeline's stdout.
+    // We report once when stdout has been silent for >STARVE_THRESH_S
+    // and once again when it resumes.  Cumulative totals make the ratio
+    // between input (speech) and output (IQ) visible at a glance.
+    // With the persistent-pipeline refactor, the only STARVED event we
+    // expect to see is during the init-time warmup below — every PTT
+    // thereafter should produce IQ within one modem frame.
+    const double STARVE_THRESH_S = 0.5;
+    struct timespec tx_start_t;
+    clock_gettime(CLOCK_MONOTONIC, &tx_start_t);
+    struct timespec tx_out_last_t = tx_start_t;
+    bool tx_starved = false;
+    uint64_t tx_in_samp_total   = 0;
+    uint64_t tx_out_csamp_total = 0;
+
+    // Pre-warm: amortize the ~6 s torch + numpy import + model load +
+    // first-inference JIT cost *before* the first PTT.  Feed 1 s of
+    // zero-valued 16 kHz PCM, read and discard the resulting IQ, then
+    // drop through to the main loop where tx_running gates everything.
+    // Writes are blocking and Python only reads ~16 kB/s while the
+    // first inference is still compiling, so the pipe buffer
+    // back-pressures us — that's fine, we run in the background while
+    // the rest of sbitx finishes initializing.
+    {
+        fprintf(stderr, "RADAE TX: pre-warming python pipeline...\n");
+        int16_t warm_pcm[RADAE_FRAME_SIZE];
+        memset(warm_pcm, 0, sizeof(warm_pcm));
+        const int warmup_frames = 100; // 100 * 10 ms = 1 s of silence
+        struct timespec warm_t0;
+        clock_gettime(CLOCK_MONOTONIC, &warm_t0);
+        for (int i = 0; i < warmup_frames && !ctx->shutdown_requested; i++) {
+            ssize_t w = write(write_fd, warm_pcm, sizeof(warm_pcm));
+            (void)w;
+            // Drain whatever IQ has come out so far to keep the
+            // stdout pipe empty and avoid back-pressuring Python.
+            while (read(read_fd, iq_buffer, sizeof(iq_buffer)) > 0) {}
+        }
+        // Wait up to 15 s for the first output frame — this is the
+        // signal that JIT is complete.
+        bool warm_ok = false;
+        struct timespec t_deadline = warm_t0;
+        t_deadline.tv_sec += 15;
+        while (!ctx->shutdown_requested) {
+            ssize_t n = read(read_fd, iq_buffer, sizeof(iq_buffer));
+            if (n > 0) { warm_ok = true; break; }
+            struct timespec now;
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            if (now.tv_sec > t_deadline.tv_sec) break;
+            struct timespec slp = {0, 10 * 1000 * 1000}; // 10 ms
+            nanosleep(&slp, NULL);
+        }
+        // Drain anything else that accumulated.
+        while (read(read_fd, iq_buffer, sizeof(iq_buffer)) > 0) {}
+        struct timespec warm_t1;
+        clock_gettime(CLOCK_MONOTONIC, &warm_t1);
+        double warm_dt = (warm_t1.tv_sec  - warm_t0.tv_sec) +
+                         (warm_t1.tv_nsec - warm_t0.tv_nsec) / 1e9;
+        fprintf(stderr, "RADAE TX: warmup %s in %.2fs\n",
+                warm_ok ? "complete" : "timed out (check logs)", warm_dt);
+        // Reset the starvation clock so the warmup itself doesn't
+        // trigger a STARVED event once the main loop starts.
+        clock_gettime(CLOCK_MONOTONIC, &tx_out_last_t);
+        tx_starved = false;
+        tx_in_samp_total   = 0;
+        tx_out_csamp_total = 0;
+    }
+
+    while (!ctx->shutdown_requested) {
+        // Idle branch: PTT is off (or DV mode just got disabled).
+        // Don't feed python; don't write to the modem buffer.  Drain
+        // any stale IQ so it doesn't leak into the next key-down, and
+        // keep tx_out_last_t fresh so the starvation detector doesn't
+        // fire spuriously while we wait.
+        if (!ctx->tx_running) {
+            while (read(read_fd, iq_buffer, sizeof(iq_buffer)) > 0) {}
+            clock_gettime(CLOCK_MONOTONIC, &tx_out_last_t);
+            tx_starved = false;
+            pthread_mutex_lock(&ctx->tx_mutex);
+            struct timespec ts;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            ts.tv_nsec += 50 * 1000 * 1000; // 50 ms
+            if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
+            pthread_cond_timedwait(&ctx->tx_cond, &ctx->tx_mutex, &ts);
+            pthread_mutex_unlock(&ctx->tx_mutex);
+            continue;
+        }
+
+        // Once per iteration, check for stdout starvation.
+        if (radae_debug && !tx_starved) {
+            struct timespec _now;
+            clock_gettime(CLOCK_MONOTONIC, &_now);
+            double silence = (_now.tv_sec  - tx_out_last_t.tv_sec) +
+                             (_now.tv_nsec - tx_out_last_t.tv_nsec) / 1e9;
+            if (silence > STARVE_THRESH_S) {
+                fprintf(stderr,
+                    "RADAE TX: py stdout STARVED %.2fs silent "
+                    "(in=%llu samp, out=%llu csamp, ratio out/in=%.4f)\n",
+                    silence,
+                    (unsigned long long)tx_in_samp_total,
+                    (unsigned long long)tx_out_csamp_total,
+                    tx_in_samp_total ?
+                      (double)tx_out_csamp_total / (double)tx_in_samp_total : 0.0);
+                tx_starved = true;
+            }
+        }
+
         // Check for speech data in buffer
         pthread_mutex_lock(&ctx->tx_mutex);
         int available = BUFFER_SIZE(ctx->tx_speech_buffer_write_idx, 
@@ -496,6 +623,7 @@ static void *radae_tx_thread(void *arg)
             break;
         }
         if (written > 0) {
+            tx_in_samp_total += (uint64_t)(written / sizeof(int16_t));
             RADAE_RATE_LOG("tx_py_stdin  ctx->py",  "samp",
                            (int)(written / sizeof(int16_t)), "16000 samp/s");
         }
@@ -505,18 +633,39 @@ static void *radae_tx_thread(void *arg)
         ssize_t bytes_read = read(read_fd, iq_buffer, sizeof(iq_buffer));
         if (bytes_read > 0) {
             int n_floats = bytes_read / sizeof(float);
-            
+
             pthread_mutex_lock(&ctx->tx_mutex);
-            int free_space = BUFFER_FREE(ctx->tx_modem_buffer_write_idx, 
-                                          ctx->tx_modem_buffer_read_idx, 
+            int free_space = BUFFER_FREE(ctx->tx_modem_buffer_write_idx,
+                                          ctx->tx_modem_buffer_read_idx,
                                           RADAE_MODEM_BUFFER_SIZE * 2);
             int to_write = (n_floats < free_space) ? n_floats : free_space;
-            
+
             for (int i = 0; i < to_write; i++) {
                 ctx->tx_modem_buffer[ctx->tx_modem_buffer_write_idx] = iq_buffer[i];
                 ctx->tx_modem_buffer_write_idx = (ctx->tx_modem_buffer_write_idx + 1) % (RADAE_MODEM_BUFFER_SIZE * 2);
             }
             pthread_mutex_unlock(&ctx->tx_mutex);
+
+            // Starvation bookkeeping: update cumulative totals and last-seen
+            // timestamp; if we were previously starved, announce recovery.
+            tx_out_csamp_total += (uint64_t)(n_floats / 2);
+            struct timespec _now;
+            clock_gettime(CLOCK_MONOTONIC, &_now);
+            if (tx_starved) {
+                double silence = (_now.tv_sec  - tx_out_last_t.tv_sec) +
+                                 (_now.tv_nsec - tx_out_last_t.tv_nsec) / 1e9;
+                fprintf(stderr,
+                    "RADAE TX: py stdout RESUMED after %.2fs "
+                    "(in=%llu samp, out=%llu csamp, ratio out/in=%.4f)\n",
+                    silence,
+                    (unsigned long long)tx_in_samp_total,
+                    (unsigned long long)tx_out_csamp_total,
+                    tx_in_samp_total ?
+                      (double)tx_out_csamp_total / (double)tx_in_samp_total : 0.0);
+                tx_starved = false;
+            }
+            tx_out_last_t = _now;
+
             // n_floats is interleaved I/Q, so csamp count = n_floats/2
             RADAE_RATE_LOG("tx_py_stdout py->ctx",  "csamp",
                            n_floats / 2, "8000 csamp/s");
@@ -529,7 +678,25 @@ static void *radae_tx_thread(void *arg)
     // Wait for child process
     waitpid(pid, NULL, 0);
     ctx->tx_encoder_pid = 0;
-    
+
+    if (radae_debug) {
+        struct timespec _now;
+        clock_gettime(CLOCK_MONOTONIC, &_now);
+        double elapsed = (_now.tv_sec  - tx_start_t.tv_sec) +
+                         (_now.tv_nsec - tx_start_t.tv_nsec) / 1e9;
+        // Expected ratio: 8000 csamp out / 16000 samp in = 0.5
+        fprintf(stderr,
+            "RADAE TX: summary %.2fs elapsed, in=%llu samp (%.0f/s), "
+            "out=%llu csamp (%.0f/s), ratio out/in=%.4f (expect 0.5)\n",
+            elapsed,
+            (unsigned long long)tx_in_samp_total,
+            elapsed > 0 ? (double)tx_in_samp_total / elapsed : 0.0,
+            (unsigned long long)tx_out_csamp_total,
+            elapsed > 0 ? (double)tx_out_csamp_total / elapsed : 0.0,
+            tx_in_samp_total ?
+              (double)tx_out_csamp_total / (double)tx_in_samp_total : 0.0);
+    }
+
     fprintf(stderr, "RADAE TX: Thread exiting\n");
     return NULL;
 }
@@ -542,11 +709,14 @@ static void *radae_rx_thread(void *arg)
     
     // RADEv2 RX pipeline: IQ samples -> radae_rxe2.py -> features -> lpcnet_demo -fargan-synthesis
 
+    // Same stdio-buffering workaround as TX: lpcnet_demo's stdout is fully
+    // buffered when piped, delaying audio arrival by up to the buffer size.
+    // -u on Python is defensive; radae_rxe2.py already flushes per write.
     char cmd[2048];
     snprintf(cmd, sizeof(cmd),
              "cd %s && "
-             "python3 radae_rxe2.py --model_name %s --frame_sync_model_name %s | "
-             "build/src/lpcnet_demo -fargan-synthesis - -",
+             "python3 -u radae_rxe2.py --model_name %s --frame_sync_model_name %s | "
+             "stdbuf -o0 build/src/lpcnet_demo -fargan-synthesis - -",
              ctx->radae_dir,
              RADAE_MODEL_PATH,
              RADAE_SYNC_MODEL_PATH);
