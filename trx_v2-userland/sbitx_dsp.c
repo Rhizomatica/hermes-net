@@ -538,12 +538,10 @@ void dsp_process_tx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
 
     double multiplier = get_band_multiplier() * (double) radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].power_level_percentage / 100.0;
     RADAE_AMPL_LOG("tx_ssb mult*pct", multiplier);
-    // DV through the shared pipeline uses complex input with |tx|=1 (hard
-    // clipper, constant envelope) and no sideband-halving, so creal(fft_time)
-    // stays near unit magnitude where SSB voice only peaks there. Keeping the
-    // SSB constant of 4000 overdrives the analog chain by ~4x, splattering the
-    // spectrum. Scale DV down to put the DAC peak near SSB voice peak (~4.5e8).
-    const double tx_scale = digital_voice ? 900.0 : 4000.0;
+    // DV is constant-envelope (PAR ~0 dB) where voice has ~10 dB PAR, so at
+    // equal peak the PA sees ~10 dB more average power and splatters. Scale
+    // DV so its peak lands below SSB voice peak (~4.5e8 on this radio).
+    const double tx_scale = digital_voice ? 400.0 : 4000.0;
     for (i = 0; i < MAX_BINS / 2; i++)
     {
         double _ssb_pre = creal(fft_time[i+(MAX_BINS/2)]);
