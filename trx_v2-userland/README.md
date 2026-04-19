@@ -96,6 +96,88 @@ Example:
 * sbitx_controller
 
 
+# RADEv2 Digital Voice Mode
+
+This software supports RADEv2 (Radio Autoencoder Version 2) for digital voice
+transmission over HF. When enabled, speech is encoded using the RADAE ML-based
+codec and transmitted within the SSB passband.
+
+## RADEv2 Prerequisites
+
+1. Clone the RADAE repository:
+```bash
+cd /path/to/hermes-net
+git clone https://github.com/drowe67/radae.git
+git checkout dr-radev2
+```
+
+2. Build RADAE (read ../radae/README.md - THIS IS INCOMPLETE):
+```bash
+cd radae
+mkdir build && cd build
+cmake ..
+make
+```
+
+3. Install Python dependencies:
+```bash
+pip3 install torch numpy matplotlib
+```
+
+4. Ensure the RADEv2 model files are present:
+   - `radae/250725/checkpoints/checkpoint_epoch_200.pth` (main model)
+   - `radae/250725a_ml_sync` (ML frame sync model, passed to the RX wrapper
+     via `--frame_sync_model_name`)
+
+   The paths are hard-coded in `sbitx_radae.h` as `RADAE_MODEL_PATH` and
+   `RADAE_SYNC_MODEL_PATH`; override them there if you relocate the files.
+
+## Building with RADEv2 Support
+
+Build as usual - RADEv2 support is included automatically:
+```bash
+cd trx_v2-userland
+make
+```
+
+## Using Digital Voice Mode
+
+Enable digital voice via the sbitx_client:
+```bash
+sbitx_client -c set_digital_voice -a 1 -p 0    # Enable digital voice on profile 0
+sbitx_client -c set_digital_voice -a 0 -p 0    # Disable digital voice
+sbitx_client -c get_digital_voice -p 0         # Check digital voice status
+```
+
+When digital voice is enabled:
+- **TX**: Speech from mic/loopback is encoded via LPCNet feature extraction,
+  processed through the RADAE encoder, and the resulting modem waveform
+  is placed in the SSB passband.
+- **RX**: The received SSB signal is decoded by RADAE, and
+  synthesized back to speech via LPCNet FARGAN synthesis.
+
+## Technical Details
+
+- Speech sample rate: 16 kHz (LPCNet / FARGAN)
+- Modem sample rate: 8 kHz (RADAE, complex baseband)
+- Radio sample rate: 96 kHz
+- RADEv2 waveform: OFDM with Nc=14 carriers, Ns=2 symbols/frame, M=128,
+  Ncp=32 (4 ms cyclic prefix), no pilots
+- RADEv2 ML parameters: latent_dim=56, Nzmf=1, w1_dec=128, auxdata enabled,
+  peak+bottleneck=3 hard clipper (constant-envelope output)
+- Frame sync via the `250725a_ml_sync` ML classifier
+- Models: `250725/checkpoints/checkpoint_epoch_200.pth` + `250725a_ml_sync`
+
+The digital voice processing runs as subprocess pipelines backed by the
+streaming V2 wrappers in `../radae`:
+
+- TX: `lpcnet_demo -features` → `radae_txe2.py` → modem IQ
+- RX: `radae_rxe2.py` → `lpcnet_demo -fargan-synthesis` → speech
+
+Both wrappers exchange 36-float FARGAN feature vectors with `lpcnet_demo`
+and complex `float32` IQ at 8 kHz with the radio, so they drop into the
+pipes without any extra reshape stage on the C side.
+
 # Author
 
 Rafael Diniz @ Rhizomatica

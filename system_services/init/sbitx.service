@@ -7,6 +7,8 @@ ExecStart=/usr/bin/sbitx_controller
 KillSignal=SIGTERM
 IgnoreSIGPIPE=no
 Restart=always
+Environment=PATH=/opt/radae/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+WorkingDirectory=/opt/radae
 
 [Install]
 WantedBy=multi-user.target
