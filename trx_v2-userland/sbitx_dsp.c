@@ -353,13 +353,19 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
         // Process through RADAE digital voice decoder
         dsp_process_digital_voice_rx(rx_baseband, block_size, speech_out);
         
-        // Output decoded speech
+        // Output decoded speech. FARGAN output arrives at roughly -18 dBFS
+        // peak / -28 dBFS mean -- inaudible against typical SSB voice RX. Boost
+        // by 5x and clip to [-0.95, 0.95] to stay well under int32 overflow.
         int32_t *output_speaker_int = (int32_t *)output_speaker;
         int32_t *output_loopback_int = (int32_t *)output_loopback;
-        
+
+        const double dv_rx_gain = 5.0;
         for (int k = 0; k < block_size; k++)
         {
-            output_speaker_int[k] = (int32_t)(speech_out[k] * MAX_SAMPLE_VALUE);
+            double s = speech_out[k] * dv_rx_gain;
+            if (s >  0.95) s =  0.95;
+            if (s < -0.95) s = -0.95;
+            output_speaker_int[k] = (int32_t)(s * MAX_SAMPLE_VALUE);
             if ((k % 2) == 0)
             {
                 output_loopback_int[k] = output_speaker_int[k] << 4;
