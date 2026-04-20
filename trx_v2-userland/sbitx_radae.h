@@ -115,6 +115,9 @@ bool radae_rx_start(radae_context *ctx);
 // Stop RX processing
 void radae_rx_stop(radae_context *ctx);
 
+// Flush RX buffers (call on TX->RX transition to discard stale data)
+void radae_rx_flush(radae_context *ctx);
+
 // TX: Feed speech samples (expects 16kHz mono float samples)
 // Returns number of samples written
 int radae_tx_write_speech(radae_context *ctx, const float *samples, int n_samples);

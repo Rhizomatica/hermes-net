@@ -287,6 +287,22 @@ void radae_rx_stop(radae_context *ctx)
     fprintf(stderr, "RADAE RX: Stopped\n");
 }
 
+void radae_rx_flush(radae_context *ctx)
+{
+    if (!ctx)
+        return;
+    
+    pthread_mutex_lock(&ctx->rx_mutex);
+    
+    // Reset buffer indices to discard any stale IQ/speech data
+    ctx->rx_modem_buffer_write_idx = 0;
+    ctx->rx_modem_buffer_read_idx = 0;
+    ctx->rx_speech_buffer_write_idx = 0;
+    ctx->rx_speech_buffer_read_idx = 0;
+    
+    pthread_mutex_unlock(&ctx->rx_mutex);
+}
+
 int radae_tx_write_speech(radae_context *ctx, const float *samples, int n_samples)
 {
     if (!ctx->tx_running || !samples || n_samples <= 0)

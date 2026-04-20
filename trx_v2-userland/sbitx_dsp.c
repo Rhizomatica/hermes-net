@@ -165,24 +165,25 @@ static void dsp_prepare_digital_voice_tx(double *signal_input_f, uint32_t block_
 }
 
 // Digital voice RX processing using RADAE
-// Takes 96kHz received signal, extracts RADAE modem signal, outputs decoded speech
-static void dsp_process_digital_voice_rx(double *rx_baseband, uint32_t block_size, double *speech_out)
+// Takes 96kHz complex IQ from SSB demod (I and Q arrays), outputs decoded speech
+static void dsp_process_digital_voice_rx(double *rx_baseband_i, double *rx_baseband_q, uint32_t block_size, double *speech_out)
 {
-    // Resample 96kHz baseband to 8kHz for RADAE modem
-    // SSB demod gives us real-valued baseband containing the RADAE OFDM waveform
-    // No carrier mixing needed - just resample and create complex IQ with Q=0
-    int modem_len;
-    float modem_8k[block_size / 12 + 1];
-    resample_96k_to_8k(rx_baseband, block_size, modem_8k, &modem_len);
+    // Resample 96kHz complex IQ to 8kHz for RADAE modem
+    // SSB demod (IFFT of filtered/rotated signal) produces complex output;
+    // RADAE OFDM needs both I and Q to decode properly.
+    int modem_len_i, modem_len_q;
+    float modem_8k_i[block_size / 12 + 1];
+    float modem_8k_q[block_size / 12 + 1];
+    resample_96k_to_8k(rx_baseband_i, block_size, modem_8k_i, &modem_len_i);
+    resample_96k_to_8k(rx_baseband_q, block_size, modem_8k_q, &modem_len_q);
+    int modem_len = modem_len_i < modem_len_q ? modem_len_i : modem_len_q;
 
-    // Amplitude of the real baseband entering the RADAE decoder. Peak > 0
-    // means *something* is coming in (carrier, noise, or a DV signal); peak
-    // near 0 means the SSB demod path is delivering silence.
+    // Amplitude of the complex baseband entering the RADAE decoder
     for (int i = 0; i < modem_len; i++) {
-        RADAE_AMPL_LOG("rx_dv baseband_in", modem_8k[i]);
+        RADAE_AMPL_LOG("rx_dv baseband_in", modem_8k_i[i]);
     }
 
-    // Optional raw 8 kHz float32 dump of the real baseband that feeds the
+    // Optional raw 8 kHz complex float32 dump (interleaved I,Q) that feeds the
     // RADAE RX. Enabled by touching /tmp/radae_rx_dump (file's presence is
     // checked once per call). Lets us capture a live over-the-air signal
     // and offline-decode it with radae_rxe2.py to separate a pipeline
@@ -193,20 +194,24 @@ static void dsp_process_digital_voice_rx(double *rx_baseband, uint32_t block_siz
         if (!dump_checked) {
             dump_checked = 1;
             if (access("/tmp/radae_rx_dump", F_OK) == 0) {
-                dump_fp = fopen("/tmp/radae_rx_dump.f32", "wb");
+                dump_fp = fopen("/tmp/radae_rx_dump.cf32", "wb");
                 if (dump_fp)
-                    fprintf(stderr, "RADAE RX dump: writing /tmp/radae_rx_dump.f32\n");
+                    fprintf(stderr, "RADAE RX dump: writing /tmp/radae_rx_dump.cf32 (complex)\n");
             }
         }
         if (dump_fp) {
-            fwrite(modem_8k, sizeof(float), modem_len, dump_fp);
+            // Write interleaved complex samples for offline analysis
+            for (int i = 0; i < modem_len; i++) {
+                fwrite(&modem_8k_i[i], sizeof(float), 1, dump_fp);
+                fwrite(&modem_8k_q[i], sizeof(float), 1, dump_fp);
+            }
         }
     }
 
-    // Create complex IQ for RADAE: I = real signal, Q = 0
+    // Create interleaved complex IQ for RADAE
     for (int i = 0; i < modem_len; i++) {
-        radae_modem_iq[i*2] = modem_8k[i];      // I component = real signal
-        radae_modem_iq[i*2+1] = 0.0f;           // Q component = 0
+        radae_modem_iq[i*2] = modem_8k_i[i];     // I component
+        radae_modem_iq[i*2+1] = modem_8k_q[i];   // Q component
     }
 
     // Feed modem IQ to RADAE RX
@@ -261,6 +266,8 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     {
         fft_reset_m_bins();
         clear_buffers();
+        // Flush RADAE RX buffers to discard stale data from before TX
+        radae_rx_flush(&radae_ctx);
         rx_starting = false;
     }
 
@@ -341,17 +348,20 @@ void dsp_process_rx(uint8_t *signal_input, uint8_t *output_speaker, uint8_t *out
     // STEP 8.5: Digital voice RX processing using RADAE
     if (radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].digital_voice)
     {
-        // Extract demodulated baseband for RADAE processing
-        static double rx_baseband[MAX_BINS/2];
+        // Extract demodulated complex IQ from SSB pipeline for RADAE processing
+        // The IFFT output (fft_time) contains complex signal; RADAE needs both components.
+        static double rx_baseband_i[MAX_BINS/2];
+        static double rx_baseband_q[MAX_BINS/2];
         static double speech_out[MAX_BINS/2];
         
         for (int k = 0; k < MAX_BINS/2; k++)
         {
-            rx_baseband[k] = cimag(fft_time[k + (MAX_BINS/2)]);
+            rx_baseband_i[k] = creal(fft_time[k + (MAX_BINS/2)]);
+            rx_baseband_q[k] = cimag(fft_time[k + (MAX_BINS/2)]);
         }
         
         // Process through RADAE digital voice decoder
-        dsp_process_digital_voice_rx(rx_baseband, block_size, speech_out);
+        dsp_process_digital_voice_rx(rx_baseband_i, rx_baseband_q, block_size, speech_out);
         
         // Output decoded speech. FARGAN output arrives at roughly -18 dBFS
         // peak / -28 dBFS mean -- inaudible against typical SSB voice RX. Boost
