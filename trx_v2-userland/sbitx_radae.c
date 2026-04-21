@@ -728,14 +728,18 @@ static void *radae_rx_thread(void *arg)
     // Same stdio-buffering workaround as TX: lpcnet_demo's stdout is fully
     // buffered when piped, delaying audio arrival by up to the buffer size.
     // -u on Python is defensive; radae_rxe2.py already flushes per write.
+    char verbose_arg[8] = "";
     char cmd[2048];
+    if (radae_is_debug())
+        strcpy(verbose_arg, " -v");
     snprintf(cmd, sizeof(cmd),
              "cd %s && "
-             "python3 -u radae_rxe2.py --model_name %s --frame_sync_model_name %s | "
+             "python3 -u radae_rxe2.py --model_name %s --frame_sync_model_name %s%s | "
              "stdbuf -o0 build/src/lpcnet_demo -fargan-synthesis - -",
              ctx->radae_dir,
              RADAE_MODEL_PATH,
-             RADAE_SYNC_MODEL_PATH);
+             RADAE_SYNC_MODEL_PATH,
+             verbose_arg);
     
     fprintf(stderr, "RADAE RX: Starting pipeline: %s\n", cmd);
     if (radae_debug) fprintf(stderr, "RADAE RX: debug enabled\n");

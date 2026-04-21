@@ -28,10 +28,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <alsa/asoundlib.h>
 #include <complex.h>
 #include <fftw3.h>
 #include <math.h>
+#include <unistd.h>
 
 
 #define USE_FFTW
@@ -93,6 +95,25 @@ static float radae_modem_iq[4096];      // 8kHz complex IQ (interleaved I,Q)
 static double radae_baseband_i[2048];   // 96kHz I component (complex IQ, upsampled)
 static double radae_baseband_q[2048];   // 96kHz Q component (complex IQ, upsampled)
 
+static void maybe_dump_tx_modem_iq(const float *iq_samples, int n_complex_samples)
+{
+    static FILE *dump_fp = NULL;
+
+    if (!iq_samples || n_complex_samples <= 0)
+        return;
+
+    if (!dump_fp && access("/tmp/radae_tx_dump", F_OK) == 0) {
+        dump_fp = fopen("/tmp/tx_clip.cf32", "wb");
+        if (dump_fp)
+            fprintf(stderr, "RADAE TX dump: writing /tmp/tx_clip.cf32 (complex)\n");
+    }
+
+    if (!dump_fp)
+        return;
+
+    fwrite(iq_samples, sizeof(float), (size_t)n_complex_samples * 2U, dump_fp);
+}
+
 // Digital voice TX preparation using RADAE.
 //
 // Loads fft_in (and fft_m for overlap-save) with upsampled complex RADAE IQ so
@@ -137,6 +158,7 @@ static void dsp_prepare_digital_voice_tx(double *signal_input_f, uint32_t block_
             iq_i_8k[s] = radae_modem_iq[s*2];
             iq_q_8k[s] = radae_modem_iq[s*2+1];
         }
+        maybe_dump_tx_modem_iq(radae_modem_iq, modem_samples);
         int len_i, len_q;
         resample_8k_to_96k(iq_i_8k, modem_samples, radae_baseband_i, &len_i);
         resample_8k_to_96k(iq_q_8k, modem_samples, radae_baseband_q, &len_q);
@@ -190,14 +212,10 @@ static void dsp_process_digital_voice_rx(double *rx_baseband_i, double *rx_baseb
     // issue from a sync/SNR issue.
     {
         static FILE *dump_fp = NULL;
-        static int dump_checked = 0;
-        if (!dump_checked) {
-            dump_checked = 1;
-            if (access("/tmp/radae_rx_dump", F_OK) == 0) {
-                dump_fp = fopen("/tmp/radae_rx_dump.cf32", "wb");
-                if (dump_fp)
-                    fprintf(stderr, "RADAE RX dump: writing /tmp/radae_rx_dump.cf32 (complex)\n");
-            }
+        if (!dump_fp && access("/tmp/radae_rx_dump", F_OK) == 0) {
+            dump_fp = fopen("/tmp/radae_rx_dump.cf32", "wb");
+            if (dump_fp)
+                fprintf(stderr, "RADAE RX dump: writing /tmp/radae_rx_dump.cf32 (complex)\n");
         }
         if (dump_fp) {
             // Write interleaved complex samples for offline analysis
