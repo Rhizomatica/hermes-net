@@ -220,6 +220,7 @@ bool radae_tx_start(radae_context *ctx)
     ctx->tx_speech_buffer_read_idx  = 0;
     ctx->tx_modem_buffer_write_idx  = 0;
     ctx->tx_modem_buffer_read_idx   = 0;
+    ctx->tx_eoo_only = false;
     ctx->tx_running = true;
     pthread_cond_signal(&ctx->tx_cond);
     pthread_mutex_unlock(&ctx->tx_mutex);
@@ -237,9 +238,36 @@ void radae_tx_stop(radae_context *ctx)
     if (!ctx->tx_running)
         return;
 
+    ctx->tx_eoo_only = false;
     ctx->tx_running = false;
     pthread_cond_signal(&ctx->tx_cond);
     fprintf(stderr, "RADAE TX: flow disabled\n");
+}
+
+bool radae_tx_emit_eoo(radae_context *ctx)
+{
+    if (!ctx || !ctx->initialized || ctx->tx_python_pid <= 1)
+        return false;
+
+    // Prevent any queued speech/silence after PTT-off from being encoded
+    // after the EOO frame. From this point until tr_switch finishes, the
+    // TX thread should only drain Python stdout into the modem ring buffer.
+    pthread_mutex_lock(&ctx->tx_mutex);
+    ctx->tx_speech_buffer_read_idx = ctx->tx_speech_buffer_write_idx;
+    ctx->tx_eoo_only = true;
+    pthread_cond_signal(&ctx->tx_cond);
+    pthread_mutex_unlock(&ctx->tx_mutex);
+
+    if (kill(ctx->tx_python_pid, SIGUSR1) != 0) {
+        fprintf(stderr, "RADAE TX: SIGUSR1 to python pid %d failed: %s\n",
+                (int)ctx->tx_python_pid, strerror(errno));
+        ctx->tx_eoo_only = false;
+        return false;
+    }
+    if (radae_debug)
+        fprintf(stderr, "RADAE TX: EOO requested (SIGUSR1 -> %d)\n",
+                (int)ctx->tx_python_pid);
+    return true;
 }
 
 bool radae_rx_start(radae_context *ctx)
@@ -305,7 +333,7 @@ void radae_rx_flush(radae_context *ctx)
 
 int radae_tx_write_speech(radae_context *ctx, const float *samples, int n_samples)
 {
-    if (!ctx->tx_running || !samples || n_samples <= 0)
+    if (!ctx->tx_running || ctx->tx_eoo_only || !samples || n_samples <= 0)
         return 0;
     
     pthread_mutex_lock(&ctx->tx_mutex);
@@ -423,13 +451,19 @@ static void *radae_tx_thread(void *arg)
     snprintf(cmd, sizeof(cmd),
              "cd %s && "
              "stdbuf -o0 build/src/lpcnet_demo -features - - | "
-             "python3 -u radae_txe2.py --model_name %s",
+             "python3 -u radae_txe2.py --model_name %s --pid_file %s",
              ctx->radae_dir,
-             RADAE_MODEL_PATH);
-    
+             RADAE_MODEL_PATH,
+             RADAE_TX_PID_FILE);
+
     fprintf(stderr, "RADAE TX: Starting pipeline: %s\n", cmd);
     if (radae_debug) fprintf(stderr, "RADAE TX: debug enabled\n");
-    
+
+    // Remove any stale pidfile from a prior run so we don't read it and
+    // signal a long-dead Python PID that may have been reassigned.
+    unlink(RADAE_TX_PID_FILE);
+    ctx->tx_python_pid = 0;
+
     // Create pipes for stdin and stdout
     int stdin_pipe[2], stdout_pipe[2];
     if (pipe(stdin_pipe) < 0) {
@@ -556,6 +590,28 @@ static void *radae_tx_thread(void *arg)
         tx_out_csamp_total = 0;
     }
 
+    // Pick up the Python PID that radae_txe2.py wrote to its pidfile.
+    // The subprocess has already produced IQ (or timed out) by this
+    // point, so the pidfile is guaranteed to exist unless Python died
+    // on startup.  We read it once here, not per-EOO, to keep the
+    // signal path fast and avoid racing a just-unlinked file.
+    {
+        FILE *pf = fopen(RADAE_TX_PID_FILE, "r");
+        if (pf) {
+            int p = 0;
+            if (fscanf(pf, "%d", &p) == 1 && p > 1) {
+                ctx->tx_python_pid = (pid_t)p;
+                fprintf(stderr, "RADAE TX: python pid %d (EOO signal target)\n",
+                        (int)ctx->tx_python_pid);
+            }
+            fclose(pf);
+        } else {
+            fprintf(stderr,
+                "RADAE TX: warning: %s missing; EOO on SIGUSR1 disabled "
+                "for this session\n", RADAE_TX_PID_FILE);
+        }
+    }
+
     while (!ctx->shutdown_requested) {
         // Idle branch: PTT is off (or DV mode just got disabled).
         // Don't feed python; don't write to the modem buffer.  Drain
@@ -575,6 +631,9 @@ static void *radae_tx_thread(void *arg)
             pthread_mutex_unlock(&ctx->tx_mutex);
             continue;
         }
+
+        if (ctx->tx_eoo_only)
+            goto read_output;
 
         // Once per iteration, check for stdout starvation.
         if (radae_debug && !tx_starved) {

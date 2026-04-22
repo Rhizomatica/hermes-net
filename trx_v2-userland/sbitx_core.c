@@ -480,6 +480,19 @@ void tr_switch(radio *radio_h, bool txrx_state)
     else
     {
         // printf("IN_RX\n");
+
+        // Digital-voice: ask the RADAE TX pipeline to emit its V2
+        // end-of-over frame BEFORE we drop PA drive.  Without this the
+        // receiver only sees the carrier disappear, so its decoder
+        // keeps its sync state and the next over starts with a stale
+        // tracker.  The DSP is still in IN_TX here (txrx_state flips
+        // at the end of this branch), so dsp_process_tx keeps draining
+        // the TX modem buffer into the DAC while the EOO IQ arrives.
+        // 150 ms covers ~30 ms of EOO IQ + the ALSA+DSP tail.
+        bool dv_eoo_sent = dsp_radae_tx_emit_eoo_if_dv();
+        if (dv_eoo_sent)
+            usleep(150000);
+
         usleep(10000);
 
         set_speaker_level(radio_h->profiles[radio_h->profile_active_idx].speaker_level);
@@ -494,6 +507,13 @@ void tr_switch(radio *radio_h, bool txrx_state)
 
         rx_starting = true;
         radio_h->txrx_state = IN_RX;
+
+        // Clear RADAE TX flow state AFTER txrx_state flips to IN_RX, so
+        // no further dsp_process_tx block can spuriously re-fire
+        // radae_tx_start via the lazy-start path in
+        // dsp_prepare_digital_voice_tx.
+        if (dv_eoo_sent)
+            dsp_radae_tx_end_over();
     }
 
     radio_h->send_ws_update = true;

@@ -88,6 +88,28 @@ _Atomic bool rx_starting = false;
 static radae_context radae_ctx;
 static _Atomic bool radae_tx_active = false;
 
+// See sbitx_dsp.h for contract; kept out-of-line here because radae_ctx
+// is deliberately file-private.  We also require radae_tx_active so
+// we don't signal into a pipeline that never ran any speech (first
+// PTT in a fresh DV session would otherwise emit a bogus EOO).
+bool dsp_radae_tx_emit_eoo_if_dv(void)
+{
+    if (!radae_tx_active)
+        return false;
+    if (!radio_h_dsp ||
+        !radio_h_dsp->profiles[radio_h_dsp->profile_active_idx].digital_voice)
+        return false;
+    return radae_tx_emit_eoo(&radae_ctx);
+}
+
+void dsp_radae_tx_end_over(void)
+{
+    if (!radae_tx_active)
+        return;
+    radae_tx_stop(&radae_ctx);
+    radae_tx_active = false;
+}
+
 // Buffers for RADAE sample rate conversion
 static float radae_speech_in[2048];     // 16kHz speech input
 static float radae_speech_out[2048];    // 16kHz speech output
@@ -133,6 +155,16 @@ static void maybe_dump_tx_modem_iq(const float *iq_samples, int n_complex_sample
 // the speech feed is unchanged.
 static void dsp_prepare_digital_voice_tx(double *signal_input_f, uint32_t block_size, bool input_is_48k_stereo)
 {
+    // Race guard: an ALSA block can start while txrx_state == IN_TX but
+    // still be in-flight when tr_switch flips to IN_RX and calls
+    // dsp_radae_tx_end_over (clearing radae_tx_active).  Without this
+    // check, the lazy-start below would spuriously re-fire radae_tx_start
+    // at PTT-off and leave the pipeline in a confused flow-enabled state
+    // for the next PTT.
+    if (!radae_tx_active &&
+        radio_h_dsp && radio_h_dsp->txrx_state != IN_TX)
+        return;
+
     if (!radae_tx_active) {
         radae_tx_start(&radae_ctx);
         radae_tx_active = true;

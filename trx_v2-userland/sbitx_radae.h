@@ -48,10 +48,17 @@
 #define RADAE_SYNC_MODEL_PATH    "250725a_ml_sync"
 #define RADAE_DIR                "/opt/radae"
 
+// radae_txe2.py writes its own PID here at startup; the TX thread reads it
+// back so radae_tx_emit_eoo can deliver SIGUSR1 to Python directly (the
+// fork+exec target is /bin/sh, so tx_encoder_pid points at the shell, not
+// Python).
+#define RADAE_TX_PID_FILE        "/tmp/radae_tx.pid"
+
 // RADAE context structure
 typedef struct {
     // Subprocess PIDs
-    pid_t tx_encoder_pid;    // TX encoder pipeline
+    pid_t tx_encoder_pid;    // TX encoder pipeline (sh -c, parent of lpcnet_demo + python)
+    pid_t tx_python_pid;     // radae_txe2.py child; target for SIGUSR1 (EOO)
     pid_t rx_decoder_pid;    // RX decoder pipeline
 
     // Circular buffers for sample rate conversion
@@ -86,6 +93,7 @@ typedef struct {
     // State flags
     _Atomic bool initialized;
     _Atomic bool tx_running;
+    _Atomic bool tx_eoo_only;    // stop feeding stdin, drain EOO/stdout only
     _Atomic bool rx_running;
     _Atomic bool shutdown_requested;
 
@@ -108,6 +116,14 @@ bool radae_tx_start(radae_context *ctx);
 
 // Stop TX processing (call when PTT is released)
 void radae_tx_stop(radae_context *ctx);
+
+// Ask radae_txe2.py to emit a V2 end-of-over frame (6 pend_cp symbols).
+// Non-blocking: sends SIGUSR1 to the cached Python PID and returns.  The
+// caller is responsible for giving the IQ time to flow through the
+// modem buffer -> DSP -> DAC before the PA drive is dropped.  Returns
+// false if the Python PID isn't known yet (startup race, or subprocess
+// died).
+bool radae_tx_emit_eoo(radae_context *ctx);
 
 // Start RX processing
 bool radae_rx_start(radae_context *ctx);
