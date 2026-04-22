@@ -178,6 +178,12 @@ Both wrappers exchange 36-float FARGAN feature vectors with `lpcnet_demo`
 and complex `float32` IQ at 8 kHz with the radio, so they drop into the
 pipes without any extra reshape stage on the C side.
 
+If the native RX path needs to be rolled back in the field, edit
+`trx_v2-userland/sbitx_radae.c` and change the RX command back to:
+`python3 -u radae_rxe2.py --model_name ... --frame_sync_model_name ...`.
+Then remove `RADAE_RX_BINARY_PATH` from that `snprintf(...)` argument list or
+simply revert commit `0708f81`, and rebuild `trx_v2-userland`.
+
 # Author
 
 Rafael Diniz @ Rhizomatica
