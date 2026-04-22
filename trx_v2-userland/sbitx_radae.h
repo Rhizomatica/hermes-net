@@ -46,6 +46,7 @@
 // Paths to RADAE resources (relative to radae directory)
 #define RADAE_MODEL_PATH         "250725/checkpoints/checkpoint_epoch_200.pth"
 #define RADAE_SYNC_MODEL_PATH    "250725a_ml_sync"
+#define RADAE_RX_BINARY_PATH     "build/src/radae_rx_v2"
 #define RADAE_DIR                "/opt/radae"
 
 // radae_txe2.py writes its own PID here at startup; the TX thread reads it

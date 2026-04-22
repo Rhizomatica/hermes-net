@@ -777,25 +777,26 @@ static void *radae_tx_thread(void *arg)
 }
 
 // RX thread implementation
-// Pipeline: modem IQ (8kHz) -> radae_rxe2.py -> lpcnet_demo -fargan-synthesis -> speech (16kHz)
+// Pipeline: modem IQ (8kHz) -> radae_rx_v2 -> lpcnet_demo -fargan-synthesis -> speech (16kHz)
 static void *radae_rx_thread(void *arg)
 {
     radae_context *ctx = (radae_context *)arg;
     
-    // RADEv2 RX pipeline: IQ samples -> radae_rxe2.py -> features -> lpcnet_demo -fargan-synthesis
+    // RADEv2 RX pipeline: IQ samples -> native radae_rx_v2 -> features -> lpcnet_demo -fargan-synthesis
 
     // Same stdio-buffering workaround as TX: lpcnet_demo's stdout is fully
     // buffered when piped, delaying audio arrival by up to the buffer size.
-    // -u on Python is defensive; radae_rxe2.py already flushes per write.
+    // The native decoder binary flushes per emitted feature block.
     char verbose_arg[8] = "";
     char cmd[2048];
     if (radae_is_debug())
         strcpy(verbose_arg, " -v");
     snprintf(cmd, sizeof(cmd),
              "cd %s && "
-             "python3 -u radae_rxe2.py --model_name %s --frame_sync_model_name %s%s | "
+             "%s --model_name %s --frame_sync_model_name %s%s | "
              "stdbuf -o0 build/src/lpcnet_demo -fargan-synthesis - -",
              ctx->radae_dir,
+             RADAE_RX_BINARY_PATH,
              RADAE_MODEL_PATH,
              RADAE_SYNC_MODEL_PATH,
              verbose_arg);

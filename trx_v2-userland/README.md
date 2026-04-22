@@ -169,10 +169,10 @@ When digital voice is enabled:
 - Models: `250725/checkpoints/checkpoint_epoch_200.pth` + `250725a_ml_sync`
 
 The digital voice processing runs as subprocess pipelines backed by the
-streaming V2 wrappers in `../radae`:
+V2 tools in `../radae`:
 
 - TX: `lpcnet_demo -features` → `radae_txe2.py` → modem IQ
-- RX: `radae_rxe2.py` → `lpcnet_demo -fargan-synthesis` → speech
+- RX: `radae_rx_v2` → `lpcnet_demo -fargan-synthesis` → speech
 
 Both wrappers exchange 36-float FARGAN feature vectors with `lpcnet_demo`
 and complex `float32` IQ at 8 kHz with the radio, so they drop into the
@@ -181,4 +181,3 @@ pipes without any extra reshape stage on the C side.
 # Author
 
 Rafael Diniz @ Rhizomatica
-
