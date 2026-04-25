@@ -171,18 +171,25 @@ When digital voice is enabled:
 The digital voice processing runs as subprocess pipelines backed by the
 V2 tools in `../radae`:
 
-- TX: `lpcnet_demo -features` → `radae_txe2.py` → modem IQ
+- TX: `lpcnet_demo -features` → `radae_tx_v2` → modem IQ
 - RX: `radae_rx_v2` → `lpcnet_demo -fargan-synthesis` → speech
 
 Both wrappers exchange 36-float FARGAN feature vectors with `lpcnet_demo`
 and complex `float32` IQ at 8 kHz with the radio, so they drop into the
-pipes without any extra reshape stage on the C side.
+pipes without any extra reshape stage on the C side.  The native TX
+honours the same `--pid_file` / SIGUSR1 EOO contract that
+`radae_txe2.py` did, so `radae_tx_emit_eoo` keeps working unchanged.
 
 If the native RX path needs to be rolled back in the field, edit
 `trx_v2-userland/sbitx_radae.c` and change the RX command back to:
 `python3 -u radae_rxe2.py --model_name ... --frame_sync_model_name ...`.
 Then remove `RADAE_RX_BINARY_PATH` from that `snprintf(...)` argument list or
 simply revert commit `0708f81`, and rebuild `trx_v2-userland`.
+
+If the native TX path needs to be rolled back, edit the TX `snprintf` in
+`sbitx_radae.c` to invoke `python3 -u radae_txe2.py --model_name %s
+--pid_file %s` instead of the `RADAE_TX_BINARY_PATH` form, or simply
+revert the V2 TX-wiring commit and rebuild `trx_v2-userland`.
 
 # Author
 

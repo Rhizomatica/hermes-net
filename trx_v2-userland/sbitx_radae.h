@@ -47,12 +47,14 @@
 #define RADAE_MODEL_PATH         "250725/checkpoints/checkpoint_epoch_200.pth"
 #define RADAE_SYNC_MODEL_PATH    "250725a_ml_sync"
 #define RADAE_RX_BINARY_PATH     "build/src/radae_rx_v2"
+#define RADAE_TX_BINARY_PATH     "build/src/radae_tx_v2"
 #define RADAE_DIR                "/opt/radae"
 
-// radae_txe2.py writes its own PID here at startup; the TX thread reads it
-// back so radae_tx_emit_eoo can deliver SIGUSR1 to Python directly (the
-// fork+exec target is /bin/sh, so tx_encoder_pid points at the shell, not
-// Python).
+// The native TX binary writes its own PID here at startup; the TX thread
+// reads it back so radae_tx_emit_eoo can deliver SIGUSR1 directly (the
+// fork+exec target is /bin/sh, so tx_encoder_pid points at the shell,
+// not the encoder process).  Same contract radae_txe2.py honoured before
+// the C swap.
 #define RADAE_TX_PID_FILE        "/tmp/radae_tx.pid"
 
 // RADAE context structure

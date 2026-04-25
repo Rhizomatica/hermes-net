@@ -432,27 +432,28 @@ int radae_rx_read_speech(radae_context *ctx, float *samples, int max_samples)
 }
 
 // TX thread implementation
-// Pipeline: speech (16kHz) -> lpcnet_demo -features -> radae_txe2.py -> modem IQ (8kHz)
+// Pipeline: speech (16kHz) -> lpcnet_demo -features -> radae_tx_v2 -> modem IQ (8kHz)
 static void *radae_tx_thread(void *arg)
 {
     radae_context *ctx = (radae_context *)arg;
-    
+
     // Build command for TX pipeline
-    // RADEv2: lpcnet_demo -features -> radae_txe2.py -> IQ samples
+    // RADEv2: lpcnet_demo -features -> native radae_tx_v2 -> IQ samples
 
     // stdbuf -o0 forces lpcnet_demo's stdout to be unbuffered.  When glibc
     // detects a non-TTY (i.e. a pipe), it defaults stdout to full block
     // buffering (~64 KiB).  At ~14.4 KiB/s of feature data that means ~4.5 s
-    // of silence from the Python script after PTT — observed as "py stdout
-    // STARVED 6.35s" with out/in=0.0032 after a 10 s key-down.
-    // python3 -u is defensive; the script already calls stdout.flush() each
-    // frame but -u guarantees unbuffered I/O in all future code paths.
+    // of silence from the encoder script after PTT — historical "py stdout
+    // STARVED 6.35s" symptom seen when this stage was Python.  The native
+    // binary writes per-frame so this is belt-and-suspenders, but stdbuf
+    // remains correct.
     char cmd[2048];
     snprintf(cmd, sizeof(cmd),
              "cd %s && "
              "stdbuf -o0 build/src/lpcnet_demo -features - - | "
-             "python3 -u radae_txe2.py --model_name %s --pid_file %s",
+             "%s --model_name %s --pid_file %s",
              ctx->radae_dir,
+             RADAE_TX_BINARY_PATH,
              RADAE_MODEL_PATH,
              RADAE_TX_PID_FILE);
 
