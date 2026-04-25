@@ -246,7 +246,7 @@ void radae_tx_stop(radae_context *ctx)
 
 bool radae_tx_emit_eoo(radae_context *ctx)
 {
-    if (!ctx || !ctx->initialized || ctx->tx_python_pid <= 1)
+    if (!ctx || !ctx->initialized || ctx->tx_encoder_eoo_pid <= 1)
         return false;
 
     // Prevent any queued speech/silence after PTT-off from being encoded
@@ -258,15 +258,15 @@ bool radae_tx_emit_eoo(radae_context *ctx)
     pthread_cond_signal(&ctx->tx_cond);
     pthread_mutex_unlock(&ctx->tx_mutex);
 
-    if (kill(ctx->tx_python_pid, SIGUSR1) != 0) {
-        fprintf(stderr, "RADAE TX: SIGUSR1 to python pid %d failed: %s\n",
-                (int)ctx->tx_python_pid, strerror(errno));
+    if (kill(ctx->tx_encoder_eoo_pid, SIGUSR1) != 0) {
+        fprintf(stderr, "RADAE TX: SIGUSR1 to encoder pid %d failed: %s\n",
+                (int)ctx->tx_encoder_eoo_pid, strerror(errno));
         ctx->tx_eoo_only = false;
         return false;
     }
     if (radae_debug)
         fprintf(stderr, "RADAE TX: EOO requested (SIGUSR1 -> %d)\n",
-                (int)ctx->tx_python_pid);
+                (int)ctx->tx_encoder_eoo_pid);
     return true;
 }
 
@@ -463,7 +463,7 @@ static void *radae_tx_thread(void *arg)
     // Remove any stale pidfile from a prior run so we don't read it and
     // signal a long-dead Python PID that may have been reassigned.
     unlink(RADAE_TX_PID_FILE);
-    ctx->tx_python_pid = 0;
+    ctx->tx_encoder_eoo_pid = 0;
 
     // Create pipes for stdin and stdout
     int stdin_pipe[2], stdout_pipe[2];
@@ -548,7 +548,7 @@ static void *radae_tx_thread(void *arg)
     // back-pressures us — that's fine, we run in the background while
     // the rest of sbitx finishes initializing.
     {
-        fprintf(stderr, "RADAE TX: pre-warming python pipeline...\n");
+        fprintf(stderr, "RADAE TX: pre-warming TX pipeline...\n");
         int16_t warm_pcm[RADAE_FRAME_SIZE];
         memset(warm_pcm, 0, sizeof(warm_pcm));
         const int warmup_frames = 100; // 100 * 10 ms = 1 s of silence
@@ -601,9 +601,9 @@ static void *radae_tx_thread(void *arg)
         if (pf) {
             int p = 0;
             if (fscanf(pf, "%d", &p) == 1 && p > 1) {
-                ctx->tx_python_pid = (pid_t)p;
-                fprintf(stderr, "RADAE TX: python pid %d (EOO signal target)\n",
-                        (int)ctx->tx_python_pid);
+                ctx->tx_encoder_eoo_pid = (pid_t)p;
+                fprintf(stderr, "RADAE TX: encoder pid %d (EOO signal target)\n",
+                        (int)ctx->tx_encoder_eoo_pid);
             }
             fclose(pf);
         } else {

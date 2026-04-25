@@ -61,7 +61,7 @@
 typedef struct {
     // Subprocess PIDs
     pid_t tx_encoder_pid;    // TX encoder pipeline (sh -c, parent of lpcnet_demo + python)
-    pid_t tx_python_pid;     // radae_txe2.py child; target for SIGUSR1 (EOO)
+    pid_t tx_encoder_eoo_pid;     // radae_tx_v2 child PID (target for SIGUSR1 EOO)
     pid_t rx_decoder_pid;    // RX decoder pipeline
 
     // Circular buffers for sample rate conversion
@@ -120,12 +120,12 @@ bool radae_tx_start(radae_context *ctx);
 // Stop TX processing (call when PTT is released)
 void radae_tx_stop(radae_context *ctx);
 
-// Ask radae_txe2.py to emit a V2 end-of-over frame (6 pend_cp symbols).
-// Non-blocking: sends SIGUSR1 to the cached Python PID and returns.  The
-// caller is responsible for giving the IQ time to flow through the
-// modem buffer -> DSP -> DAC before the PA drive is dropped.  Returns
-// false if the Python PID isn't known yet (startup race, or subprocess
-// died).
+// Ask the TX encoder (radae_tx_v2) to emit a V2 end-of-over frame
+// (6 pend_cp symbols).  Non-blocking: sends SIGUSR1 to the cached
+// encoder PID and returns.  The caller is responsible for giving the
+// IQ time to flow through the modem buffer -> DSP -> DAC before the
+// PA drive is dropped.  Returns false if the encoder PID isn't known
+// yet (startup race, or subprocess died).
 bool radae_tx_emit_eoo(radae_context *ctx);
 
 // Start RX processing
