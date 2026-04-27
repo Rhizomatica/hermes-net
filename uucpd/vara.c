@@ -214,7 +214,7 @@ void *vara_control_worker_thread_rx(void *conn)
                 connector->bytes_received = 0;
                 connector->bytes_transmitted = 0;
                 connector->bytes_buffered_tx = 0;
-                last_buffer_report = 0;
+                // last_buffer_report = 0;
                 modem_bytes_received(connector->bytes_received, connector->radio_type);
                 modem_bytes_transmitted(connector->bytes_transmitted, connector->radio_type);
 
