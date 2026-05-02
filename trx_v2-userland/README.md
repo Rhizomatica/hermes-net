@@ -185,10 +185,10 @@ The digital voice subprocess pipelines are:
 - **RADEv1 TX**: `lpcnet_demo -features` -> `radae_tx` -> modem IQ
 - **RADEv1 RX**: `radae_rx` -> `lpcnet_demo -fargan-synthesis` -> speech
 
-EOO behavior differs by version:
+EOO behavior is now aligned across both versions:
 
 - **RADEv2** uses the native `--pid_file` / `SIGUSR1` EOO contract
-- **RADEv1** emits EOO when the TX pipeline stdin closes at end-of-over
+- **RADEv1** now accepts the same `--pid_file` / `SIGUSR1` EOO contract
 
 # Author
 

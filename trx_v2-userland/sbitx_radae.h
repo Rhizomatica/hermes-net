@@ -56,21 +56,22 @@
 
 // RADEv1 resources (relative to /opt/radae_nopy)
 #define RADAE_MODEL_PATH_V1      "builtin"
+#define RADAE_SYNC_MODEL_PATH_V1 "builtin"
 #define RADAE_RX_BINARY_PATH_V1  "build/src/radae_rx"
 #define RADAE_TX_BINARY_PATH_V1  "build/src/radae_tx"
 #define RADAE_DIR_V1             "/opt/radae_nopy"
 
-// The native TX binary writes its own PID here at startup; the TX thread
-// reads it back so radae_tx_emit_eoo can deliver SIGUSR1 directly (the
-// fork+exec target is /bin/sh, so tx_encoder_pid points at the shell,
-// not the encoder process).  This contract exists only on RADEv2.
+// The TX binary writes its own PID here at startup; the TX thread reads it
+// back so radae_tx_emit_eoo can deliver SIGUSR1 directly (the fork+exec
+// target is /bin/sh, so tx_encoder_pid points at the shell, not the encoder
+// process).
 #define RADAE_TX_PID_FILE        "/tmp/radae_tx.pid"
 
 // RADAE context structure
 typedef struct {
     // Subprocess PIDs
     pid_t tx_encoder_pid;         // TX encoder pipeline shell
-    pid_t tx_encoder_eoo_pid;     // RADEv2 child PID (target for SIGUSR1 EOO)
+    pid_t tx_encoder_eoo_pid;     // RADE child PID (target for SIGUSR1 EOO)
     pid_t rx_decoder_pid;    // RX decoder pipeline
 
     // Circular buffers for sample rate conversion
@@ -130,8 +131,8 @@ bool radae_tx_start(radae_context *ctx);
 // Stop TX processing (call when PTT is released)
 void radae_tx_stop(radae_context *ctx);
 
-// Ask the TX encoder (radae_tx_v2) to emit a V2 end-of-over frame
-// (6 pend_cp symbols).  Non-blocking: sends SIGUSR1 to the cached
+// Ask the TX encoder to emit an end-of-over frame. Non-blocking: sends SIGUSR1
+// to the cached
 // encoder PID and returns.  The caller is responsible for giving the
 // IQ time to flow through the modem buffer -> DSP -> DAC before the
 // PA drive is dropped.  Returns false if the encoder PID isn't known

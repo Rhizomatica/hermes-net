@@ -81,8 +81,6 @@ bool radae_is_debug(void) { return radae_debug != 0; }
 
 // TX thread: reads from speech buffer, writes to modem buffer via RADAE pipeline
 static void *radae_tx_thread(void *arg);
-static void *radae_tx_thread_v1(void *arg);
-static void *radae_tx_thread_v2(void *arg);
 
 // RX thread: reads from modem buffer, writes to speech buffer via RADAE pipeline
 static void *radae_rx_thread(void *arg);
@@ -90,11 +88,6 @@ static void *radae_rx_thread(void *arg);
 static bool radae_is_v2(const radae_context *ctx)
 {
     return strcmp(ctx->rade_version, RADAE_VERSION_V1) != 0;
-}
-
-static bool radae_supports_pidfile_eoo(const radae_context *ctx)
-{
-    return radae_is_v2(ctx);
 }
 
 static const char *radae_selected_dir(const radae_context *ctx)
@@ -110,6 +103,16 @@ static const char *radae_selected_tx_binary(const radae_context *ctx)
 static const char *radae_selected_rx_binary(const radae_context *ctx)
 {
     return radae_is_v2(ctx) ? RADAE_RX_BINARY_PATH_V2 : RADAE_RX_BINARY_PATH_V1;
+}
+
+static const char *radae_selected_model_path(const radae_context *ctx)
+{
+    return radae_is_v2(ctx) ? RADAE_MODEL_PATH_V2 : RADAE_MODEL_PATH_V1;
+}
+
+static const char *radae_selected_sync_model_path(const radae_context *ctx)
+{
+    return radae_is_v2(ctx) ? RADAE_SYNC_MODEL_PATH_V2 : RADAE_SYNC_MODEL_PATH_V1;
 }
 
 static void radae_select_version(radae_context *ctx)
@@ -194,10 +197,10 @@ bool radae_init(radae_context *ctx, radio *radio_h)
         fprintf(stderr, "RADAE: debug logging enabled\n");
     }
 
-    // Start the persistent TX thread.  The thread forks the python
-    // pipeline, pre-warms it (torch + numpy imports, model load, first
-    // inference JIT) in the background, then sits idle until PTT.  See
-    // radae_tx_thread for the gating on ctx->tx_running.
+    // Start the persistent TX thread. The thread forks the native
+    // lpcnet_demo -> RADE TX pipeline, pre-warms it in the background,
+    // then sits idle until PTT. See radae_tx_thread for the gating on
+    // ctx->tx_running.
     ctx->tx_running = false;
     if (pthread_create(&ctx->tx_thread, NULL, radae_tx_thread, ctx) != 0) {
         fprintf(stderr, "RADAE: Failed to create TX thread\n");
@@ -238,9 +241,8 @@ void radae_shutdown(radae_context *ctx)
     radae_rx_stop(ctx);
 
     // Tear down the persistent TX pipeline: kill the subprocess, then
-    // join the thread.  The thread's own cleanup path waitpid()s, so
-    // the SIGTERM is a belt-and-suspenders for the case where Python
-    // is stuck (e.g. blocked on read with no EOF yet).
+    // join the thread. The thread's own cleanup path waitpid()s, so the
+    // SIGTERM is belt-and-suspenders for the case where the child is stuck.
     pthread_cond_signal(&ctx->tx_cond);
     if (ctx->tx_encoder_pid > 0) {
         kill(ctx->tx_encoder_pid, SIGTERM);
@@ -261,8 +263,8 @@ void radae_shutdown(radae_context *ctx)
     fprintf(stderr, "RADAE: Shutdown complete\n");
 }
 
-// Flow-control only.  The TX thread and Python subprocess were started
-// at radae_init time and stay alive for the service lifetime; this
+// Flow-control only. The TX thread and encoder subprocess are started at
+// radae_init time and stay alive for the service lifetime; this
 // function just resets the ring buffers and flips the gating flag so
 // radae_tx_write_speech / radae_tx_read_modem_iq begin accepting
 // samples.  The ring-buffer reset is essential — without it, stale IQ
@@ -286,9 +288,8 @@ bool radae_tx_start(radae_context *ctx)
     return true;
 }
 
-// Flow-control only.  Leave the Python subprocess and TX thread alive
-// so the next PTT can start producing IQ within one modem frame
-// instead of re-paying the ~6 s torch/numpy/JIT warmup.  Teardown is
+// Flow-control only. Leave the encoder subprocess and TX thread alive so
+// the next PTT can start producing IQ within one modem frame. Teardown is
 // handled in radae_shutdown.
 void radae_tx_stop(radae_context *ctx)
 {
@@ -316,13 +317,6 @@ bool radae_tx_emit_eoo(radae_context *ctx)
     ctx->tx_eoo_only = true;
     pthread_cond_signal(&ctx->tx_cond);
     pthread_mutex_unlock(&ctx->tx_mutex);
-
-    if (!radae_supports_pidfile_eoo(ctx)) {
-        if (radae_debug)
-            fprintf(stderr, "RADAE TX: EOO requested via stdin close for %s\n",
-                    ctx->rade_version);
-        return true;
-    }
 
     if (ctx->tx_encoder_eoo_pid <= 1) {
         ctx->tx_eoo_only = false;
@@ -508,196 +502,6 @@ static void *radae_tx_thread(void *arg)
 {
     radae_context *ctx = (radae_context *)arg;
 
-    if (radae_is_v2(ctx))
-        return radae_tx_thread_v2(arg);
-    return radae_tx_thread_v1(arg);
-}
-
-static void *radae_tx_thread_v1(void *arg)
-{
-    radae_context *ctx = (radae_context *)arg;
-    int16_t pcm_buffer[RADAE_FRAME_SIZE];
-    float speech_buffer[RADAE_FRAME_SIZE];
-    float iq_buffer[4096];
-
-    fprintf(stderr, "RADAE TX: using RADEv1 session pipeline\n");
-
-    while (!ctx->shutdown_requested) {
-        if (!ctx->tx_running) {
-            pthread_mutex_lock(&ctx->tx_mutex);
-            struct timespec ts;
-            clock_gettime(CLOCK_REALTIME, &ts);
-            ts.tv_nsec += 50 * 1000 * 1000;
-            if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
-            pthread_cond_timedwait(&ctx->tx_cond, &ctx->tx_mutex, &ts);
-            pthread_mutex_unlock(&ctx->tx_mutex);
-            continue;
-        }
-
-        char cmd[2048];
-        snprintf(cmd, sizeof(cmd),
-                 "cd %s && "
-                 "stdbuf -o0 build/src/lpcnet_demo -features - - | "
-                 "%s --model_name %s",
-                 ctx->radae_dir,
-                 radae_selected_tx_binary(ctx),
-                 RADAE_MODEL_PATH_V1);
-
-        fprintf(stderr, "RADAE TX: Starting pipeline: %s\n", cmd);
-
-        int stdin_pipe[2], stdout_pipe[2];
-        if (pipe(stdin_pipe) < 0) {
-            fprintf(stderr, "RADAE TX: Failed to create stdin pipe\n");
-            ctx->tx_running = false;
-            continue;
-        }
-        if (pipe(stdout_pipe) < 0) {
-            fprintf(stderr, "RADAE TX: Failed to create stdout pipe\n");
-            close(stdin_pipe[0]);
-            close(stdin_pipe[1]);
-            ctx->tx_running = false;
-            continue;
-        }
-
-        pid_t pid = fork();
-        if (pid < 0) {
-            fprintf(stderr, "RADAE TX: Fork failed\n");
-            close(stdin_pipe[0]); close(stdin_pipe[1]);
-            close(stdout_pipe[0]); close(stdout_pipe[1]);
-            ctx->tx_running = false;
-            continue;
-        }
-
-        if (pid == 0) {
-            close(stdin_pipe[1]);
-            close(stdout_pipe[0]);
-            dup2(stdin_pipe[0], STDIN_FILENO);
-            dup2(stdout_pipe[1], STDOUT_FILENO);
-            close(stdin_pipe[0]);
-            close(stdout_pipe[1]);
-            execl("/bin/sh", "sh", "-c", cmd, NULL);
-            _exit(1);
-        }
-
-        close(stdin_pipe[0]);
-        close(stdout_pipe[1]);
-
-        ctx->tx_encoder_pid = pid;
-        ctx->tx_encoder_eoo_pid = 0;
-
-        int write_fd = stdin_pipe[1];
-        int read_fd = stdout_pipe[0];
-        int flags = fcntl(read_fd, F_GETFL, 0);
-        fcntl(read_fd, F_SETFL, flags | O_NONBLOCK);
-        bool stdin_closed = false;
-
-        while (!ctx->shutdown_requested) {
-            if (ctx->tx_eoo_only && !stdin_closed) {
-                close(write_fd);
-                write_fd = -1;
-                stdin_closed = true;
-                if (radae_debug)
-                    fprintf(stderr, "RADAE TX: closed V1 stdin to flush EOO\n");
-            }
-
-            if (!ctx->tx_running && !stdin_closed) {
-                close(write_fd);
-                write_fd = -1;
-                stdin_closed = true;
-            }
-
-            if (ctx->tx_running && !ctx->tx_eoo_only) {
-                pthread_mutex_lock(&ctx->tx_mutex);
-                int available = BUFFER_SIZE(ctx->tx_speech_buffer_write_idx,
-                                            ctx->tx_speech_buffer_read_idx,
-                                            RADAE_SPEECH_BUFFER_SIZE);
-
-                if (available >= RADAE_FRAME_SIZE) {
-                    for (int i = 0; i < RADAE_FRAME_SIZE; i++) {
-                        speech_buffer[i] = ctx->tx_speech_buffer[ctx->tx_speech_buffer_read_idx];
-                        ctx->tx_speech_buffer_read_idx = (ctx->tx_speech_buffer_read_idx + 1) % RADAE_SPEECH_BUFFER_SIZE;
-                    }
-                    pthread_mutex_unlock(&ctx->tx_mutex);
-
-                    for (int i = 0; i < RADAE_FRAME_SIZE; i++) {
-                        float s = speech_buffer[i] * 32767.0f;
-                        if (s > 32767.0f) s = 32767.0f;
-                        if (s < -32768.0f) s = -32768.0f;
-                        pcm_buffer[i] = (int16_t)s;
-                    }
-
-                    ssize_t written = write(write_fd, pcm_buffer, RADAE_FRAME_SIZE * sizeof(int16_t));
-                    if (written < 0 && errno != EAGAIN) {
-                        fprintf(stderr, "RADAE TX: Write error: %s\n", strerror(errno));
-                        stdin_closed = true;
-                        close(write_fd);
-                        write_fd = -1;
-                    }
-                } else {
-                    struct timespec ts;
-                    clock_gettime(CLOCK_REALTIME, &ts);
-                    ts.tv_nsec += 10 * 1000 * 1000;
-                    if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
-                    pthread_cond_timedwait(&ctx->tx_cond, &ctx->tx_mutex, &ts);
-                    pthread_mutex_unlock(&ctx->tx_mutex);
-                }
-            }
-
-            ssize_t bytes_read = read(read_fd, iq_buffer, sizeof(iq_buffer));
-            if (bytes_read > 0) {
-                int n_floats = bytes_read / sizeof(float);
-
-                pthread_mutex_lock(&ctx->tx_mutex);
-                int free_space = BUFFER_FREE(ctx->tx_modem_buffer_write_idx,
-                                             ctx->tx_modem_buffer_read_idx,
-                                             RADAE_MODEM_BUFFER_SIZE * 2);
-                int to_write = (n_floats < free_space) ? n_floats : free_space;
-                for (int i = 0; i < to_write; i++) {
-                    ctx->tx_modem_buffer[ctx->tx_modem_buffer_write_idx] = iq_buffer[i];
-                    ctx->tx_modem_buffer_write_idx = (ctx->tx_modem_buffer_write_idx + 1) % (RADAE_MODEM_BUFFER_SIZE * 2);
-                }
-                pthread_mutex_unlock(&ctx->tx_mutex);
-            } else if (bytes_read < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-                fprintf(stderr, "RADAE TX: Read error: %s\n", strerror(errno));
-                break;
-            }
-
-            if (stdin_closed) {
-                int status = 0;
-                pid_t done = waitpid(pid, &status, WNOHANG);
-                if (done == pid)
-                    break;
-            }
-        }
-
-        if (write_fd >= 0)
-            close(write_fd);
-        close(read_fd);
-        waitpid(pid, NULL, 0);
-        ctx->tx_encoder_pid = 0;
-        ctx->tx_encoder_eoo_pid = 0;
-        ctx->tx_running = false;
-        ctx->tx_eoo_only = false;
-    }
-
-    fprintf(stderr, "RADAE TX: Thread exiting\n");
-    return NULL;
-}
-
-static void *radae_tx_thread_v2(void *arg)
-{
-    radae_context *ctx = (radae_context *)arg;
-
-    // Build command for TX pipeline
-    // RADEv2: lpcnet_demo -features -> native radae_tx_v2 -> IQ samples
-
-    // stdbuf -o0 forces lpcnet_demo's stdout to be unbuffered.  When glibc
-    // detects a non-TTY (i.e. a pipe), it defaults stdout to full block
-    // buffering (~64 KiB).  At ~14.4 KiB/s of feature data that means ~4.5 s
-    // of silence from the encoder script after PTT — historical "py stdout
-    // STARVED 6.35s" symptom seen when this stage was Python.  The native
-    // binary writes per-frame so this is belt-and-suspenders, but stdbuf
-    // remains correct.
     char cmd[2048];
     snprintf(cmd, sizeof(cmd),
              "cd %s && "
@@ -705,14 +509,14 @@ static void *radae_tx_thread_v2(void *arg)
              "%s --model_name %s --pid_file %s",
              ctx->radae_dir,
              radae_selected_tx_binary(ctx),
-             RADAE_MODEL_PATH_V2,
+             radae_selected_model_path(ctx),
              RADAE_TX_PID_FILE);
 
     fprintf(stderr, "RADAE TX: Starting pipeline: %s\n", cmd);
     if (radae_debug) fprintf(stderr, "RADAE TX: debug enabled\n");
 
     // Remove any stale pidfile from a prior run so we don't read it and
-    // signal a long-dead Python PID that may have been reassigned.
+    // signal a long-dead encoder PID that may have been reassigned.
     unlink(RADAE_TX_PID_FILE);
     ctx->tx_encoder_eoo_pid = 0;
 
@@ -775,13 +579,13 @@ static void *radae_tx_thread_v2(void *arg)
     // Buffer for reading IQ from pipe
     float iq_buffer[4096];
 
-    // Starvation detector for the Python pipeline's stdout.
+    // Starvation detector for the encoder pipeline's stdout.
     // We report once when stdout has been silent for >STARVE_THRESH_S
     // and once again when it resumes.  Cumulative totals make the ratio
     // between input (speech) and output (IQ) visible at a glance.
-    // With the persistent-pipeline refactor, the only STARVED event we
-    // expect to see is during the init-time warmup below — every PTT
-    // thereafter should produce IQ within one modem frame.
+    // The only STARVED event we expect to see is during the init-time
+    // warmup below — every PTT thereafter should produce IQ within one
+    // modem frame.
     const double STARVE_THRESH_S = 0.5;
     struct timespec tx_start_t;
     clock_gettime(CLOCK_MONOTONIC, &tx_start_t);
@@ -790,14 +594,10 @@ static void *radae_tx_thread_v2(void *arg)
     uint64_t tx_in_samp_total   = 0;
     uint64_t tx_out_csamp_total = 0;
 
-    // Pre-warm: amortize the ~6 s torch + numpy import + model load +
-    // first-inference JIT cost *before* the first PTT.  Feed 1 s of
-    // zero-valued 16 kHz PCM, read and discard the resulting IQ, then
-    // drop through to the main loop where tx_running gates everything.
-    // Writes are blocking and Python only reads ~16 kB/s while the
-    // first inference is still compiling, so the pipe buffer
-    // back-pressures us — that's fine, we run in the background while
-    // the rest of sbitx finishes initializing.
+    // Pre-warm the feature extractor + encoder path before first PTT.
+    // Feed 1 s of zero-valued 16 kHz PCM, read and discard the resulting
+    // IQ, then drop through to the main loop where tx_running gates
+    // everything.
     {
         fprintf(stderr, "RADAE TX: pre-warming TX pipeline...\n");
         int16_t warm_pcm[RADAE_FRAME_SIZE];
@@ -809,11 +609,10 @@ static void *radae_tx_thread_v2(void *arg)
             ssize_t w = write(write_fd, warm_pcm, sizeof(warm_pcm));
             (void)w;
             // Drain whatever IQ has come out so far to keep the
-            // stdout pipe empty and avoid back-pressuring Python.
+            // stdout pipe empty and avoid back-pressure.
             while (read(read_fd, iq_buffer, sizeof(iq_buffer)) > 0) {}
         }
-        // Wait up to 15 s for the first output frame — this is the
-        // signal that JIT is complete.
+        // Wait up to 15 s for the first output frame.
         bool warm_ok = false;
         struct timespec t_deadline = warm_t0;
         t_deadline.tv_sec += 15;
@@ -842,9 +641,9 @@ static void *radae_tx_thread_v2(void *arg)
         tx_out_csamp_total = 0;
     }
 
-    // Pick up the native TX PID that radae_tx_v2 wrote to its pidfile.
-    // The subprocess has already produced IQ (or timed out) by this
-    // point, so the pidfile is guaranteed to exist unless Python died
+    // Pick up the native TX PID that radae_tx wrote to its pidfile. The
+    // subprocess has already produced IQ (or timed out) by this point,
+    // so the pidfile is guaranteed to exist unless the encoder died
     // on startup.  We read it once here, not per-EOO, to keep the
     // signal path fast and avoid racing a just-unlinked file.
     {
@@ -866,7 +665,7 @@ static void *radae_tx_thread_v2(void *arg)
 
     while (!ctx->shutdown_requested) {
         // Idle branch: PTT is off (or DV mode just got disabled).
-        // Don't feed python; don't write to the modem buffer.  Drain
+        // Don't feed the encoder; don't write to the modem buffer. Drain
         // any stale IQ so it doesn't leak into the next key-down, and
         // keep tx_out_last_t fresh so the starvation detector doesn't
         // fire spuriously while we wait.
@@ -895,7 +694,7 @@ static void *radae_tx_thread_v2(void *arg)
                              (_now.tv_nsec - tx_out_last_t.tv_nsec) / 1e9;
             if (silence > STARVE_THRESH_S) {
                 fprintf(stderr,
-                    "RADAE TX: py stdout STARVED %.2fs silent "
+                    "RADAE TX: encoder stdout STARVED %.2fs silent "
                     "(in=%llu samp, out=%llu csamp, ratio out/in=%.4f)\n",
                     silence,
                     (unsigned long long)tx_in_samp_total,
@@ -951,7 +750,7 @@ static void *radae_tx_thread_v2(void *arg)
         }
         if (written > 0) {
             tx_in_samp_total += (uint64_t)(written / sizeof(int16_t));
-            RADAE_RATE_LOG("tx_py_stdin  ctx->py",  "samp",
+            RADAE_RATE_LOG("tx_enc_stdin ctx->enc", "samp",
                            (int)(written / sizeof(int16_t)), "16000 samp/s");
         }
 
@@ -982,7 +781,7 @@ static void *radae_tx_thread_v2(void *arg)
                 double silence = (_now.tv_sec  - tx_out_last_t.tv_sec) +
                                  (_now.tv_nsec - tx_out_last_t.tv_nsec) / 1e9;
                 fprintf(stderr,
-                    "RADAE TX: py stdout RESUMED after %.2fs "
+                    "RADAE TX: encoder stdout RESUMED after %.2fs "
                     "(in=%llu samp, out=%llu csamp, ratio out/in=%.4f)\n",
                     silence,
                     (unsigned long long)tx_in_samp_total,
@@ -994,7 +793,7 @@ static void *radae_tx_thread_v2(void *arg)
             tx_out_last_t = _now;
 
             // n_floats is interleaved I/Q, so csamp count = n_floats/2
-            RADAE_RATE_LOG("tx_py_stdout py->ctx",  "csamp",
+            RADAE_RATE_LOG("tx_enc_stdout enc->ctx", "csamp",
                            n_floats / 2, "8000 csamp/s");
         }
     }
@@ -1005,6 +804,7 @@ static void *radae_tx_thread_v2(void *arg)
     // Wait for child process
     waitpid(pid, NULL, 0);
     ctx->tx_encoder_pid = 0;
+    ctx->tx_encoder_eoo_pid = 0;
 
     if (radae_debug) {
         struct timespec _now;
@@ -1034,31 +834,17 @@ static void *radae_rx_thread(void *arg)
 {
     radae_context *ctx = (radae_context *)arg;
     
-    char verbose_arg[16] = "";
+    const char *verbose_arg = radae_is_debug() ? "--verbose" : "--quiet";
     char cmd[2048];
-    if (radae_is_v2(ctx)) {
-        if (radae_is_debug())
-            strcpy(verbose_arg, " -v");
-        snprintf(cmd, sizeof(cmd),
-                 "cd %s && "
-                 "%s --model_name %s --frame_sync_model_name %s%s | "
-                 "stdbuf -o0 build/src/lpcnet_demo -fargan-synthesis - -",
-                 ctx->radae_dir,
-                 radae_selected_rx_binary(ctx),
-                 RADAE_MODEL_PATH_V2,
-                 RADAE_SYNC_MODEL_PATH_V2,
-                 verbose_arg);
-    } else {
-        strcpy(verbose_arg, radae_is_debug() ? " -v 1" : " -v 0");
-        snprintf(cmd, sizeof(cmd),
-                 "cd %s && "
-                 "%s --model_name %s%s | "
-                 "stdbuf -o0 build/src/lpcnet_demo -fargan-synthesis - -",
-                 ctx->radae_dir,
-                 radae_selected_rx_binary(ctx),
-                 RADAE_MODEL_PATH_V1,
-                 verbose_arg);
-    }
+    snprintf(cmd, sizeof(cmd),
+             "cd %s && "
+             "%s --model_name %s --frame_sync_model_name %s %s | "
+             "stdbuf -o0 build/src/lpcnet_demo -fargan-synthesis - -",
+             ctx->radae_dir,
+             radae_selected_rx_binary(ctx),
+             radae_selected_model_path(ctx),
+             radae_selected_sync_model_path(ctx),
+             verbose_arg);
     
     fprintf(stderr, "RADAE RX: Starting pipeline: %s\n", cmd);
     if (radae_debug) fprintf(stderr, "RADAE RX: debug enabled\n");
@@ -1156,7 +942,7 @@ static void *radae_rx_thread(void *arg)
         }
         if (written > 0) {
             // iq_buffer is interleaved I/Q floats, so csamp count = floats/2
-            RADAE_RATE_LOG("rx_py_stdin  ctx->py",  "csamp",
+            RADAE_RATE_LOG("rx_dec_stdin ctx->dec", "csamp",
                            (int)(written / sizeof(float)) / 2, "8000 csamp/s");
         }
 
@@ -1177,7 +963,7 @@ static void *radae_rx_thread(void *arg)
                 ctx->rx_speech_buffer_write_idx = (ctx->rx_speech_buffer_write_idx + 1) % RADAE_SPEECH_BUFFER_SIZE;
             }
             pthread_mutex_unlock(&ctx->rx_mutex);
-            RADAE_RATE_LOG("rx_py_stdout py->ctx", "samp",
+            RADAE_RATE_LOG("rx_dec_stdout dec->ctx", "samp",
                            n_samples, "16000 samp/s (when synced)");
         }
     }
