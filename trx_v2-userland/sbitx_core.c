@@ -489,6 +489,7 @@ void tr_switch(radio *radio_h, bool txrx_state)
         // at the end of this branch), so dsp_process_tx keeps draining
         // the TX modem buffer into the DAC while the EOO IQ arrives.
         // 150 ms covers ~30 ms of EOO IQ + the ALSA+DSP tail.
+        bool dv_active = radio_h->profiles[radio_h->profile_active_idx].digital_voice;
         bool dv_eoo_sent = dsp_radae_tx_emit_eoo_if_dv();
         if (dv_eoo_sent)
             usleep(150000);
@@ -512,7 +513,7 @@ void tr_switch(radio *radio_h, bool txrx_state)
         // no further dsp_process_tx block can spuriously re-fire
         // radae_tx_start via the lazy-start path in
         // dsp_prepare_digital_voice_tx.
-        if (dv_eoo_sent)
+        if (dv_active)
             dsp_radae_tx_end_over();
     }
 

@@ -96,51 +96,57 @@ Example:
 * sbitx_controller
 
 
-# RADEv2 Digital Voice Mode
+# RADE Digital Voice Mode
 
-This software supports RADEv2 (Radio Autoencoder Version 2) for digital voice
-transmission over HF. When enabled, speech is encoded using the RADAE ML-based
-codec and transmitted within the SSB passband.
+This software supports two native-C digital voice stacks over HF:
 
-## RADEv2 Prerequisites
+- **RADEv2** from `Rhizomatica/radae`, installed at `/opt/radae`
+- **RADEv1** from `Rhizomatica/radae_nopy`, installed at `/opt/radae_nopy`
 
-1. Clone the RADAE repository:
-```bash
-cd /path/to/hermes-net
-git clone https://github.com/drowe67/radae.git
-git checkout dr-radev2
+The installer builds both side-by-side. The active stack is selected
+system-wide from `/etc/sbitx/user.ini`:
+
+```ini
+[main]
+rade_version=v2
 ```
 
-2. Build RADAE (read ../radae/README.md - THIS IS INCOMPLETE):
+Supported values are:
+
+- `v2` - default production path
+- `v1` - RADEv1 A/B comparison path
+
+Switching versions takes effect after restarting `sbitx`:
+
 ```bash
-cd radae
-mkdir build && cd build
-cmake ..
-make
+sudo systemctl restart sbitx
 ```
 
-3. Install Python dependencies:
-```bash
-pip3 install torch numpy matplotlib
-```
+## Prerequisites
 
-4. Ensure the RADEv2 model files are present:
-   - `radae/250725/checkpoints/checkpoint_epoch_200.pth` (main model)
-   - `radae/250725a_ml_sync` (ML frame sync model, passed to the RX wrapper
-     via `--frame_sync_model_name`)
+The expected installer-built paths are:
 
-   The paths are hard-coded in `sbitx_radae.h` as `RADAE_MODEL_PATH` and
-   `RADAE_SYNC_MODEL_PATH`; override them there if you relocate the files.
+- `/opt/radae/build/src/lpcnet_demo`
+- `/opt/radae/build/src/radae_tx_v2`
+- `/opt/radae/build/src/radae_rx_v2`
+- `/opt/radae_nopy/build/src/lpcnet_demo`
+- `/opt/radae_nopy/build/src/radae_tx`
+- `/opt/radae_nopy/build/src/radae_rx`
 
-## Building with RADEv2 Support
+RADEv2 still requires its compiled-in checkpoint assets under `/opt/radae`
+(`250725/checkpoints/checkpoint_epoch_200.pth` and `250725a_ml_sync`).
+RADEv1 (`radae_nopy`) has built-in weights and needs no runtime model files.
 
-Build as usual - RADEv2 support is included automatically:
+## Building with digital voice support
+
+Build as usual:
+
 ```bash
 cd trx_v2-userland
 make
 ```
 
-## Using Digital Voice Mode
+## Using digital voice mode
 
 Enable digital voice via the sbitx_client:
 ```bash
@@ -150,11 +156,16 @@ sbitx_client -c get_digital_voice -p 0         # Check digital voice status
 ```
 
 When digital voice is enabled:
+
 - **TX**: Speech from mic/loopback is encoded via LPCNet feature extraction,
-  processed through the RADAE encoder, and the resulting modem waveform
+  processed through the selected RADE encoder, and the resulting modem waveform
   is placed in the SSB passband.
-- **RX**: The received SSB signal is decoded by RADAE, and
+- **RX**: The received SSB signal is decoded by the selected RADE receiver and
   synthesized back to speech via LPCNet FARGAN synthesis.
+
+At startup the controller logs the selected RADE version and the TX/RX command
+lines, so `journalctl -u sbitx` is the quickest way to confirm which stack is
+active.
 
 ## Technical Details
 
@@ -165,31 +176,19 @@ When digital voice is enabled:
   Ncp=32 (4 ms cyclic prefix), no pilots
 - RADEv2 ML parameters: latent_dim=56, Nzmf=1, w1_dec=128, auxdata enabled,
   peak+bottleneck=3 hard clipper (constant-envelope output)
-- Frame sync via the `250725a_ml_sync` ML classifier
-- Models: `250725/checkpoints/checkpoint_epoch_200.pth` + `250725a_ml_sync`
+- RADEv2 frame sync via the `250725a_ml_sync` ML classifier
 
-The digital voice processing runs as subprocess pipelines backed by the
-V2 tools in `../radae`:
+The digital voice subprocess pipelines are:
 
-- TX: `lpcnet_demo -features` → `radae_tx_v2` → modem IQ
-- RX: `radae_rx_v2` → `lpcnet_demo -fargan-synthesis` → speech
+- **RADEv2 TX**: `lpcnet_demo -features` -> `radae_tx_v2` -> modem IQ
+- **RADEv2 RX**: `radae_rx_v2` -> `lpcnet_demo -fargan-synthesis` -> speech
+- **RADEv1 TX**: `lpcnet_demo -features` -> `radae_tx` -> modem IQ
+- **RADEv1 RX**: `radae_rx` -> `lpcnet_demo -fargan-synthesis` -> speech
 
-Both wrappers exchange 36-float FARGAN feature vectors with `lpcnet_demo`
-and complex `float32` IQ at 8 kHz with the radio, so they drop into the
-pipes without any extra reshape stage on the C side.  The native TX
-honours the same `--pid_file` / SIGUSR1 EOO contract that
-`radae_txe2.py` did, so `radae_tx_emit_eoo` keeps working unchanged.
+EOO behavior differs by version:
 
-If the native RX path needs to be rolled back in the field, edit
-`trx_v2-userland/sbitx_radae.c` and change the RX command back to:
-`python3 -u radae_rxe2.py --model_name ... --frame_sync_model_name ...`.
-Then remove `RADAE_RX_BINARY_PATH` from that `snprintf(...)` argument list or
-simply revert commit `0708f81`, and rebuild `trx_v2-userland`.
-
-If the native TX path needs to be rolled back, edit the TX `snprintf` in
-`sbitx_radae.c` to invoke `python3 -u radae_txe2.py --model_name %s
---pid_file %s` instead of the `RADAE_TX_BINARY_PATH` form, or simply
-revert the V2 TX-wiring commit and rebuild `trx_v2-userland`.
+- **RADEv2** uses the native `--pid_file` / `SIGUSR1` EOO contract
+- **RADEv1** emits EOO when the TX pipeline stdin closes at end-of-over
 
 # Author
 

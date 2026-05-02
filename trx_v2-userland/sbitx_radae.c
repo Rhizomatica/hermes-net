@@ -1,5 +1,5 @@
 /*
- * sBitx RADEv2 Digital Voice Integration
+ * sBitx RADE digital voice integration
  *
  * Copyright (C) 2024-2025 Rhizomatica
  * Author: Rafael Diniz <rafael@rhizomatica.org>
@@ -19,8 +19,7 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  *
- * RADEv2 - Radio Autoencoder Version 2
- * Uses subprocess pipelines with Python scripts for encoding/decoding.
+ * Supports side-by-side RADEv1 (radae_nopy) and RADEv2 native C pipelines.
  */
 
 #include <stdio.h>
@@ -82,16 +81,73 @@ bool radae_is_debug(void) { return radae_debug != 0; }
 
 // TX thread: reads from speech buffer, writes to modem buffer via RADAE pipeline
 static void *radae_tx_thread(void *arg);
+static void *radae_tx_thread_v1(void *arg);
+static void *radae_tx_thread_v2(void *arg);
 
 // RX thread: reads from modem buffer, writes to speech buffer via RADAE pipeline
 static void *radae_rx_thread(void *arg);
 
-bool radae_init(radae_context *ctx, radio *radio_h, const char *radae_dir)
+static bool radae_is_v2(const radae_context *ctx)
+{
+    return strcmp(ctx->rade_version, RADAE_VERSION_V1) != 0;
+}
+
+static bool radae_supports_pidfile_eoo(const radae_context *ctx)
+{
+    return radae_is_v2(ctx);
+}
+
+static const char *radae_selected_dir(const radae_context *ctx)
+{
+    return radae_is_v2(ctx) ? RADAE_DIR_V2 : RADAE_DIR_V1;
+}
+
+static const char *radae_selected_tx_binary(const radae_context *ctx)
+{
+    return radae_is_v2(ctx) ? RADAE_TX_BINARY_PATH_V2 : RADAE_TX_BINARY_PATH_V1;
+}
+
+static const char *radae_selected_rx_binary(const radae_context *ctx)
+{
+    return radae_is_v2(ctx) ? RADAE_RX_BINARY_PATH_V2 : RADAE_RX_BINARY_PATH_V1;
+}
+
+static void radae_select_version(radae_context *ctx)
+{
+    const char *selected = RADAE_VERSION_DEFAULT;
+    int invalid = 0;
+
+    if (ctx->radio_h != NULL && ctx->radio_h->cfg_user != NULL) {
+        pthread_mutex_lock(&ctx->radio_h->cfg_mutex);
+        const char *configured = iniparser_getstring(ctx->radio_h->cfg_user,
+                                                     "main:rade_version",
+                                                     RADAE_VERSION_DEFAULT);
+        if (configured != NULL && strcmp(configured, RADAE_VERSION_V1) == 0) {
+            selected = RADAE_VERSION_V1;
+        } else if (configured != NULL && strcmp(configured, RADAE_VERSION_V2) == 0) {
+            selected = RADAE_VERSION_V2;
+        } else if (configured != NULL) {
+            invalid = 1;
+        }
+        pthread_mutex_unlock(&ctx->radio_h->cfg_mutex);
+    }
+
+    strncpy(ctx->rade_version, selected, sizeof(ctx->rade_version) - 1);
+    strncpy(ctx->radae_dir, radae_selected_dir(ctx), sizeof(ctx->radae_dir) - 1);
+
+    if (invalid) {
+        fprintf(stderr,
+                "RADAE: invalid main:rade_version in user.ini, defaulting to %s\n",
+                RADAE_VERSION_DEFAULT);
+    }
+}
+
+bool radae_init(radae_context *ctx, radio *radio_h)
 {
     memset(ctx, 0, sizeof(radae_context));
     
     ctx->radio_h = radio_h;
-    strncpy(ctx->radae_dir, radae_dir, sizeof(ctx->radae_dir) - 1);
+    radae_select_version(ctx);
     
     // Initialize mutexes and condition variables
     pthread_mutex_init(&ctx->tx_mutex, NULL);
@@ -148,7 +204,8 @@ bool radae_init(radae_context *ctx, radio *radio_h, const char *radae_dir)
         goto cleanup_rx_speech;
     }
 
-    fprintf(stderr, "RADAE: Initialized with radae_dir=%s\n", ctx->radae_dir);
+    fprintf(stderr, "RADAE: Initialized version=%s radae_dir=%s\n",
+            ctx->rade_version, ctx->radae_dir);
 
     return true;
 
@@ -235,28 +292,42 @@ bool radae_tx_start(radae_context *ctx)
 // handled in radae_shutdown.
 void radae_tx_stop(radae_context *ctx)
 {
-    if (!ctx->tx_running)
+    if (!ctx->tx_running && !ctx->tx_eoo_only)
         return;
 
-    ctx->tx_eoo_only = false;
+    pthread_mutex_lock(&ctx->tx_mutex);
+    ctx->tx_speech_buffer_read_idx = ctx->tx_speech_buffer_write_idx;
     ctx->tx_running = false;
     pthread_cond_signal(&ctx->tx_cond);
+    pthread_mutex_unlock(&ctx->tx_mutex);
     fprintf(stderr, "RADAE TX: flow disabled\n");
 }
 
 bool radae_tx_emit_eoo(radae_context *ctx)
 {
-    if (!ctx || !ctx->initialized || ctx->tx_encoder_eoo_pid <= 1)
+    if (!ctx || !ctx->initialized || ctx->tx_encoder_pid <= 1)
         return false;
 
     // Prevent any queued speech/silence after PTT-off from being encoded
     // after the EOO frame. From this point until tr_switch finishes, the
-    // TX thread should only drain Python stdout into the modem ring buffer.
+    // TX thread should only drain encoder stdout into the modem ring buffer.
     pthread_mutex_lock(&ctx->tx_mutex);
     ctx->tx_speech_buffer_read_idx = ctx->tx_speech_buffer_write_idx;
     ctx->tx_eoo_only = true;
     pthread_cond_signal(&ctx->tx_cond);
     pthread_mutex_unlock(&ctx->tx_mutex);
+
+    if (!radae_supports_pidfile_eoo(ctx)) {
+        if (radae_debug)
+            fprintf(stderr, "RADAE TX: EOO requested via stdin close for %s\n",
+                    ctx->rade_version);
+        return true;
+    }
+
+    if (ctx->tx_encoder_eoo_pid <= 1) {
+        ctx->tx_eoo_only = false;
+        return false;
+    }
 
     if (kill(ctx->tx_encoder_eoo_pid, SIGUSR1) != 0) {
         fprintf(stderr, "RADAE TX: SIGUSR1 to encoder pid %d failed: %s\n",
@@ -432,8 +503,187 @@ int radae_rx_read_speech(radae_context *ctx, float *samples, int max_samples)
 }
 
 // TX thread implementation
-// Pipeline: speech (16kHz) -> lpcnet_demo -features -> radae_tx_v2 -> modem IQ (8kHz)
+// Pipeline: speech (16kHz) -> lpcnet_demo -features -> RADE TX -> modem IQ (8kHz)
 static void *radae_tx_thread(void *arg)
+{
+    radae_context *ctx = (radae_context *)arg;
+
+    if (radae_is_v2(ctx))
+        return radae_tx_thread_v2(arg);
+    return radae_tx_thread_v1(arg);
+}
+
+static void *radae_tx_thread_v1(void *arg)
+{
+    radae_context *ctx = (radae_context *)arg;
+    int16_t pcm_buffer[RADAE_FRAME_SIZE];
+    float speech_buffer[RADAE_FRAME_SIZE];
+    float iq_buffer[4096];
+
+    fprintf(stderr, "RADAE TX: using RADEv1 session pipeline\n");
+
+    while (!ctx->shutdown_requested) {
+        if (!ctx->tx_running) {
+            pthread_mutex_lock(&ctx->tx_mutex);
+            struct timespec ts;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            ts.tv_nsec += 50 * 1000 * 1000;
+            if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
+            pthread_cond_timedwait(&ctx->tx_cond, &ctx->tx_mutex, &ts);
+            pthread_mutex_unlock(&ctx->tx_mutex);
+            continue;
+        }
+
+        char cmd[2048];
+        snprintf(cmd, sizeof(cmd),
+                 "cd %s && "
+                 "stdbuf -o0 build/src/lpcnet_demo -features - - | "
+                 "%s",
+                 ctx->radae_dir,
+                 radae_selected_tx_binary(ctx));
+
+        fprintf(stderr, "RADAE TX: Starting pipeline: %s\n", cmd);
+
+        int stdin_pipe[2], stdout_pipe[2];
+        if (pipe(stdin_pipe) < 0) {
+            fprintf(stderr, "RADAE TX: Failed to create stdin pipe\n");
+            ctx->tx_running = false;
+            continue;
+        }
+        if (pipe(stdout_pipe) < 0) {
+            fprintf(stderr, "RADAE TX: Failed to create stdout pipe\n");
+            close(stdin_pipe[0]);
+            close(stdin_pipe[1]);
+            ctx->tx_running = false;
+            continue;
+        }
+
+        pid_t pid = fork();
+        if (pid < 0) {
+            fprintf(stderr, "RADAE TX: Fork failed\n");
+            close(stdin_pipe[0]); close(stdin_pipe[1]);
+            close(stdout_pipe[0]); close(stdout_pipe[1]);
+            ctx->tx_running = false;
+            continue;
+        }
+
+        if (pid == 0) {
+            close(stdin_pipe[1]);
+            close(stdout_pipe[0]);
+            dup2(stdin_pipe[0], STDIN_FILENO);
+            dup2(stdout_pipe[1], STDOUT_FILENO);
+            close(stdin_pipe[0]);
+            close(stdout_pipe[1]);
+            execl("/bin/sh", "sh", "-c", cmd, NULL);
+            _exit(1);
+        }
+
+        close(stdin_pipe[0]);
+        close(stdout_pipe[1]);
+
+        ctx->tx_encoder_pid = pid;
+        ctx->tx_encoder_eoo_pid = 0;
+
+        int write_fd = stdin_pipe[1];
+        int read_fd = stdout_pipe[0];
+        int flags = fcntl(read_fd, F_GETFL, 0);
+        fcntl(read_fd, F_SETFL, flags | O_NONBLOCK);
+        bool stdin_closed = false;
+
+        while (!ctx->shutdown_requested) {
+            if (ctx->tx_eoo_only && !stdin_closed) {
+                close(write_fd);
+                write_fd = -1;
+                stdin_closed = true;
+                if (radae_debug)
+                    fprintf(stderr, "RADAE TX: closed V1 stdin to flush EOO\n");
+            }
+
+            if (!ctx->tx_running && !stdin_closed) {
+                close(write_fd);
+                write_fd = -1;
+                stdin_closed = true;
+            }
+
+            if (ctx->tx_running && !ctx->tx_eoo_only) {
+                pthread_mutex_lock(&ctx->tx_mutex);
+                int available = BUFFER_SIZE(ctx->tx_speech_buffer_write_idx,
+                                            ctx->tx_speech_buffer_read_idx,
+                                            RADAE_SPEECH_BUFFER_SIZE);
+
+                if (available >= RADAE_FRAME_SIZE) {
+                    for (int i = 0; i < RADAE_FRAME_SIZE; i++) {
+                        speech_buffer[i] = ctx->tx_speech_buffer[ctx->tx_speech_buffer_read_idx];
+                        ctx->tx_speech_buffer_read_idx = (ctx->tx_speech_buffer_read_idx + 1) % RADAE_SPEECH_BUFFER_SIZE;
+                    }
+                    pthread_mutex_unlock(&ctx->tx_mutex);
+
+                    for (int i = 0; i < RADAE_FRAME_SIZE; i++) {
+                        float s = speech_buffer[i] * 32767.0f;
+                        if (s > 32767.0f) s = 32767.0f;
+                        if (s < -32768.0f) s = -32768.0f;
+                        pcm_buffer[i] = (int16_t)s;
+                    }
+
+                    ssize_t written = write(write_fd, pcm_buffer, RADAE_FRAME_SIZE * sizeof(int16_t));
+                    if (written < 0 && errno != EAGAIN) {
+                        fprintf(stderr, "RADAE TX: Write error: %s\n", strerror(errno));
+                        stdin_closed = true;
+                        close(write_fd);
+                        write_fd = -1;
+                    }
+                } else {
+                    struct timespec ts;
+                    clock_gettime(CLOCK_REALTIME, &ts);
+                    ts.tv_nsec += 10 * 1000 * 1000;
+                    if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
+                    pthread_cond_timedwait(&ctx->tx_cond, &ctx->tx_mutex, &ts);
+                    pthread_mutex_unlock(&ctx->tx_mutex);
+                }
+            }
+
+            ssize_t bytes_read = read(read_fd, iq_buffer, sizeof(iq_buffer));
+            if (bytes_read > 0) {
+                int n_floats = bytes_read / sizeof(float);
+
+                pthread_mutex_lock(&ctx->tx_mutex);
+                int free_space = BUFFER_FREE(ctx->tx_modem_buffer_write_idx,
+                                             ctx->tx_modem_buffer_read_idx,
+                                             RADAE_MODEM_BUFFER_SIZE * 2);
+                int to_write = (n_floats < free_space) ? n_floats : free_space;
+                for (int i = 0; i < to_write; i++) {
+                    ctx->tx_modem_buffer[ctx->tx_modem_buffer_write_idx] = iq_buffer[i];
+                    ctx->tx_modem_buffer_write_idx = (ctx->tx_modem_buffer_write_idx + 1) % (RADAE_MODEM_BUFFER_SIZE * 2);
+                }
+                pthread_mutex_unlock(&ctx->tx_mutex);
+            } else if (bytes_read < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+                fprintf(stderr, "RADAE TX: Read error: %s\n", strerror(errno));
+                break;
+            }
+
+            if (stdin_closed) {
+                int status = 0;
+                pid_t done = waitpid(pid, &status, WNOHANG);
+                if (done == pid)
+                    break;
+            }
+        }
+
+        if (write_fd >= 0)
+            close(write_fd);
+        close(read_fd);
+        waitpid(pid, NULL, 0);
+        ctx->tx_encoder_pid = 0;
+        ctx->tx_encoder_eoo_pid = 0;
+        ctx->tx_running = false;
+        ctx->tx_eoo_only = false;
+    }
+
+    fprintf(stderr, "RADAE TX: Thread exiting\n");
+    return NULL;
+}
+
+static void *radae_tx_thread_v2(void *arg)
 {
     radae_context *ctx = (radae_context *)arg;
 
@@ -453,8 +703,8 @@ static void *radae_tx_thread(void *arg)
              "stdbuf -o0 build/src/lpcnet_demo -features - - | "
              "%s --model_name %s --pid_file %s",
              ctx->radae_dir,
-             RADAE_TX_BINARY_PATH,
-             RADAE_MODEL_PATH,
+             radae_selected_tx_binary(ctx),
+             RADAE_MODEL_PATH_V2,
              RADAE_TX_PID_FILE);
 
     fprintf(stderr, "RADAE TX: Starting pipeline: %s\n", cmd);
@@ -591,7 +841,7 @@ static void *radae_tx_thread(void *arg)
         tx_out_csamp_total = 0;
     }
 
-    // Pick up the Python PID that radae_txe2.py wrote to its pidfile.
+    // Pick up the native TX PID that radae_tx_v2 wrote to its pidfile.
     // The subprocess has already produced IQ (or timed out) by this
     // point, so the pidfile is guaranteed to exist unless Python died
     // on startup.  We read it once here, not per-EOO, to keep the
@@ -778,29 +1028,36 @@ static void *radae_tx_thread(void *arg)
 }
 
 // RX thread implementation
-// Pipeline: modem IQ (8kHz) -> radae_rx_v2 -> lpcnet_demo -fargan-synthesis -> speech (16kHz)
+// Pipeline: modem IQ (8kHz) -> RADE RX -> lpcnet_demo -fargan-synthesis -> speech (16kHz)
 static void *radae_rx_thread(void *arg)
 {
     radae_context *ctx = (radae_context *)arg;
     
-    // RADEv2 RX pipeline: IQ samples -> native radae_rx_v2 -> features -> lpcnet_demo -fargan-synthesis
-
-    // Same stdio-buffering workaround as TX: lpcnet_demo's stdout is fully
-    // buffered when piped, delaying audio arrival by up to the buffer size.
-    // The native decoder binary flushes per emitted feature block.
     char verbose_arg[8] = "";
     char cmd[2048];
-    if (radae_is_debug())
-        strcpy(verbose_arg, " -v");
-    snprintf(cmd, sizeof(cmd),
-             "cd %s && "
-             "%s --model_name %s --frame_sync_model_name %s%s | "
-             "stdbuf -o0 build/src/lpcnet_demo -fargan-synthesis - -",
-             ctx->radae_dir,
-             RADAE_RX_BINARY_PATH,
-             RADAE_MODEL_PATH,
-             RADAE_SYNC_MODEL_PATH,
-             verbose_arg);
+    if (radae_is_v2(ctx)) {
+        if (radae_is_debug())
+            strcpy(verbose_arg, " -v");
+        snprintf(cmd, sizeof(cmd),
+                 "cd %s && "
+                 "%s --model_name %s --frame_sync_model_name %s%s | "
+                 "stdbuf -o0 build/src/lpcnet_demo -fargan-synthesis - -",
+                 ctx->radae_dir,
+                 radae_selected_rx_binary(ctx),
+                 RADAE_MODEL_PATH_V2,
+                 RADAE_SYNC_MODEL_PATH_V2,
+                 verbose_arg);
+    } else {
+        if (radae_is_debug())
+            strcpy(verbose_arg, " -v 1");
+        snprintf(cmd, sizeof(cmd),
+                 "cd %s && "
+                 "%s%s | "
+                 "stdbuf -o0 build/src/lpcnet_demo -fargan-synthesis - -",
+                 ctx->radae_dir,
+                 radae_selected_rx_binary(ctx),
+                 verbose_arg);
+    }
     
     fprintf(stderr, "RADAE RX: Starting pipeline: %s\n", cmd);
     if (radae_debug) fprintf(stderr, "RADAE RX: debug enabled\n");

@@ -19,8 +19,7 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  *
- * RADEv2 - Radio Autoencoder Version 2
- * See: https://github.com/drowe67/radae
+ * RADE digital voice integration for RADEv1 and RADEv2.
  */
 
 #ifndef SBITX_RADAE_H_
@@ -43,25 +42,34 @@
 // Feature extraction frame size (10ms @ 16kHz = 160 samples)
 #define RADAE_FRAME_SIZE     160
 
-// Paths to RADAE resources (relative to radae directory)
-#define RADAE_MODEL_PATH         "250725/checkpoints/checkpoint_epoch_200.pth"
-#define RADAE_SYNC_MODEL_PATH    "250725a_ml_sync"
-#define RADAE_RX_BINARY_PATH     "build/src/radae_rx_v2"
-#define RADAE_TX_BINARY_PATH     "build/src/radae_tx_v2"
-#define RADAE_DIR                "/opt/radae"
+// RADE version selection
+#define RADAE_VERSION_V1         "v1"
+#define RADAE_VERSION_V2         "v2"
+#define RADAE_VERSION_DEFAULT    RADAE_VERSION_V2
+
+// RADEv2 resources (relative to /opt/radae)
+#define RADAE_MODEL_PATH_V2      "250725/checkpoints/checkpoint_epoch_200.pth"
+#define RADAE_SYNC_MODEL_PATH_V2 "250725a_ml_sync"
+#define RADAE_RX_BINARY_PATH_V2  "build/src/radae_rx_v2"
+#define RADAE_TX_BINARY_PATH_V2  "build/src/radae_tx_v2"
+#define RADAE_DIR_V2             "/opt/radae"
+
+// RADEv1 resources (relative to /opt/radae_nopy)
+#define RADAE_RX_BINARY_PATH_V1  "build/src/radae_rx"
+#define RADAE_TX_BINARY_PATH_V1  "build/src/radae_tx"
+#define RADAE_DIR_V1             "/opt/radae_nopy"
 
 // The native TX binary writes its own PID here at startup; the TX thread
 // reads it back so radae_tx_emit_eoo can deliver SIGUSR1 directly (the
 // fork+exec target is /bin/sh, so tx_encoder_pid points at the shell,
-// not the encoder process).  Same contract radae_txe2.py honoured before
-// the C swap.
+// not the encoder process).  This contract exists only on RADEv2.
 #define RADAE_TX_PID_FILE        "/tmp/radae_tx.pid"
 
 // RADAE context structure
 typedef struct {
     // Subprocess PIDs
-    pid_t tx_encoder_pid;    // TX encoder pipeline (sh -c, parent of lpcnet_demo + python)
-    pid_t tx_encoder_eoo_pid;     // radae_tx_v2 child PID (target for SIGUSR1 EOO)
+    pid_t tx_encoder_pid;         // TX encoder pipeline shell
+    pid_t tx_encoder_eoo_pid;     // RADEv2 child PID (target for SIGUSR1 EOO)
     pid_t rx_decoder_pid;    // RX decoder pipeline
 
     // Circular buffers for sample rate conversion
@@ -96,7 +104,7 @@ typedef struct {
     // State flags
     _Atomic bool initialized;
     _Atomic bool tx_running;
-    _Atomic bool tx_eoo_only;    // stop feeding stdin, drain EOO/stdout only
+    _Atomic bool tx_eoo_only;    // stop feeding stdin and drain TX output only
     _Atomic bool rx_running;
     _Atomic bool shutdown_requested;
 
@@ -105,11 +113,12 @@ typedef struct {
 
     // RADAE directory path
     char radae_dir[256];
+    char rade_version[8];
 
 } radae_context;
 
 // Initialize RADAE subsystem
-bool radae_init(radae_context *ctx, radio *radio_h, const char *radae_dir);
+bool radae_init(radae_context *ctx, radio *radio_h);
 
 // Shutdown RADAE subsystem
 void radae_shutdown(radae_context *ctx);

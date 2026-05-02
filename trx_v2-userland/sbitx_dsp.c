@@ -695,7 +695,7 @@ void dsp_init(radio *radio_h)
 
     // Initialize RADAE digital voice subsystem
     printf("Initializing RADAE digital voice subsystem\n");
-    if (!radae_init(&radae_ctx, radio_h, RADAE_DIR)) {
+    if (!radae_init(&radae_ctx, radio_h)) {
         fprintf(stderr, "Warning: RADAE initialization failed, digital voice will not be available\n");
     } else {
         // Start RADAE RX by default (always listening)
