@@ -55,6 +55,7 @@
 #define RADAE_DIR_V2             "/opt/radae"
 
 // RADEv1 resources (relative to /opt/radae_nopy)
+#define RADAE_MODEL_PATH_V1      "builtin"
 #define RADAE_RX_BINARY_PATH_V1  "build/src/radae_rx"
 #define RADAE_TX_BINARY_PATH_V1  "build/src/radae_tx"
 #define RADAE_DIR_V1             "/opt/radae_nopy"

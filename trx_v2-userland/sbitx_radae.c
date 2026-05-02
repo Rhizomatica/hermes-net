@@ -538,9 +538,10 @@ static void *radae_tx_thread_v1(void *arg)
         snprintf(cmd, sizeof(cmd),
                  "cd %s && "
                  "stdbuf -o0 build/src/lpcnet_demo -features - - | "
-                 "%s",
+                 "%s --model_name %s",
                  ctx->radae_dir,
-                 radae_selected_tx_binary(ctx));
+                 radae_selected_tx_binary(ctx),
+                 RADAE_MODEL_PATH_V1);
 
         fprintf(stderr, "RADAE TX: Starting pipeline: %s\n", cmd);
 
@@ -1033,7 +1034,7 @@ static void *radae_rx_thread(void *arg)
 {
     radae_context *ctx = (radae_context *)arg;
     
-    char verbose_arg[8] = "";
+    char verbose_arg[16] = "";
     char cmd[2048];
     if (radae_is_v2(ctx)) {
         if (radae_is_debug())
@@ -1048,14 +1049,14 @@ static void *radae_rx_thread(void *arg)
                  RADAE_SYNC_MODEL_PATH_V2,
                  verbose_arg);
     } else {
-        if (radae_is_debug())
-            strcpy(verbose_arg, " -v 1");
+        strcpy(verbose_arg, radae_is_debug() ? " -v 1" : " -v 0");
         snprintf(cmd, sizeof(cmd),
                  "cd %s && "
-                 "%s%s | "
+                 "%s --model_name %s%s | "
                  "stdbuf -o0 build/src/lpcnet_demo -fargan-synthesis - -",
                  ctx->radae_dir,
                  radae_selected_rx_binary(ctx),
+                 RADAE_MODEL_PATH_V1,
                  verbose_arg);
     }
     
