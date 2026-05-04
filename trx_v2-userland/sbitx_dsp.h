@@ -72,18 +72,18 @@ double get_band_multiplier();
 
 // PTT-off hook used by tr_switch: if the active profile has digital
 // voice enabled, ask the RADAE TX pipeline to emit its V2 end-of-over
-// frame now.  Non-blocking; caller must delay any PA-drive drop long
-// enough for the EOO IQ to flow through the DSP->DAC tail (empirically
-// ~120-180 ms covers subprocess scheduling + ALSA buffering).
+// frame now. Non-blocking. The caller is responsible for deferring the
+// actual TX->RX hardware drop long enough for the queued EOO IQ to
+// reach the DAC (the current core code does this with a short pending
+// state handled from io_tick).
 // Returns true iff the signal was sent; false if no active RADAE
 // session or DV is off.
 bool dsp_radae_tx_emit_eoo_if_dv(void);
 
 // Companion to dsp_radae_tx_emit_eoo_if_dv: clear the RADAE TX
 // flow-control state so the next PTT-on re-enters radae_tx_start
-// cleanly.  Must be called only after the EOO IQ has had time to
-// drain through DSP->DAC (same delay the caller already uses before
-// dropping PA drive), otherwise radae_tx_stop will truncate the EOO
+// cleanly. Must be called only after the EOO IQ has had time to
+// drain through DSP->DAC, otherwise radae_tx_stop will truncate the EOO
 // frame.  No-op if RADAE TX was never active.
 void dsp_radae_tx_end_over(void);
 
