@@ -1,5 +1,5 @@
-# ICOM IC-7100 — Port A (CI-V / CAT control)
-# CP2102 (idProduct ea60) is the IC-7100 built-in USB
+# ICOM IC-7100 / IC-7300 — USB CAT control
+# Both radios expose the same CP210x USB serial interface (10c4:ea60).
 SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", SYMLINK+="ICOM-CAT"
 
 # Yaesu via SCU-17 — Enhanced Com Port (CAT control)
