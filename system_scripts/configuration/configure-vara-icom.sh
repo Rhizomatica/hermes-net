@@ -11,7 +11,7 @@ UUCPD_SERVICE="/etc/systemd/system/uucpd.service"
 NEW_INPUT='Input Device Name=In: USB Audio CODEC - USB Audio'
 NEW_OUTPUT='Output Device Name=Out: USB Audio CODEC - USB Audi'
 
-NEW_EXECSTART='ExecStart=/usr/bin/uucpd -a 127.0.0.1 -p 8300 -r vara -o icom -s /dev/ttyUSB0 -f 2750p'
+NEW_EXECSTART='ExecStart=/usr/bin/uucpd -a 127.0.0.1 -p 8300 -r vara -o icom7300 -s /dev/ttyUSB0 -f 2750p'
 
 # ── Step 1: Update VARA audio device names ────────────────────────────────────
 echo "Updating VARA audio device names..."
