@@ -225,7 +225,7 @@ int main (int argc, char *argv[])
         fprintf(stderr, "                               Supported features VARA, P2P mode: \"p\" to enable (eg. 2300p).\n");
         fprintf(stderr, " -s serial_device           Set the serial device file path for keying the radio (VARA ONLY).\n");
         fprintf(stderr, " -l                         Tell UUCICO to ask login prompt (default: disabled).\n");
-        fprintf(stderr, " -o [icom,ubitx,shm,none]   Sets radio type (supported: icom, ubitx, shm or none). Default is shm\n");
+        fprintf(stderr, " -o [icom,icom7300,ubitx,shm,none] Sets radio type (icom=IC-7100 defaults, icom7300=IC-7300 defaults). Default is shm\n");
         fprintf(stderr, " -h                         Prints this help.\n");
         exit(EXIT_FAILURE);
     }
@@ -260,8 +260,10 @@ int main (int argc, char *argv[])
             strcpy(connector->modem_type, optarg);
             break;
         case 'o':
-            if (!strcmp(optarg,"icom"))
+            if (!strcmp(optarg,"icom") || !strcmp(optarg,"icom7100"))
                 connector->radio_type = RADIO_TYPE_ICOM;
+            if (!strcmp(optarg,"icom7300"))
+                connector->radio_type = RADIO_TYPE_ICOM_7300;
             if (!strcmp(optarg,"ubitx"))
                 connector->radio_type = RADIO_TYPE_UBITX;
             if (!strcmp(optarg,"shm"))

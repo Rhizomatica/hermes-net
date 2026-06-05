@@ -413,6 +413,20 @@ exit_local:
     return EXIT_SUCCESS;
 }
 
+static const char *serial_baudrate_for_radio_type(int radio_type)
+{
+    if (radio_type == RADIO_TYPE_ICOM)
+        return "19200";
+
+    if (radio_type == RADIO_TYPE_ICOM_7300)
+        return "115200";
+
+    if (radio_type == RADIO_TYPE_UBITX)
+        return "38400";
+
+    return NULL;
+}
+
 bool initialize_modem_vara(rhizo_conn *connector)
 {
     bool ret;
@@ -448,11 +462,10 @@ try_connect_again:
             return false;
         }
 
-        if (connector->radio_type == RADIO_TYPE_ICOM)
-            set_fixed_baudrate("19200", connector->serial_fd);
+        const char *serial_baudrate = serial_baudrate_for_radio_type(connector->radio_type);
 
-        if (connector->radio_type == RADIO_TYPE_UBITX)
-            set_fixed_baudrate("38400", connector->serial_fd);
+        if (serial_baudrate)
+            set_fixed_baudrate(serial_baudrate, connector->serial_fd);
     }
 
     sys_led_on(connector->serial_fd, connector->radio_type);

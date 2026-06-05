@@ -34,7 +34,7 @@ Options:
                                Supported features VARA, P2P mode: "p" to enable (eg. 2300p).
  -s serial_device           Set the serial device file path for keying the radio (VARA ONLY).
  -l                         Tell UUCICO to ask login prompt (default: disabled).
- -o [icom,ubitx,shm]        Sets radio type (supported: icom, ubitx or shm)
+ -o [icom,icom7300,ubitx,shm,none] Sets radio type (`icom` uses IC-7100 defaults, `icom7300` uses IC-7300 defaults)
  -h                         Prints this help.
 ```
 
@@ -103,6 +103,10 @@ Examples of uucpd invocation:
 
     $ uucpd -a 127.0.0.1 -c PU2BBB -p 8515 -t 60 -r ardop
     $ uucpd -a 127.0.0.1 -p 8300 -r vara -o icom -s /dev/ttyUSB0 -f 2750
+    $ uucpd -a 127.0.0.1 -p 8300 -r vara -o icom7300 -s /dev/ttyUSB0 -f 2750
+
+`-o icom` keeps the existing IC-7100 CI-V defaults (19200 baud, address `0x88`).
+Use `-o icom7300` for IC-7300 defaults (115200 baud, address `0x94`).
 
 ### UUCP with "shared_messages.patch" for Raspberry OS (64 bits)
 

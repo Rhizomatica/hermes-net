@@ -80,7 +80,7 @@ struct baudrate baud_rate_table[] = {
     {NULL,		B0,		0,	-1,	0},
 };
 
-struct baudrate *find_baudrate_by_name(char *srch_name)
+struct baudrate *find_baudrate_by_name(const char *srch_name)
 {
     struct baudrate *br;
 
@@ -117,7 +117,7 @@ struct baudrate *set_serial_baudrate(struct baudrate *br, int target_fd)
     return br;
 }
 
-void set_fixed_baudrate(char *baudname, int target_fd)
+void set_fixed_baudrate(const char *baudname, int target_fd)
 {
     struct baudrate *br;
 
@@ -127,16 +127,29 @@ void set_fixed_baudrate(char *baudname, int target_fd)
     set_serial_baudrate(br, target_fd);
 }
 
+static bool is_icom_radio_type(int radio_type)
+{
+    return radio_type == RADIO_TYPE_ICOM || radio_type == RADIO_TYPE_ICOM_7300;
+}
+
+static uint8_t get_icom_radio_address(int radio_type)
+{
+    if (radio_type == RADIO_TYPE_ICOM_7300)
+        return 0x94;
+
+    return 0x88;
+}
+
 void key_on(int serial_fd, int radio_type)
 {
 
-    if (radio_type == RADIO_TYPE_ICOM)
+    if (is_icom_radio_type(radio_type))
     {
         int key_on_size = 8;
         uint8_t key_on[8];
         key_on[0] = 0xFE;
         key_on[1] = 0xFE;
-        key_on[2] = 0x88;
+        key_on[2] = get_icom_radio_address(radio_type);
         key_on[3] = 0xE0;
         key_on[4] = 0x1C;
         key_on[5] = 0x00;
@@ -171,13 +184,13 @@ void key_on(int serial_fd, int radio_type)
 
 void key_off(int serial_fd, int radio_type)
 {
-    if (radio_type == RADIO_TYPE_ICOM)
+    if (is_icom_radio_type(radio_type))
     {
         int key_off_size = 8;
         uint8_t key_off[8];
         key_off[0] = 0xFE;
         key_off[1] = 0xFE;
-        key_off[2] = 0x88;
+        key_off[2] = get_icom_radio_address(radio_type);
         key_off[3] = 0xE0;
         key_off[4] = 0x1C;
         key_off[5] = 0x00;

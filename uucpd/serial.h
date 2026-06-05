@@ -32,6 +32,7 @@
 #define RADIO_TYPE_UBITX 1
 #define RADIO_TYPE_SHM 2
 #define RADIO_TYPE_NONE 3
+#define RADIO_TYPE_ICOM_7300 4
 
 void key_on(int serial_fd, int radio_type);
 void key_off(int serial_fd, int radio_type);
@@ -43,7 +44,7 @@ void sys_led_on(int serial_fd, int radio_type);
 void sys_led_off(int serial_fd, int radio_type);
 
 int open_serial_port(char *ttyport);
-void set_fixed_baudrate(char *baudname, int target_fd);
+void set_fixed_baudrate(const char *baudname, int target_fd);
 
 void modem_snr(int32_t snr, int radio_type);
 void modem_bitrate(uint32_t bitrate, int radio_type);
