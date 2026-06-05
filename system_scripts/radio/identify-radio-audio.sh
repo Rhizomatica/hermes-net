@@ -1,7 +1,7 @@
 #!/bin/bash
 # Identify which ALSA sound card belongs to each radio by USB topology.
 # The audio interface shares the same USB hub as the radio's serial adapter:
-#   ICOM IC-7100: CP2102 (10c4:ea60) serial + Burr-Brown audio on same hub
+#   ICOM IC-7100 / IC-7300: CP210x serial + Burr-Brown audio on same hub
 #   Yaesu SCU-17: CP2105 (10c4:ea70) serial + C-Media audio on same hub
 
 # Find the USB hub path for a given tty serial device
@@ -26,8 +26,21 @@ card_on_hub() {
     return 1
 }
 
-# --- ICOM (CP2102, 10c4:ea60) ---
-icom_tty=$(find /dev/serial/by-id/ -name '*CP2102*' -print -quit 2>/dev/null)
+# Find the first serial adapter under /dev/serial/by-id that matches a shell glob
+find_serial_by_id() {
+    local pattern="$1"
+
+    find /dev/serial/by-id/ -name "$pattern" -print -quit 2>/dev/null
+}
+
+# --- ICOM (IC-7100 / IC-7300, CP210x excluding CP2105) ---
+icom_tty=$(find_serial_by_id '*CP2102*')
+[ -z "$icom_tty" ] && icom_tty=$(find_serial_by_id '*CP210x*')
+[ -z "$icom_tty" ] && icom_tty=$(find /dev/serial/by-id/ \
+    \( -name '*CP210*' -o -name '*Silicon_Labs*' \) \
+    ! -name '*CP2105*' \
+    -print -quit 2>/dev/null)
+
 if [ -n "$icom_tty" ]; then
     icom_hub=$(hub_for_tty "$icom_tty")
     icom_card=$(card_on_hub "$icom_hub")
@@ -37,7 +50,7 @@ if [ -n "$icom_tty" ]; then
         echo "ICOM serial found at $icom_hub but no audio on same hub"
     fi
 else
-    echo "ICOM: no CP2102 serial device found"
+    echo "ICOM: no IC-7100/IC-7300 serial device found"
 fi
 
 # --- YAESU (CP2105 / SCU-17, 10c4:ea70) ---
