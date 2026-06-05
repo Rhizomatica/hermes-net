@@ -4,14 +4,19 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
 VARA_INI="/opt/VARA/VARA.ini"
 VARA_INI_DEFAULT="/opt/VARA/VARA.ini.default"
 UUCPD_SERVICE="/etc/systemd/system/uucpd.service"
+UDEV_RULES_SRC="${REPO_ROOT}/system_services/udev/99-radio.rules"
+UDEV_RULES_DEST="/etc/udev/rules.d/99-radio.rules"
 
 NEW_INPUT='Input Device Name=In: USB Audio CODEC - USB Audio'
 NEW_OUTPUT='Output Device Name=Out: USB Audio CODEC - USB Audi'
 
-NEW_EXECSTART='ExecStart=/usr/bin/uucpd -a 127.0.0.1 -p 8300 -r vara -o icom7300 -s /dev/ttyUSB0 -f 2750p'
+NEW_EXECSTART='ExecStart=/usr/bin/uucpd -a 127.0.0.1 -p 8300 -r vara -o icom7300 -s /dev/ICOM-CAT -f 2750p'
 
 # ── Step 1: Update VARA audio device names ────────────────────────────────────
 echo "Updating VARA audio device names..."
@@ -64,7 +69,22 @@ sed -i 's|^After=.*|After=vnc.service|' "$UUCPD_SERVICE"
 sed -i 's|^Requires=.*|Requires=vnc.service|' "$UUCPD_SERVICE"
 echo "  Updated After= and Requires= to vnc.service"
 
-# ── Step 4: Reload systemd and restart uucpd ─────────────────────────────────
+# ── Step 4: Install udev rules ───────────────────────────────────────────────
+echo "Installing udev rules..."
+
+if [[ ! -f "${UDEV_RULES_SRC}" ]]; then
+    echo "  ERROR: udev rules source not found at ${UDEV_RULES_SRC}. Aborting."
+    exit 1
+fi
+
+cp "${UDEV_RULES_SRC}" "${UDEV_RULES_DEST}"
+echo "  Installed ${UDEV_RULES_DEST}"
+
+udevadm control --reload-rules
+udevadm trigger
+echo "  udev rules reloaded."
+
+# ── Step 5: Reload systemd and restart uucpd ─────────────────────────────────
 echo "Reloading systemd daemon..."
 systemctl daemon-reload
 
@@ -82,4 +102,4 @@ echo "  uucpd.service restarted."
 
 echo ""
 echo "Done. VARA is now configured to use the USB Audio CODEC (Icom IC-7300)."
-echo "uucpd is set to use the Icom interface on /dev/ttyUSB0."
+echo "uucpd is set to use the Icom interface on /dev/ICOM-CAT."
