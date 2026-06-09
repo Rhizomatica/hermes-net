@@ -2,6 +2,10 @@
 #define CIRCULAR_BUFFER_H_
 
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdatomic.h>
+#include <sys/types.h>
 
 // The definition of our circular buffer structure is hidden from the user
 struct circular_buf_t_aux {
