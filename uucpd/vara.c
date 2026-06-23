@@ -195,7 +195,7 @@ void *vara_control_worker_thread_rx(void *conn)
             {
                 fprintf(stderr, "TNC: %s\n", buffer);
 
-                last_bytes_tx = 0;
+                last_bytes_rx = 0;
                 last_bytes_tx = 0;
                 connector->bytes_received = 0;
                 connector->bytes_transmitted = 0;
