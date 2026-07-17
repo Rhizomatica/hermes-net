@@ -1,4 +1,4 @@
-/* HERMES sbitx controller
+/* Sbitx Controller daemon
  *
  * Copyright (C) 2023-2025 Rhizomatica
  * Author: Rafael Diniz <rafael@riseup.net>
@@ -14,9 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this software; see the file COPYING.  If not, write to
- * the Free Software Foundation, Inc., 51 Franklin Street,
- * Boston, MA 02110-1301, USA.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
 
@@ -34,7 +32,10 @@
 #include "sbitx_core.h"
 #include "sbitx_websocket.h"
 #include "sbitx_dsp.h"
+#include "sbitx_modem.h"
 #include "cfg_utils.h"
+#include "ring_buffer_posix.h"
+
 
 _Atomic bool shutdown_ = false;
 
@@ -48,30 +49,31 @@ void exit_radio(int sig)
     exit(EXIT_FAILURE);
 }
 
+static void print_usage(const char *prog)
+{
+    printf("Usage modes: \n");
+    printf("%s [-c cpu_nr] [-m aloop|shm]\n", prog);
+    printf("%s [-h]\n", prog);
+    printf("\nOptions:\n");
+    printf(" -c [cpu_nr]                Run on CPU [cpu_nr]. Defaults to CPU 3. Use -1 to disable CPU selection\n");
+    printf(" -m [aloop, shm]            Modem I/O using ALSA loopback or shared memory for signal IO. Defaults to alsa loopback (aloop).\n");
+    printf(" -h                         Prints this help.\n");
+}
+
 int main(int argc, char* argv[])
 {
     radio radio_h; // radio handler
+    int io_mode = MODEM_IO_ALSA; // mode of operation, 0 for alsa loopback, 1 for shm
     pthread_t cfg_tid; // configuration subsystem thread id
     pthread_t hw_tids[2]; // 2 hw thread ids user for IO
     pthread_t web_tid; // websocket thread id
     pthread_t shm_tid; // shared memory interface thread id
     pthread_t control_tid, radio_capture, radio_playback, loop_capture, loop_playback; // audio threads
 
-   if (argc > 3)
-    {
-    manual:
-        fprintf(stderr, "Usage modes: \n%s\n%s -c [cpu_nr]\n", argv[0], argv[0]);
-        fprintf(stderr, "%s -h\n", argv[0]);
-        fprintf(stderr, "\nOptions:\n");
-        fprintf(stderr, " -c [cpu_nr]                Run on CPU [cpu_br]. Defaults to CPU 3. Use -1 to disable CPU selection\n");
-        fprintf(stderr, " -h                         Prints this help.\n");
-        return EXIT_FAILURE;
-    }
-
    // hermes defaults is 3
    int cpu_nr = 3;
    int opt;
-   while ((opt = getopt(argc, argv, "hc:")) != -1)
+   while ((opt = getopt(argc, argv, "hc:m:")) != -1)
    {
        switch (opt)
        {
@@ -79,9 +81,32 @@ int main(int argc, char* argv[])
            if(optarg)
                cpu_nr = atoi(optarg);
            break;
+       case 'm':
+           if (optarg)
+           {
+               if (strcmp(optarg, "aloop") == 0)
+                   io_mode = MODEM_IO_ALSA;
+               else if (strcmp(optarg, "shm") == 0)
+                   io_mode = MODEM_IO_SHM;
+               else
+               {
+                   print_usage(argv[0]);
+                   return EXIT_FAILURE;
+               }
+           }
+           else
+           {
+                fprintf(stderr, "Invalid mode.\n");
+                print_usage(argv[0]);
+                return EXIT_FAILURE;
+           }
+           break;
        case 'h':
+           print_usage(argv[0]);
+           return EXIT_SUCCESS;
        default:
-           goto manual;
+            print_usage(argv[0]);
+            return EXIT_FAILURE;
        }
    }
 
@@ -106,6 +131,9 @@ int main(int argc, char* argv[])
    /* Call in order... cfg, hw, shm, sound, shutdown in reverse order */
    cfg_init(&radio_h, CFG_CORE_PATH, CFG_USER_PATH, &cfg_tid);
 
+   // TODO: add to a config parameter?
+   radio_h.io_mode = io_mode;
+
    hw_init(&radio_h, hw_tids);
 
    if (radio_h.enable_websocket)
@@ -115,10 +143,13 @@ int main(int argc, char* argv[])
        shm_controller_init(&radio_h, &shm_tid);
 
    dsp_init(&radio_h);
+
+
    sound_system_init(&radio_h, &control_tid, &radio_capture, &radio_playback, &loop_capture, &loop_playback);
 
    // the next call calls pthread_join(), so it blocks until shutdown == true
    hw_shutdown(&radio_h, hw_tids);
+
    cfg_shutdown(&radio_h, &cfg_tid);
 
    if (radio_h.enable_websocket)
