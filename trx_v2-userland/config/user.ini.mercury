@@ -4,6 +4,7 @@ current_profile                = 0
 default_profile                = 0
 default_profile_fallback_timeout = 600
 step_size                      = 100
+rade_version                   = v2
 
 
 [profile0]
@@ -22,4 +23,3 @@ enable_knob_volume             = 1
 enable_knob_frequency          = 0
 enable_ptt                     = 0
 digital_voice                  = 0
-
