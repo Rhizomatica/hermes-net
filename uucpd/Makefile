@@ -45,7 +45,7 @@ all: uucpd uuport
 %.o : %.c %.h
 	gcc -c $(CFLAGS) $< -o $@
 
-uucpd: ardop.o shm.o net.o circular_buffer.o uucpd.o call_uucico.o serial.o vara.o $(EXTRA_OBJ)
+uucpd: ardop.o shm.o net.o circular_buffer.o uucpd.o call_uucico.o serial.o vara.o uucp_fasttrack.o $(EXTRA_OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
 
 
