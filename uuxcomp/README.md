@@ -18,6 +18,38 @@ Currently are in use the H.266 (VVC) for image compression and LPCNET for audio 
 Postfix uucp configuration should be changed to use uuxcomp instead of uux, and rmail should be changed to crmail. Also, crmail must be put in the uucp configuration
 as a authorized command to be executed.
 
+# Header handling ("email cruft" removal)
+
+Before compressing, `uuxcomp` rewrites the message keeping only an **allowlist**
+of headers; everything else (all `Received`, `DKIM-Signature`, `ARC-*`,
+`Authentication-Results`, `Received-SPF`, `Return-Path`, `Delivered-To`,
+`Autocrypt`, every `X-*`, ...) is dropped. Kept headers:
+
+    From, To, Cc, Bcc, Reply-To, Subject, Date, Message-ID, In-Reply-To,
+    References, MIME-Version, Content-Type, Content-Transfer-Encoding,
+    Content-Disposition, Content-ID, Content-Description, and any Chat-* header.
+
+The transform is a byte-exact textual operation: it locates the header/body
+boundary directly in the message and keeps the body (and any leading mbox
+`From ` envelope line) verbatim, only trimming trailing whitespace. It does
+**not** round-trip the message through a MIME parser — re-serialising headers
+changes their bytes (folding, address canonicalisation, generated Message-ID)
+and there is then no reliable way to find where the body starts, which used to
+corrupt multipart attachments.
+
+Stripping whitespace-only MIME leaf parts (the empty `text/plain` part
+DeltaChat prepends to media-only mails) was evaluated and deferred: the gain
+after xz is negligible and `crmail` rewrites media mails by raw byte offset.
+
+## Tests
+
+    ./tests/run_tests.sh
+
+Runs `uuxcomp` in `UUXCOMP_DRY_RUN=1` mode (transform stdin, print to stdout,
+no daemon / uux / compression) over `tests/fixtures/*.eml` and checks the
+allowlist, body preservation, CRLF handling, mbox envelope handling and the
+SMS/HERMES-messaging forward path.
+
 ## License
 
 GPL v3+
