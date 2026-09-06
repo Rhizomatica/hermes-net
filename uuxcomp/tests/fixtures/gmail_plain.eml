@@ -1,0 +1,45 @@
+Delivered-To: fieldstation@example.org
+Received: by 2002:a05:1234:0:0:0:0:0 with SMTP id x1csp123456;
+        Tue, 27 Feb 2024 04:23:54 -0800 (PST)
+X-Received: by 2002:a17:90b:1234:: with SMTP id abc-1234567890;
+        Tue, 27 Feb 2024 04:23:54 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1709036634; cv=none; d=google.com; s=arc-20160816;
+        b=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com;
+        s=arc-20160816; h=to:subject:message-id:date:from:mime-version;
+        bh=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=;
+        b=BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+ARC-Authentication-Results: i=1; mx.google.com; dkim=pass header.i=@example.com;
+        spf=pass; dmarc=pass
+Return-Path: <sender@example.com>
+Received: from mail.example.com (mail.example.com. [203.0.113.10])
+        by mx.google.com with ESMTPS id def-9876543210
+        for <fieldstation@example.org>;
+        Tue, 27 Feb 2024 04:23:54 -0800 (PST)
+Received-SPF: pass (google.com: domain of sender@example.com designates 203.0.113.10 as permitted sender) client-ip=203.0.113.10;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@example.com header.s=selector1 header.b=abcd1234;
+       spf=pass (google.com: domain of sender@example.com designates 203.0.113.10 as permitted sender) smtp.mailfrom=sender@example.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=selector1;
+        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject:date;
+        bh=CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=;
+        b=DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=1e100.net; s=20230601;
+        b=EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+X-Gm-Message-State: AOJu0Yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+X-Google-Smtp-Source: AGHT+IExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+MIME-Version: 1.0
+From: Field Sender <sender@example.com>
+Date: Tue, 27 Feb 2024 13:23:53 +0100
+Message-ID: <CANabcd1234567890@mail.gmail.com>
+Subject: Weekly status
+To: fieldstation@example.org
+Content-Type: text/plain; charset="UTF-8"
+X-Mailer: Webmail 1.2.3
+User-Agent: SomeMailClient/4.5
+
+Hello,
+
+All systems nominal this week. Fuel at 60%.
+
+73

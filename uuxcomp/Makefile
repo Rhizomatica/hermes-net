@@ -21,7 +21,7 @@
 CC=gcc
 prefix=/usr
 CFLAGS=-g -Wall -pedantic -Wno-format-overflow -std=gnu11 -pthread -fstack-protector
-LDFLAGS=-lb64 -llzma -lz -lcmime
+LDFLAGS=-lb64 -llzma -lz
 
 all: uuxcomp crmail
 
