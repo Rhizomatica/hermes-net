@@ -1,0 +1,14 @@
+From sender@example.com  Tue Feb 27 13:23:54 2024
+Received: from mail.example.com (mail.example.com [203.0.113.10])
+	by hub.example.org (Postfix) with ESMTPS id 2E28F5DEA7;
+	Tue, 27 Feb 2024 13:23:54 +0100 (WAT)
+DKIM-Signature: v=1; a=rsa-sha256; d=example.com; s=sel; b=ZZZZ
+From: "Operator One" <operator@example.com>
+To: sms@hermes.radio
+Subject: msg
+Date: Tue, 27 Feb 2024 12:23:53 +0000
+Message-ID: <abc@example.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+PU2ABC de PU2XYZ: meet on 40m at 2100z
