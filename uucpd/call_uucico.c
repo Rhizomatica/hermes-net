@@ -176,16 +176,19 @@ void *uucico_thread(void *conn){
         setenv("SHELL", shell, 1);
         setenv("TERM", "dumb", 1);
 
+        char *args[8];
+        int nargs = 0;
+
+        args[nargs++] = shell;
         if (connector->ask_login == true)
-            if(connector->ask_uucp_msg == true)
-                execl(shell, shell, "-l","-m", NULL);
-            else
-                execl(shell, shell, "-l", NULL);
-        else
-            if(connector->ask_uucp_msg == true)
-                execl(shell, shell, "-m", NULL);
-            else
-                execl(shell, shell, NULL);
+            args[nargs++] = "-l";       // prompt for login name and password
+        if (connector->ask_uucp_msg == true)
+            args[nargs++] = "-m";       // report status over shared memory
+        if (connector->pre_agreed == true)
+            args[nargs++] = "-Y";       // use the pre-agreed startup
+        args[nargs] = NULL;
+
+        execv(shell, args);
 
         perror(shell);
 
