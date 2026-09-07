@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# Extra options for the calls to the HF stations.  Set to "-Y" to use the
+# pre-agreed startup, which replaces the UUCP handshake with a single Y
+# command exchange (six line turnarounds down to two).  Needs uucp 1.07-36
+# or later, and the gateway must accept it first: a station calling with
+# -Y cannot talk to one that does not support it.
+#
+# This is deliberately not applied to the ${EMAIL_SERVER} calls below,
+# which go over the TCP uplink (port TCP, protocol i, with a login chat).
+# There is nothing to gain there: the saving is in line turnarounds, which
+# a full duplex link does not pay for.
+UUCICO_HF_OPTS=""
+
 # delay between each call
 DELAY=20
 
@@ -98,7 +110,7 @@ do
                 fi
 
                 echo "Calling station ${t}."
-                uucico -m -D -S ${t}
+                uucico ${UUCICO_HF_OPTS} -m -D -S ${t}
                 sleep ${DELAY}
 
                 if [[ ${freqmode_enabled} -eq 1  ]]; then

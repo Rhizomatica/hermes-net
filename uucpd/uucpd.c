@@ -117,6 +117,7 @@ bool initialize_connector(rhizo_conn *connector){
     connector->serial_keying = false;
     connector->serial_fd = -1;
     connector->ask_login = false;
+    connector->pre_agreed = false;
     connector->clean_buffers = false; // <-  this also means -> ask for disconnection!
 
     connector->shutdown = false;
@@ -225,6 +226,7 @@ int main (int argc, char *argv[])
         fprintf(stderr, "                               Supported features VARA, P2P mode: \"p\" to enable (eg. 2300p).\n");
         fprintf(stderr, " -s serial_device           Set the serial device file path for keying the radio (VARA ONLY).\n");
         fprintf(stderr, " -l                         Tell UUCICO to ask login prompt (default: disabled).\n");
+        fprintf(stderr, " -F                         Use the pre-agreed UUCP startup (passes -Y to uucico; requires both ends).\n");
         fprintf(stderr, " -o [icom,icom7300,ubitx,shm,none] Sets radio type (icom=IC-7100 defaults, icom7300=IC-7300 defaults). Default is shm\n");
         fprintf(stderr, " -h                         Prints this help.\n");
         exit(EXIT_FAILURE);
@@ -243,12 +245,15 @@ int main (int argc, char *argv[])
     initialize_connector(connector);
 
     int opt;
-    while ((opt = getopt(argc, argv, "hlmc:d:p:a:t:f:o:r:s:")) != -1)
+    while ((opt = getopt(argc, argv, "hlFmc:d:p:a:t:f:o:r:s:")) != -1)
     {
         switch (opt)
         {
         case 'h':
             goto manual;
+            break;
+        case 'F':
+            connector->pre_agreed = true;
             break;
         case 'l':
             connector->ask_login = true;
