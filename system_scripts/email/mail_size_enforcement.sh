@@ -47,6 +47,81 @@ get_uucp_queue_size_for_host ()
 #  fi
 }
 
+# NNCP: the queued packets are encrypted, so sizes and destinations come from
+# the job index that uuxcomp writes (one file per packet id).
+if [ -f /etc/nncp.hjson ]; then
+
+  NNCP_SPOOL=${NNCP_SPOOL:=/var/spool/nncp}
+  NNCP_JOBS=${NNCP_SPOOL}/hermes-jobs
+
+  get_nncp_queue_size_for_host ()
+  {
+    total_size=0
+    for job in ${NNCP_JOBS}/*
+    do
+      [ -f "${job}" ] || continue
+      [ "$(grep '^Node: ' ${job} | cut -d ' ' -f 2-)" = "${HOST}" ] || continue
+      size=$(grep '^Size: ' ${job} | cut -d ' ' -f 2-)
+      if [[ $size =~ ^[0-9]+$ ]]
+      then
+        let total_size=total_size+size
+      fi
+    done
+  }
+
+  # emails over the per-email limit
+  for job in ${NNCP_JOBS}/*
+  do
+    [ -f "${job}" ] || continue
+    pkt=$(basename ${job})
+    node=$(grep '^Node: ' ${job} | cut -d ' ' -f 2-)
+    size=$(grep '^Size: ' ${job} | cut -d ' ' -f 2-)
+    uuid="${node}.${pkt}"
+    if [[ $size =~ ^[0-9]+$ ]] && [ ${size} -gt ${MAX_EMAIL_SIZE} ]
+    then
+      syslog "UUID = ${uuid} SIZE ${size} WILL ME MAILKILLED!"
+      mailkill.sh size_limit ${uuid}
+    else
+      syslog "UUID = ${uuid} SIZE ${size} IS GOOD"
+    fi
+  done
+
+  # then keep the queue of each station under the limit, newest first
+  for node in $(grep -h '^Node: ' ${NNCP_JOBS}/* 2>/dev/null | cut -d ' ' -f 2- | sort -u)
+  do
+    HOST=${node}
+    get_nncp_queue_size_for_host
+    syslog "NNCP email queue for ${HOST} is ${total_size} bytes."
+
+    while [ "${total_size}" -gt "${MAX_UUCP_QUEUE}" ]
+    do
+      newest_timestamp="0"
+      uuid=""
+      for job in ${NNCP_JOBS}/*
+      do
+        [ -f "${job}" ] || continue
+        [ "$(grep '^Node: ' ${job} | cut -d ' ' -f 2-)" = "${HOST}" ] || continue
+        time_stamp="$( stat -c '%Y' ${job} )"
+        if [ "${time_stamp}" -gt "${newest_timestamp}" ]
+        then
+          newest_timestamp="${time_stamp}"
+          uuid="${HOST}.$(basename ${job})"
+        fi
+      done
+
+      [ -n "${uuid}" ] || break
+
+      syslog "Deleting uuid: ${uuid} ${newest_timestamp}"
+      mailkill.sh queue_full ${uuid}
+
+      get_nncp_queue_size_for_host
+    done
+    syslog "Total NNCP email queue size ${total_size} to ${HOST} is good"
+  done
+
+  exit 0
+fi
+
 # check if there is any email which exceeds the maximum size
 for i in $(ls -1 /var/spool/uucp/)
 do
