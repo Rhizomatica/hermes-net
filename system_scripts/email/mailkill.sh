@@ -16,39 +16,66 @@ elif [ $# -eq 2 ]; then
   uuid=${2}
 fi
 
-#get uucp host path prefix
+#get host path prefix
 host=$(echo $uuid | cut -d "." -f1)
 
 #get uuidwh:  uuid without host
 uuidwh=$(echo $uuid | cut -d "." -f2)
 
-fullC=/var/spool/uucp/$host/C./C.$uuidwh
-if [ ! -f $fullC ] ;  then
-  echo "error - no C file... exiting"
-  exit
+NNCP_SPOOL=${NNCP_SPOOL:=/var/spool/nncp}
+NNCP_JOBS=${NNCP_SPOOL}/hermes-jobs
+
+if [ -f /etc/nncp.hjson ]; then
+  # NNCP: the packet is encrypted, so the details come from the job index
+  # written by uuxcomp. uuid is <node>.<packet id>.
+  job=${NNCP_JOBS}/${uuidwh}
+  if [ ! -f $job ] ; then
+    echo "error - no job index for ${uuidwh}... exiting"
+    exit
+  fi
+
+  to=$(grep '^To: ' $job | cut -d ' ' -f 2-)
+  from=$(grep '^From: ' $job | cut -d ' ' -f 2-)
+  subject=$(grep '^Subject: ' $job | cut -d ' ' -f 2-)
+  echo "To: " $to
+
+  when=$(grep '^When: ' $job | cut -d ' ' -f 2-)
+  local_time="$(date -d "${when}" '+%H:%M %d/%m/%Y' 2>/dev/null)"
+  if [ -z "${local_time}" ]; then
+    local_time="$(date -d @$(stat -c %W ${job}) '+%H:%M %d/%m/%Y' )"
+  fi
+
+  kill=$(nncp-rm -node $host -pkt $uuidwh)
+  rm -f $job
+else
+  fullC=/var/spool/uucp/$host/C./C.$uuidwh
+  if [ ! -f $fullC ] ;  then
+    echo "error - no C file... exiting"
+    exit
+  fi
+
+  #filter crmail from C and get D
+  D=$(cat $fullC | grep crmail | awk '{print $2 ;}')
+
+  #get destination
+  to=$(cat $fullC | cut -d ' ' -f 11- )
+  echo "To: " $to
+
+  fullD="/var/spool/uucp/$host/D./$D"
+  if [ ! -f $fullD ] ; then
+    echo "error - no D file... exiting"
+    exit
+  fi
+  echo "FullD " = $fullD
+
+  from=$(zcat $fullD | head -n1 | awk '{print $2;}')
+
+  subject=$(zcat $fullD | head -n20 |grep Subject| awk '{print $2;}')
+
+  local_time="$(date -d @$(stat -c %W ${fullC}) '+%H:%M %d/%m/%Y' )"
+
+  kill=$(uustat -k $uuid)
 fi
-
-#filter crmail from C and get D
-D=$(cat $fullC | grep crmail | awk '{print $2 ;}')
-
-#get destination
-to=$(cat $fullC | cut -d ' ' -f 11- )
-echo "To: " $to
-
-fullD="/var/spool/uucp/$host/D./$D"
-if [ ! -f $fullD ] ; then
-  echo "error - no D file... exiting"
-  exit
-fi
-echo "FullD " = $fullD
-
-from=$(zcat $fullD | head -n1 | awk '{print $2;}')
-
-subject=$(zcat $fullD | head -n20 |grep Subject| awk '{print $2;}')
-
-local_time="$(date -d @$(stat -c %W ${fullC}) '+%H:%M %d/%m/%Y' )"
-
-kill=$(uustat -k $uuid)
 
 if [ $lang = "en" ] && [ $type = "gui" ]; then
   message="Your email with destination(s): ${to} sent at ${local_time} was canceled by the admin user. \n\nThis is an automatic message from HERMES System!"
@@ -69,6 +96,7 @@ elif [ $lang = "es" ] && [ $type = "size_limit" ]; then
 elif [ $lang = "es" ] && [ $type = "queue_full" ]; then
   message="Su correo electrónico con destino(s): ${to} enviado el ${local_time} fue cancelado porque la lista de transmisión excede el tamaño máximo. \n\nEste es un mensaje del sistema automático de HERMES!"
   subject="Email cancelado por el sistema"
+fi
 
 if [ $lang = "pt" ] && [ $type = "gui" ]; then
   message="Seu e-mail com destino(s): ${to} enviado em ${local_time} foi cancelado pelo usuário administrador. \n\nEsta é uma mensagem automática do Sistema HERMES!"
