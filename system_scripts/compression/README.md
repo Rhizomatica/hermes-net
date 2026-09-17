@@ -1,12 +1,12 @@
 # Neural + Legacy Audio Compression Toolkit
 
-Shell helpers in this directory make it easy to move audio between regular files (`.wav`, `.mp3`, `.aac`, ...) and several ultra-low bitrate codecs. Everything runs on CPU and automatically performs the FFmpeg resampling/conversion that each codec expects.
+Shell helpers in this directory make it easy to move audio between regular files (`.wav`, `.mp3`, `.aac`, ...) and several ultra-low bitrate codecs (`.lpcnet`, `.nesc`, `.ecdc`, `.snac`, `.dstar`). Everything runs on CPU and automatically performs the FFmpeg resampling/conversion that each codec expects.
 
 ## Contents
 
 | File | Purpose |
 | --- | --- |
-| `compress_audio.sh` | Front-end that inspects the requested extension (`.lpcnet`, `.nesc`, `.ecdc`, `.snac`) and invokes the proper encoder. |
+| `compress_audio.sh` | Front-end that inspects the requested extension (`.lpcnet`, `.nesc`, `.ecdc`, `.snac`, `.dstar`) and invokes the proper encoder. |
 | `decompress_audio.sh` | Symmetric decoder that converts compressed files back to standard audio formats. |
 | `encode_ecdc.py` | Python helper that wraps the EnCodec reference model **and** the SNAC encoder bitstream writer. |
 | `decode_ecdc.py` | Counterpart decoder for EnCodec bitstreams and the compact SNAC container. |
@@ -31,10 +31,12 @@ Shell helpers in this directory make it easy to move audio between regular files
 ./compress_audio.sh input.wav output.ecdc
 ./compress_audio.sh input.wav output.lpcnet
 ./compress_audio.sh input.wav output.snac
+./compress_audio.sh input.wav output.dstar
 
 # Decompress back to a playable format
 ./decompress_audio.sh output.ecdc restored.wav
 ./decompress_audio.sh output.snac restored.wav
+./decompress_audio.sh output.dstar restored.wav
 ```
 
 The scripts normalize inputs to mono and resample to the target model's sample rate, so you can feed them AAC/MP3/WAV interchangeably.
@@ -47,6 +49,7 @@ The scripts normalize inputs to mono and resample to the target model's sample r
 | `.nesc` | NESC reference binary (`/opt/nesc/nesc_enc`) | Requires 16 kHz PCM front-end. |
 | `.ecdc` | Meta EnCodec 24 kHz | Uses `encode_ecdc.py` + PyTorch. Bitrate controlled via `ENCODEC_BITRATE`. |
 | `.snac` | Hubert Siuzdak's SNAC | Uses the compact container implemented in `encode_ecdc.py`. Defaults to `snac_24khz` (0.98 kbps speech mode). |
+| `.dstar` | D-STAR DV AMBE 2400x1200 via mbelib-neo example tools | 4.8 kbps DV frames, 12 bytes per 20 ms, 8 kHz speech. |
 
 ## Configuration knobs
 
@@ -59,6 +62,7 @@ The scripts normalize inputs to mono and resample to the target model's sample r
 | `SNAC_VARIANT` | `24khz` | Quick selector for SNAC model: `24khz`, `32khz`, or `44khz`. Sets `SNAC_MODEL` and `SNAC_SAMPLE_RATE` automatically. |
 | `SNAC_MODEL` | `hubertsiuzdak/snac_24khz` | Hugging Face repo to load. Determines bitrate + architecture. (Override `SNAC_VARIANT` if you need custom models.) |
 | `SNAC_SAMPLE_RATE` | `24000` | Resample target used before encoding and the fallback rate during decoding. (Override `SNAC_VARIANT` if you need custom rates.) |
+| `DSTAR_ENC` / `DSTAR_DEC` | `/home/rafael2k/files/rhizomatica/hermes/mbelib-neo/build/example_dstar_encode` / `example_dstar_decode` | mbelib-neo D-STAR example encoder/decoder binaries. |
 
 ### EnCodec bandwidth examples
 

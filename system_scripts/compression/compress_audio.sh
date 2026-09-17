@@ -1,6 +1,6 @@
 #!/bin/bash
 # usage:
-# compress_audio.sh audio_filename.{wav,mp3,aac,...} output.{lpcnet,nesc,ecdc,snac}
+# compress_audio.sh audio_filename.{wav,mp3,aac,...} output.{lpcnet,nesc,ecdc,snac,dstar}
 
 set -euo pipefail
 
@@ -10,6 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LPCNET_ENC=${LPCNET_ENC:=/opt/lpcnet/lpcnet_demo}
 NESC_ENC=${NESC_ENC:=/opt/nesc/nesc_enc}
 PYTHON_BIN=${PYTHON_BIN:=python3}
+DSTAR_ENC=${DSTAR_ENC:=/home/rafael2k/files/rhizomatica/hermes/mbelib-neo/build/example_dstar_encode}
 
 # Neural codec helpers
 ENCODEC_ENC=${ENCODEC_ENC:="${SCRIPT_DIR}/encode_ecdc.py"}
@@ -41,7 +42,7 @@ case "${SNAC_VARIANT}" in
 esac
 
 if [ $# -lt 2 ]; then
-  echo "Usage: $0 audio_filename.{wav,mp3,aac,...} output.{lpcnet,nesc,ecdc,snac}"
+  echo "Usage: $0 audio_filename.{wav,mp3,aac,...} output.{lpcnet,nesc,ecdc,snac,dstar}"
   exit 1
 fi
 
@@ -93,6 +94,11 @@ case "${AUDIO_FORMAT}" in
       --snac-model "${SNAC_MODEL}" \
       --snac-sample-rate "${SNAC_SAMPLE_RATE}" \
       --threads "${TORCH_THREADS}" &> /dev/null
+    ;;
+
+  dstar)
+    prepare_wav 8000
+    "${DSTAR_ENC}" "${WAV_TEMP}" "${output_file}" &> /dev/null
     ;;
 
   *)

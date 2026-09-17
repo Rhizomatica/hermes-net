@@ -1,6 +1,6 @@
 #!/bin/bash
 # usage:
-# decompress_audio file.{lpcnet,nesc,ecdc,snac} output.{aac,mp3,wav,...}
+# decompress_audio file.{lpcnet,nesc,ecdc,snac,dstar} output.{aac,mp3,wav,...}
 
 set -euo pipefail
 
@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LPCNET_DEC=${LPCNET_DEC:=/opt/lpcnet/lpcnet_demo}
 NESC_DEC=${NESC_DEC:=/opt/nesc/nesc_dec}
 PYTHON_BIN=${PYTHON_BIN:=python3}
+DSTAR_DEC=${DSTAR_DEC:=/home/rafael2k/files/rhizomatica/hermes/mbelib-neo/build/example_dstar_decode}
 ENCODEC_DEC=${ENCODEC_DEC:="${SCRIPT_DIR}/decode_ecdc.py"}
 TORCH_THREADS=${TORCH_THREADS:=1}
 
@@ -37,7 +38,7 @@ case "${SNAC_VARIANT}" in
 esac
 
 if [ $# -lt 2 ]; then
-  echo "Usage: $0 audio_filename.{lpcnet,nesc,ecdc,snac} output.{aac,mp3,wav,...}"
+  echo "Usage: $0 audio_filename.{lpcnet,nesc,ecdc,snac,dstar} output.{aac,mp3,wav,...}"
   exit 1
 fi
 
@@ -78,6 +79,11 @@ case "${AUDIO_FORMAT}" in
       --snac-model "${SNAC_MODEL}" \
       --snac-sample-rate "${SNAC_SAMPLE_RATE}" \
       --threads "${TORCH_THREADS}" &> /dev/null
+    ffmpeg -y -i "${WAV_TEMP}" "${output_file}" &> /dev/null
+    ;;
+
+  dstar)
+    "${DSTAR_DEC}" "${input_file}" "${WAV_TEMP}" &> /dev/null
     ffmpeg -y -i "${WAV_TEMP}" "${output_file}" &> /dev/null
     ;;
 
