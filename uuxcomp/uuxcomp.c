@@ -64,6 +64,9 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <sysexits.h>
 
 #include <b64/cdecode.h>
 
@@ -252,8 +255,44 @@ static void write_nncp_job_index(const char *node, const char *from,
     fclose(job_fp);
 }
 
+/* Hand one message to the transport (uux or nncp-exec). Only a clean exit
+ * of the transport counts as sent: anything else returns false, and the
+ * caller exits EX_TEMPFAIL, which Postfix's pipe(8) turns into "defer and
+ * retry". The exit status used to be ignored, so a message nncp-exec had
+ * refused was reported as delivered and lost. */
+static bool feed_transport(const char *cmd, const char *head,
+                           const void *data, size_t len)
+{
+    FILE *fp = popen(cmd, "w");
+    if (fp == NULL)
+    {
+        fprintf(stderr, "uuxcomp: cannot run: %s\n", cmd);
+        return false;
+    }
+
+    bool ok = true;
+    size_t head_len = head ? strlen(head) : 0;
+    if (head_len && fwrite(head, 1, head_len, fp) != head_len)
+        ok = false;
+    if (len && fwrite(data, 1, len, fp) != len)
+        ok = false;
+
+    int status = pclose(fp);
+    if (status == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0)
+    {
+        fprintf(stderr, "uuxcomp: transport failed (status %d): %s\n", status, cmd);
+        ok = false;
+    }
+    if (!ok)
+        fprintf(stderr, "uuxcomp: message not sent, leaving it to the MTA to retry\n");
+    return ok;
+}
+
 int main (int argc, char *argv[])
 {
+    // a transport that exits early shows up as a failed write, not a kill
+    signal(SIGPIPE, SIG_IGN);
+
     char *message_payload; // dynamic size, read from stdin
     size_t message_size;
     size_t buffer_size;
@@ -261,7 +300,6 @@ int main (int argc, char *argv[])
 
     char *output_message;
 
-    FILE *uux_fp;
 
     FILE *tmp_media;
     char tmp_media_filename[MAX_FILENAME];
@@ -325,8 +363,11 @@ int main (int argc, char *argv[])
     message_payload[message_size] = '\0';
     output_message = message_payload;
 
-    // daemonize and return the parent...
-    if (!dry_run && become_daemon() != 0)
+    // daemonize and return the parent... except over NNCP. A daemonized
+    // uuxcomp always reports success to Postfix, so a message nncp-exec
+    // refused was silently lost. NNCP queues locally and quickly: let the
+    // MTA wait for the real result, and retry on EX_TEMPFAIL.
+    if (!dry_run && !use_nncp && become_daemon() != 0)
     {
         fprintf(stderr, "Error in daemon()\n");
     }
@@ -485,16 +526,18 @@ int main (int argc, char *argv[])
 
         const char *sms_cmd = use_nncp ? "nncp-exec -quiet gw dec_message"
                                        : "uux -r - gw\\!dec_message";
-        FILE *msg_fp = dry_run ? stdout : popen(sms_cmd, "w");
-        if (msg_fp != NULL)
+        char sms_head[sizeof(sms_sender) + 8];
+        snprintf(sms_head, sizeof(sms_head), "From: %s\n", sms_sender);
+        bool sent = true;
+        if (dry_run)
         {
-            fprintf(msg_fp, "From: %s\n", sms_sender);
-            fwrite(body, 1, body_len, msg_fp);
-            if (!dry_run)
-                pclose(msg_fp);
+            fputs(sms_head, stdout);
+            fwrite(body, 1, body_len, stdout);
         }
+        else
+            sent = feed_transport(sms_cmd, sms_head, body, body_len);
         free(message_payload);
-        return EXIT_SUCCESS;
+        return sent ? EXIT_SUCCESS : EX_TEMPFAIL;
     }
 
     if (!UUXCOMP_STRIP_COMPRESS)
@@ -856,10 +899,15 @@ int main (int argc, char *argv[])
 
 #endif
 
-    uux_fp = popen(uux_cmd, "w");
-    // write the (compressed) message
-    fwrite(send_buf, 1, send_size, uux_fp);
-    pclose(uux_fp);
+    // write the (compressed) message; on failure the MTA keeps it and retries
+    if (!feed_transport(uux_cmd, NULL, send_buf, send_size))
+    {
+        if (output_message != message_payload)
+            free(output_message);
+        free(message_payload);
+        free(compressed_message);
+        return EX_TEMPFAIL;
+    }
 
     if (use_nncp)
     {
