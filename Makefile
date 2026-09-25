@@ -78,6 +78,7 @@ install_common:
 	$(MAKE) -C uuxcomp install
 	IS_SBITX=1 $(MAKE) -C uucpd install
 	install -m 644 -D system_services/init/uucpd.service $(DESTDIR)$(unitdir)/uucpd.service
+	install -D system_scripts/radio/set_radio_controller.sh $(DESTDIR)$(prefix)/lib/hermes-net/set_radio_controller.sh
 	test -f $(DESTDIR)/etc/default/uucpd || install -m 644 -D system_services/default/uucpd $(DESTDIR)/etc/default/uucpd
 	install -D system_scripts/compression/compress_image.sh $(DESTDIR)$(prefix)/bin/compress_image.sh
 	install -D system_scripts/compression/compress_audio.sh $(DESTDIR)$(prefix)/bin/compress_audio.sh
@@ -136,6 +137,7 @@ install_gateway:
 
 install_mercury:
 	install -m 644 -D system_services/init/modem.service $(DESTDIR)$(unitdir)/modem.service
+	install -D system_scripts/radio/wait_radio_audio.sh $(DESTDIR)$(prefix)/lib/hermes-net/wait_radio_audio.sh
 
 
 clean:
