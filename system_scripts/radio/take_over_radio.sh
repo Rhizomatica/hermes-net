@@ -13,4 +13,6 @@ if systemctl list-unit-files radiod.service >/dev/null 2>&1; then
     systemctl disable --now radiod.service >/dev/null 2>&1 || true
 fi
 systemctl enable sbitx.service >/dev/null 2>&1 || true
-systemctl start sbitx.service || true
+# restart, not start: a reinstall over a running sbitx_controller must run
+# the binary just installed
+systemctl restart sbitx.service || true
