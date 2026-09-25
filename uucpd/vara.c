@@ -56,6 +56,12 @@
 static atomic_bool disconnect_pending = false;
 static atomic_long disconnect_sent = 0;
 
+// Set when the TNC ends a live session (the peer disconnected, or the link
+// was lost): the local uucico and uuport may still run and must be stopped.
+// When the session ended on its own (uuport or the called uucico exited),
+// they are gone already, and a killall would hit the next session's instead.
+static atomic_bool kill_session = false;
+
 void *vara_data_worker_thread_tx(void *conn)
 {
     rhizo_conn *connector = (rhizo_conn *) conn;
@@ -226,6 +232,7 @@ void *vara_control_worker_thread_rx(void *conn)
                 modem_bytes_received(connector->bytes_received, connector->radio_type);
                 modem_bytes_transmitted(connector->bytes_transmitted, connector->radio_type);
 
+                kill_session = true;
                 connector->clean_buffers = true;
                 connector->connected = false;
                 connected_led_off(connector->serial_fd, connector->radio_type);
@@ -385,11 +392,17 @@ void *vara_control_worker_thread_tx(void *conn)
             }
             usleep(1200000); // sleep for threads finish their jobs (more than 1s here)
 
-//            fprintf(stderr, "Killing uucico.\n");
-            system("killall uucico");
-
-//            fprintf(stderr, "Killing uuport.\n");
-            system("killall uuport");
+            // Only when the TNC ended a live session: a uucico still running
+            // then belongs to it (it holds the port lock, so no other can
+            // have started).  A session that ended on its own has nothing
+            // left, and a killall would take the next session's uucico,
+            // which a gateway may start within a second.
+            if (kill_session)
+            {
+                kill_session = false;
+                system("killall uucico");
+                system("killall uuport");
+            }
 
             fprintf(stderr, "Connection closed. Cleaning internal buffers.\n");
             circular_buf_reset(connector->in_buffer);
