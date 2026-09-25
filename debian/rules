@@ -6,14 +6,14 @@
 override_dh_auto_build:
 	$(MAKE) common trx_v2-userland
 
-# rhizo-uuardop is what every station needs; sbitx-controller is the old
-# sBitx controller, which a station running hermes-radio-daemon does without.
+# uucpd is what every station needs; sbitx-controller is the old sBitx
+# controller, which a station running hermes-radio-daemon does without.
 override_dh_auto_install:
-	$(MAKE) install install_sbitx_hw DESTDIR=$(CURDIR)/debian/rhizo-uuardop
+	$(MAKE) install install_sbitx_hw DESTDIR=$(CURDIR)/debian/uucpd
 	$(MAKE) install_sbitx_controller DESTDIR=$(CURDIR)/debian/sbitx-controller
 
 # Which controller runs, and whether uucpd does, is the station's choice
 # (hermes-installer makes it), so do not enable or start any unit from the
 # maintainer scripts.
 override_dh_installsystemd:
-	dh_installsystemd --no-enable --no-start
+	dh_installsystemd --no-enable --no-start --restart-after-upgrade

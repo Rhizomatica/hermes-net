@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+#DEBHELPER#
+
+# The units are neither enabled nor started from here (see debian/rules),
+# but systemd must still see the new or removed unit files.
+if [ -d /run/systemd/system ]; then
+	systemctl --system daemon-reload >/dev/null || true
+fi
+
+exit 0

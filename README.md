@@ -39,8 +39,8 @@ Units go to /usr/lib/systemd/system and none is enabled. Change a station's
 uucpd options in /etc/default/uucpd, and anything else with a drop-in in
 /etc/systemd/system/<unit>.d/.
 
-The Debian packaging builds two packages: rhizo-uuardop, which has what
-every station needs, and sbitx-controller.
+The Debian packaging builds two packages: uucpd, which has what every
+station needs, and sbitx-controller.
 
 For building the HERMES version 1 (uBitx-based), run:
 

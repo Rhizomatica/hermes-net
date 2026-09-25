@@ -1,10 +1,11 @@
 hermes-net (0.2-1) unstable; urgency=medium
 
-  * Split the old sBitx controller (sbitx_controller, sbitx_client,
-    sbitx.service, /etc/sbitx) out of rhizo-uuardop into its own package,
-    sbitx-controller, so that a station running hermes-radio-daemon can
-    install rhizo-uuardop without it.  A station upgrading from 0.1 that
-    still runs sbitx_controller must install sbitx-controller as well.
+  * Build two packages instead of rhizo-uuardop, which was never used:
+    uucpd, with what every station needs (uucpd, uuport, uuxcomp, the
+    helper scripts, the uucpd service), and sbitx-controller, the old sBitx
+    controller (sbitx_controller, sbitx_client, sbitx.service, /etc/sbitx),
+    so that a station running hermes-radio-daemon can install uucpd
+    without it.  Build-Depends lists what the build links against.
   * One uucpd.service for every station, which requires no radio
     controller; its options are in /etc/default/uucpd.  sbitx.service
     conflicts with radiod.service.  Units are in /usr/lib/systemd/system and

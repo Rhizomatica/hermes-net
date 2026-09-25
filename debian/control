@@ -9,7 +9,7 @@ Build-Depends: debhelper-compat (= 12),
 Standards-Version: 4.5.0
 Homepage: www.rhizomatica.org/hermes
 
-Package: rhizo-uuardop
+Package: uucpd
 Architecture: any
 Multi-Arch: foreign
 Depends: ${shlibs:Depends}, ${misc:Depends}
@@ -27,8 +27,6 @@ Description: HERMES network subsystem: UUCP over the HF modem
 Package: sbitx-controller
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Breaks: rhizo-uuardop (<< 0.2-1)
-Replaces: rhizo-uuardop (<< 0.2-1)
 Description: HERMES sBitx radio controller (sbitx_controller)
  The original HERMES controller for the sBitx: sbitx_controller,
  sbitx_client, sbitx.service and its configuration in /etc/sbitx.
