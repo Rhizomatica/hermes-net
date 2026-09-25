@@ -12,8 +12,10 @@ override_dh_auto_install:
 	$(MAKE) install install_sbitx_hw DESTDIR=$(CURDIR)/debian/uucpd
 	$(MAKE) install_sbitx_controller DESTDIR=$(CURDIR)/debian/sbitx-controller
 
-# Which controller runs, and whether uucpd does, is the station's choice
-# (hermes-installer makes it), so do not enable or start any unit from the
-# maintainer scripts.
+# Whether uucpd runs is the station's choice (hermes-installer makes it),
+# so debhelper enables and starts no unit; an upgrade restarts a unit only
+# if it was running.  Installing sbitx-controller does make sbitx_controller
+# the station's radio controller in place of hermes-radio-daemon, from its
+# own postinst.
 override_dh_installsystemd:
 	dh_installsystemd --no-enable --no-start --restart-after-upgrade

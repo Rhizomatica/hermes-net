@@ -90,7 +90,9 @@ install_common:
 
 # The old controller: sbitx_controller, sbitx_client, its unit and
 # /etc/sbitx.  Its configuration is only installed where there is none, so
-# a reinstall keeps the station's.
+# a reinstall keeps the station's.  Installing it replaces
+# hermes-radio-daemon as the station's controller (take_over_radio.sh),
+# as installing hermes-radio-daemon replaces it.
 install_sbitx_controller:
 	$(MAKE) -C trx_v2-userland install
 	install -m 644 -D system_services/init/sbitx.service $(DESTDIR)$(unitdir)/sbitx.service
@@ -99,6 +101,8 @@ install_sbitx_controller:
 	test -f $(DESTDIR)/etc/sbitx/user.ini || install -D trx_v2-userland/config/user.ini $(DESTDIR)/etc/sbitx/user.ini
 	mkdir -p $(DESTDIR)/etc/sbitx/web
 	install -D trx_v2-userland/web/* $(DESTDIR)/etc/sbitx/web/
+	install -D system_scripts/radio/take_over_radio.sh $(DESTDIR)$(prefix)/lib/hermes-net/take_over_radio.sh
+	if [ -z "$(DESTDIR)" ]; then $(prefix)/lib/hermes-net/take_over_radio.sh; fi
 
 # The sBitx hardware, needed with either controller: the name of the
 # radio's i2c bus.

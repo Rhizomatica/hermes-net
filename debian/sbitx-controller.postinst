@@ -3,10 +3,14 @@ set -e
 
 #DEBHELPER#
 
-# The units are neither enabled nor started from here (see debian/rules),
-# but systemd must still see the new or removed unit files.
 if [ -d /run/systemd/system ]; then
 	systemctl --system daemon-reload >/dev/null || true
+fi
+
+# Installing the sBitx controller replaces hermes-radio-daemon as the
+# station's radio controller, as installing hermes-radio-daemon replaces it.
+if [ "$1" = "configure" ]; then
+	/usr/lib/hermes-net/take_over_radio.sh
 fi
 
 exit 0
