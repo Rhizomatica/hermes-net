@@ -1,0 +1,15 @@
+# Options for uucpd.service and caller.service (UUCP over the HF modem).
+# Read by systemd as an EnvironmentFile; uncomment to change a default.
+
+# uucpd command line.  The default, set in the unit, is:
+#   -a 127.0.0.1 -p 8300 -r vara -o shm -f 2750p -m
+# -o shm keys the radio and reports the link through the radio controller's
+# shared memory, which sbitx_controller, hermes-radio-daemon and
+# ubitx_controller all provide.  Add -F for the pre-agreed UUCP startup
+# (needs Rhizomatica uucp 1.07-37 or later, which gives uucico -Y).
+#UUCPD_OPTS="-a 127.0.0.1 -p 8300 -r vara -o shm -f 2750p -m -F"
+
+# Extra uucico options for the gateway's calls to the HF stations
+# (caller.sh).  Set to "-Y" for the pre-agreed startup; every station it
+# calls must then run uucpd -F.
+#UUCICO_HF_OPTS="-Y"

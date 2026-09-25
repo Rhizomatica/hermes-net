@@ -38,5 +38,5 @@ clean:
 install: ubitx_controller ubitx_client
 	install -D ubitx_client $(DESTDIR)$(prefix)/bin/ubitx_client
 	install -D ubitx_controller $(DESTDIR)$(prefix)/bin/ubitx_controller
-	install -m 644 -D ../system_services/init/ubitx.service $(DESTDIR)/etc/systemd/system/ubitx.service
+	install -m 644 -D ../system_services/init/ubitx.service $(DESTDIR)$(prefix)/lib/systemd/system/ubitx.service
 	install -m 644 -D ../system_services/udev/99-radio.rules $(DESTDIR)/etc/udev/rules.d/99-radio.rules

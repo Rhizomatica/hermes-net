@@ -3,6 +3,12 @@
 %:
 	dh $@
 
+# The package ships both radio controllers' units and the uucpd one; which
+# of them runs is the station's choice (hermes-installer makes it), so do not
+# enable or start any of them from the maintainer scripts.
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start
+
 #override_dh_auto_install:
 #	dh_auto_install -- prefix=/usr
 

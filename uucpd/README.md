@@ -109,6 +109,24 @@ Examples of uucpd invocation:
 `-o icom` keeps the existing IC-7100 CI-V defaults (19200 baud, address `0x88`).
 Use `-o icom7300` for IC-7300 defaults (115200 baud, address `0x94`).
 
+### Running uucpd as a service
+
+`make install_common` (part of `make install`) installs `uucpd.service` in
+`/usr/lib/systemd/system`. The unit orders itself after whichever modem
+(`modem.service`, `vnc.service`) and radio controller (`sbitx.service`,
+`radiod.service`, `ubitx.service`) the station runs, but requires none of them,
+so the same unit works with sbitx_controller and with hermes-radio-daemon.
+`-o shm` works with both, since they provide the same shared memory.
+
+Change the options in `/etc/default/uucpd` rather than in the unit, which a
+reinstall replaces:
+
+    UUCPD_OPTS="-a 127.0.0.1 -p 8300 -r vara -o shm -f 2750p -m -F"
+
+Anything else, such as a hard dependency on a modem, goes in a drop-in, e.g.
+`/etc/systemd/system/uucpd.service.d/local.conf`. On a gateway,
+`caller.service` reads `UUCICO_HF_OPTS` from the same file.
+
 ### Pre-agreed startup (-F)
 
 `-F` makes uucpd pass `-Y` to uucico, which replaces the pre-protocol UUCP DLE handshake

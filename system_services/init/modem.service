@@ -1,5 +1,6 @@
 [Unit]
 Description=HERMES open modem (mercury) daemon
+After=sound.target sbitx.service radiod.service ubitx.service
 
 [Service]
 Type=exec
