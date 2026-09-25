@@ -224,6 +224,16 @@ void *vara_control_worker_thread_rx(void *conn)
                     continue;
                 }
 
+                // The TNC can report DISCONNECTED more than once for one
+                // teardown (Mercury does).  With no link up and no CONNECT
+                // of ours in progress there is no session for it to end:
+                // acting on it would kill the next session's uucico.
+                if (!connector->connected && !connector->waiting_for_connection)
+                {
+                    fprintf(stderr, "DISCONNECTED with no link up, ignoring.\n");
+                    continue;
+                }
+
                 last_bytes_rx = 0;
                 last_bytes_tx = 0;
                 connector->bytes_received = 0;
