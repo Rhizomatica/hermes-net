@@ -2,14 +2,36 @@ Source: hermes-net
 Section: network
 Priority: optional
 Maintainer: Rafael Diniz <rafael@rhizomatica.org>
-Build-Depends: debhelper-compat (= 12)
+Build-Depends: debhelper-compat (= 12),
+               libb64-dev, liblzma-dev, zlib1g-dev, libcmime,
+               libiniparser-dev, libi2c-dev, libssl-dev, libasound2-dev,
+               libfftw3-dev, csdr
 Standards-Version: 4.5.0
 Homepage: www.rhizomatica.org/hermes
 
 Package: rhizo-uuardop
 Architecture: any
 Multi-Arch: foreign
-Depends: libc6 (>= 2.14)
-Description: HERMES network subsystem. A set of tools for HERMES' transceiver,
-             UUCP integration to HF modem, email customized compression and so
-             on.
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: uucp (>= 1.07-37)
+Description: HERMES network subsystem: UUCP over the HF modem
+ uucpd and uuport, which carry UUCP over an HF modem's TNC (Mercury or
+ VARA); uuxcomp and the HERMES e-mail, image and audio compression helpers;
+ the uucpd service, with its options in /etc/default/uucpd; the ALSA
+ loopback routing the modem uses; and the sBitx i2c device name.
+ .
+ It works with either radio controller, sbitx-controller or
+ hermes-radio-daemon, and installs neither.  uucp 1.07-37 or later adds the
+ pre-agreed startup (uucpd -F).
+
+Package: sbitx-controller
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Breaks: rhizo-uuardop (<< 0.2-1)
+Replaces: rhizo-uuardop (<< 0.2-1)
+Description: HERMES sBitx radio controller (sbitx_controller)
+ The original HERMES controller for the sBitx: sbitx_controller,
+ sbitx_client, sbitx.service and its configuration in /etc/sbitx.
+ .
+ hermes-radio-daemon supersedes it.  The two drive the same radio and
+ cannot run at once, so sbitx.service conflicts with radiod.service.

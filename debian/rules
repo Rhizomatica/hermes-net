@@ -3,14 +3,17 @@
 %:
 	dh $@
 
-# The package ships both radio controllers' units and the uucpd one; which
-# of them runs is the station's choice (hermes-installer makes it), so do not
-# enable or start any of them from the maintainer scripts.
+override_dh_auto_build:
+	$(MAKE) common trx_v2-userland
+
+# rhizo-uuardop is what every station needs; sbitx-controller is the old
+# sBitx controller, which a station running hermes-radio-daemon does without.
+override_dh_auto_install:
+	$(MAKE) install install_sbitx_hw DESTDIR=$(CURDIR)/debian/rhizo-uuardop
+	$(MAKE) install_sbitx_controller DESTDIR=$(CURDIR)/debian/sbitx-controller
+
+# Which controller runs, and whether uucpd does, is the station's choice
+# (hermes-installer makes it), so do not enable or start any unit from the
+# maintainer scripts.
 override_dh_installsystemd:
 	dh_installsystemd --no-enable --no-start
-
-#override_dh_auto_install:
-#	dh_auto_install -- prefix=/usr
-
-#override_dh_install:
-#	dh_install --list-missing -X.pyc -X.pyo

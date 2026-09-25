@@ -1,3 +1,18 @@
+hermes-net (0.2-1) unstable; urgency=medium
+
+  * Split the old sBitx controller (sbitx_controller, sbitx_client,
+    sbitx.service, /etc/sbitx) out of rhizo-uuardop into its own package,
+    sbitx-controller, so that a station running hermes-radio-daemon can
+    install rhizo-uuardop without it.  A station upgrading from 0.1 that
+    still runs sbitx_controller must install sbitx-controller as well.
+  * One uucpd.service for every station, which requires no radio
+    controller; its options are in /etc/default/uucpd.  sbitx.service
+    conflicts with radiod.service.  Units are in /usr/lib/systemd/system and
+    none is enabled or started by the packages.
+  * uucpd -F, the pre-agreed UUCP startup (needs uucp 1.07-37 or later).
+
+ -- Rafael Diniz <rafael@rhizomatica.org>  Fri, 25 Sep 2026 12:00:00 +0000
+
 hermes-net (0.1-1) unstable; urgency=medium
 
   * Initial unified release.

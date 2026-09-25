@@ -27,11 +27,13 @@ export prefix
 # reinstall never overwrites a station's settings.
 unitdir=$(prefix)/lib/systemd/system
 
-all: trx_v2-userland uuxcomp uucpd-v2
-
 # What every station needs, whichever radio controller it runs.  Building
 # uucpd for the sBitx only compiles trx_v2-userland/sbitx_io.o, the shared
-# memory client, which hermes-radio-daemon speaks as well.
+# memory client, which hermes-radio-daemon speaks as well.  The old sBitx
+# controller is opt-in: make trx_v2-userland install_sbitx_controller, or
+# make v2 install_v2 for the whole sbitx_controller station.
+all: common
+
 common: uuxcomp uucpd-v2
 
 trx_v1-firmware:
@@ -55,9 +57,12 @@ uucpd-v1:
 uucpd-v2:
 	IS_SBITX=1 $(MAKE) -C uucpd
 
-# compat
-v2: all
-install: install_v2
+# Installs what every station needs; see install_v2 for the sBitx with
+# sbitx_controller.
+install: install_common install_loopback_audio
+
+# the sBitx with sbitx_controller
+v2: trx_v2-userland common
 
 # build for v1
 v1: uuxcomp uucpd-v1 trx_v1-userland

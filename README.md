@@ -5,17 +5,42 @@ Network subsystems of the HERMES telecommunication system: https://rhizomatica.o
 
 # Compile And Install
 
-To compile the userland code for the current HERMES (version 2, sBitx-based), run:
+To compile and install what every HERMES station needs (uucpd, uuxcomp, the
+helper scripts, the uucpd service and the modem's ALSA loopback routing),
+whichever radio controller drives the radio, run:
 
 * make
-
-To install, run:
-
 * make install
+
+On an sBitx, also install the name of its i2c bus, which either controller
+uses:
+
+* make install_sbitx_hw
+
+The radio controller is separate. hermes-radio-daemon has its own
+repository. For the old sBitx controller (sbitx_controller, sbitx_client,
+sbitx.service and /etc/sbitx), which cannot run alongside it, run:
+
+* make trx_v2-userland
+* make install_sbitx_controller
+
+(`make v2` and `make install_v2` do all of the sBitx steps at once, as
+before.)
+
+If installing a station with Mercury, run:
+
+* make install_mercury
 
 Additionally, if installing in a gateway station, run:
 
 * make install_gateway
+
+Units go to /usr/lib/systemd/system and none is enabled. Change a station's
+uucpd options in /etc/default/uucpd, and anything else with a drop-in in
+/etc/systemd/system/<unit>.d/.
+
+The Debian packaging builds two packages: rhizo-uuardop, which has what
+every station needs, and sbitx-controller.
 
 For building the HERMES version 1 (uBitx-based), run:
 
