@@ -3,8 +3,11 @@ Description=HERMES open modem (mercury) daemon
 # The radio controller (sbitx_controller or hermes-radio-daemon) is
 # hermes-radio.service, an alias for the one the station runs.  The modem
 # shares its snd-aloop cables, which take their period size from whichever end
-# opens them first, so the controller has to open them first: start after it,
-# restart with it, and wait for its audio (wait_radio_audio.sh).
+# opens them first, so the controller has to open them first: start it with
+# the modem and after it, restart with it, and wait for its audio
+# (wait_radio_audio.sh).  Wants, not Requires: a station without a
+# controller (hermes-radio.service absent) still runs the modem.
+Wants=hermes-radio.service
 After=sound.target hermes-radio.service ubitx.service
 PartOf=hermes-radio.service
 
