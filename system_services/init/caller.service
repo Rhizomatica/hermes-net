@@ -1,9 +1,10 @@
 [Unit]
 Description=HERMES Gateway caller daemon
-After=nginx.service
+After=nginx.service uucpd.service
 Requires=nginx.service
 
 [Service]
+EnvironmentFile=-/etc/default/uucpd
 Type=exec
 ExecStart=/usr/bin/caller.sh
 KillSignal=SIGTERM

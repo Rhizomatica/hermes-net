@@ -67,6 +67,7 @@ typedef struct{
     uint16_t vara_mode;
     bool ask_login;
     bool ask_uucp_msg;
+    bool pre_agreed;
     int timeout;
     int data_socket;
     int control_socket;

@@ -3,8 +3,19 @@
 %:
 	dh $@
 
-#override_dh_auto_install:
-#	dh_auto_install -- prefix=/usr
+override_dh_auto_build:
+	$(MAKE) common trx_v2-userland
 
-#override_dh_install:
-#	dh_install --list-missing -X.pyc -X.pyo
+# uucpd is what every station needs; sbitx-controller is the old sBitx
+# controller, which a station running hermes-radio-daemon does without.
+override_dh_auto_install:
+	$(MAKE) install install_sbitx_hw DESTDIR=$(CURDIR)/debian/uucpd
+	$(MAKE) install_sbitx_controller DESTDIR=$(CURDIR)/debian/sbitx-controller
+
+# Whether uucpd runs is the station's choice (hermes-installer makes it),
+# so debhelper enables and starts no unit; an upgrade restarts a unit only
+# if it was running.  Installing sbitx-controller does make sbitx_controller
+# the station's radio controller in place of hermes-radio-daemon, from its
+# own postinst.
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start --restart-after-upgrade

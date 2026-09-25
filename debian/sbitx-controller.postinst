@@ -1,0 +1,16 @@
+#!/bin/sh
+set -e
+
+#DEBHELPER#
+
+if [ -d /run/systemd/system ]; then
+	systemctl --system daemon-reload >/dev/null || true
+fi
+
+# Installing the sBitx controller replaces hermes-radio-daemon as the
+# station's radio controller, as installing hermes-radio-daemon replaces it.
+if [ "$1" = "configure" ]; then
+	/usr/lib/hermes-net/take_over_radio.sh
+fi
+
+exit 0

@@ -1,14 +1,23 @@
 [Unit]
-Description=UUCPD daemon
-After=vnc.service sbitx.service
-Requires=vnc.service sbitx.service
+Description=UUCPD daemon (UUCP over the HF modem)
+# Order after whichever modem and radio controller the station runs; none
+# of them is required, so the same unit works with sbitx_controller or
+# hermes-radio-daemon (both reached as hermes-radio.service) or uBitx, and
+# with Mercury or VARA.  uucpd
+# retries until the modem's TNC answers.  Station specifics (options,
+# a hard dependency on a modem) go in /etc/default/uucpd or a drop-in in
+# /etc/systemd/system/uucpd.service.d/.
+After=network.target modem.service vnc.service hermes-radio.service ubitx.service
 
 [Service]
 Type=exec
-ExecStart=/usr/bin/uucpd -a 127.0.0.1 -p 8300 -r vara -o shm -f 2750p -m
+Environment="UUCPD_OPTS=-a 127.0.0.1 -p 8300 -r vara -o shm -f 2750p -m"
+EnvironmentFile=-/etc/default/uucpd
+ExecStart=/usr/bin/uucpd $UUCPD_OPTS
 KillSignal=SIGTERM
 IgnoreSIGPIPE=no
 Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target

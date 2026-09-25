@@ -1,5 +1,9 @@
 [Unit]
 Description=sBitx controller daemon
+# sbitx_controller and hermes-radio-daemon drive the same radio and share
+# its shared memory, codec and ports: only one of them can run.
+Conflicts=radiod.service
+After=sound.target
 
 [Service]
 Type=exec

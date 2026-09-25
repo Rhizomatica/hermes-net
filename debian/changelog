@@ -1,3 +1,19 @@
+hermes-net (0.2-1) unstable; urgency=medium
+
+  * Build two packages instead of rhizo-uuardop, which was never used:
+    uucpd, with what every station needs (uucpd, uuport, uuxcomp, the
+    helper scripts, the uucpd service), and sbitx-controller, the old sBitx
+    controller (sbitx_controller, sbitx_client, sbitx.service, /etc/sbitx),
+    so that a station running hermes-radio-daemon can install uucpd
+    without it.  Build-Depends lists what the build links against.
+  * One uucpd.service for every station, which requires no radio
+    controller; its options are in /etc/default/uucpd.  sbitx.service
+    conflicts with radiod.service.  Units are in /usr/lib/systemd/system and
+    none is enabled or started by the packages.
+  * uucpd -F, the pre-agreed UUCP startup (needs uucp 1.07-37 or later).
+
+ -- Rafael Diniz <rafael@rhizomatica.org>  Fri, 25 Sep 2026 12:00:00 +0000
+
 hermes-net (0.1-1) unstable; urgency=medium
 
   * Initial unified release.

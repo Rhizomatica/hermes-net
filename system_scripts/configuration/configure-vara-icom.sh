@@ -9,14 +9,15 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 VARA_INI="/opt/VARA/VARA.ini"
 VARA_INI_DEFAULT="/opt/VARA/VARA.ini.default"
-UUCPD_SERVICE="/etc/systemd/system/uucpd.service"
+UUCPD_DEFAULTS="/etc/default/uucpd"
+UUCPD_DROPIN="/etc/systemd/system/uucpd.service.d/vara-icom.conf"
 UDEV_RULES_SRC="${REPO_ROOT}/system_services/udev/99-radio.rules"
 UDEV_RULES_DEST="/etc/udev/rules.d/99-radio.rules"
 
 NEW_INPUT='Input Device Name=In: USB Audio CODEC - USB Audio'
 NEW_OUTPUT='Output Device Name=Out: USB Audio CODEC - USB Audi'
 
-NEW_EXECSTART='ExecStart=/usr/bin/uucpd -a 127.0.0.1 -p 8300 -r vara -o icom7300 -s /dev/ICOM-CAT -f 2750p'
+NEW_UUCPD_OPTS='-a 127.0.0.1 -p 8300 -r vara -o icom7300 -s /dev/ICOM-CAT -f 2750p'
 
 # ── Step 1: Update VARA audio device names ────────────────────────────────────
 echo "Updating VARA audio device names..."
@@ -52,22 +53,28 @@ else
     echo "  sbitx.service was already disabled."
 fi
 
-# ── Step 3: Update uucpd.service ExecStart line ───────────────────────────────
-echo "Updating uucpd.service..."
+# ── Step 3: Point uucpd at the Icom and at VARA ─────────────────────────────
+# The unit itself is the package's; the station's options go in
+# /etc/default/uucpd and the dependency on VARA in a drop-in, so a reinstall
+# of hermes-net keeps them.
+echo "Configuring uucpd..."
 
-if [[ ! -f "$UUCPD_SERVICE" ]]; then
-    echo "  ERROR: $UUCPD_SERVICE not found. Aborting."
-    exit 1
+if [[ -f "$UUCPD_DEFAULTS" ]]; then
+    cp "$UUCPD_DEFAULTS" "${UUCPD_DEFAULTS}.bak"
+    sed -i '/^UUCPD_OPTS=/d' "$UUCPD_DEFAULTS"
 fi
+echo "UUCPD_OPTS=\"${NEW_UUCPD_OPTS}\"" >> "$UUCPD_DEFAULTS"
+echo "  Set UUCPD_OPTS in $UUCPD_DEFAULTS"
 
-cp "$UUCPD_SERVICE" "${UUCPD_SERVICE}.bak"
-
-sed -i "s|^ExecStart=.*|${NEW_EXECSTART}|" "$UUCPD_SERVICE"
-echo "  Updated ExecStart in $UUCPD_SERVICE  (backup: ${UUCPD_SERVICE}.bak)"
-
-sed -i 's|^After=.*|After=vnc.service|' "$UUCPD_SERVICE"
-sed -i 's|^Requires=.*|Requires=vnc.service|' "$UUCPD_SERVICE"
-echo "  Updated After= and Requires= to vnc.service"
+mkdir -p "$(dirname "$UUCPD_DROPIN")"
+cat > "$UUCPD_DROPIN" <<'DROPIN'
+# Written by configure-vara-icom.sh: uucpd talks to VARA, which runs under
+# vnc.service, and keys the Icom itself over CAT.
+[Unit]
+Requires=vnc.service
+After=vnc.service
+DROPIN
+echo "  Installed $UUCPD_DROPIN"
 
 # ── Step 4: Install udev rules ───────────────────────────────────────────────
 echo "Installing udev rules..."
