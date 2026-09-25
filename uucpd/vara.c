@@ -41,12 +41,26 @@
 #include <arpa/inet.h>
 #include <sched.h>
 #include <unistd.h>
+#include <time.h>
+#include <stdatomic.h>
 
 #include "uucpd.h"
 #include "net.h"
 #include "call_uucico.h"
 #include "vara.h"
 #include "serial.h"
+
+// A DISCONNECT we sent, and when: the next DISCONNECTED from the TNC ends that
+// session's teardown, not a session that may have started since.  Private to
+// uucpd's control threads, so it lives here and not in the shared rhizo_conn.
+static atomic_bool disconnect_pending = false;
+static atomic_long disconnect_sent = 0;
+
+// Set when the TNC ends a live session (the peer disconnected, or the link
+// was lost): the local uucico and uuport may still run and must be stopped.
+// When the session ended on its own (uuport or the called uucico exited),
+// they are gone already, and a killall would hit the next session's instead.
+static atomic_bool kill_session = false;
 
 void *vara_data_worker_thread_tx(void *conn)
 {
@@ -195,6 +209,31 @@ void *vara_control_worker_thread_rx(void *conn)
             {
                 fprintf(stderr, "TNC: %s\n", buffer);
 
+                // The end of a teardown we started: the session is already
+                // cleaned up, and a new uucico may be running and queueing
+                // its data.  Only drop what the old peer sent after our
+                // DISCONNECT; tearing down again would kill the new session.
+                if (disconnect_pending)
+                {
+                    circular_buf_reset(connector->out_buffer);
+                    disconnect_pending = false;
+                    connector->connected = false;
+                    connected_led_off(connector->serial_fd, connector->radio_type);
+                    connector->waiting_for_connection = false;
+                    fprintf(stderr, "Disconnect completed.\n");
+                    continue;
+                }
+
+                // The TNC can report DISCONNECTED more than once for one
+                // teardown (Mercury does).  With no link up and no CONNECT
+                // of ours in progress there is no session for it to end:
+                // acting on it would kill the next session's uucico.
+                if (!connector->connected && !connector->waiting_for_connection)
+                {
+                    fprintf(stderr, "DISCONNECTED with no link up, ignoring.\n");
+                    continue;
+                }
+
                 last_bytes_rx = 0;
                 last_bytes_tx = 0;
                 connector->bytes_received = 0;
@@ -203,6 +242,7 @@ void *vara_control_worker_thread_rx(void *conn)
                 modem_bytes_received(connector->bytes_received, connector->radio_type);
                 modem_bytes_transmitted(connector->bytes_transmitted, connector->radio_type);
 
+                kill_session = true;
                 connector->clean_buffers = true;
                 connector->connected = false;
                 connected_led_off(connector->serial_fd, connector->radio_type);
@@ -213,6 +253,8 @@ void *vara_control_worker_thread_rx(void *conn)
             if (!memcmp(buffer, "CONNECTED", strlen("CONNECTED")))
             {
                 fprintf(stderr, "TNC: %s\n", buffer);
+                // a new link supersedes a teardown the TNC never confirmed
+                disconnect_pending = false;
                 connector->connected = true;
                 connected_led_on(connector->serial_fd, connector->radio_type);
                 if (connector->waiting_for_connection == false)
@@ -346,7 +388,7 @@ void *vara_control_worker_thread_tx(void *conn)
 
         if (connector->clean_buffers == true)
         {
-            if (connector->connected == true)
+            if (connector->connected == true && !disconnect_pending)
             {
                 connector->send_break = false;
                 sleep(1);
@@ -355,30 +397,44 @@ void *vara_control_worker_thread_tx(void *conn)
                 // sprintf(buffer,"ABORT\r"); // shouldn't we use abort here?
                 ret &= tcp_write(connector->control_socket, (uint8_t *)buffer, strlen(buffer));
                 fprintf(stderr, "SENDING DISCONNECT\n");
+                disconnect_sent = (long) time(NULL);
+                disconnect_pending = true;
             }
             usleep(1200000); // sleep for threads finish their jobs (more than 1s here)
 
-//            fprintf(stderr, "Killing uucico.\n");
-            system("killall uucico");
-
-//            fprintf(stderr, "Killing uuport.\n");
-            system("killall uuport");
-
-//            fprintf(stderr, "Connection closed - Cleaning internal buffers.\n");
-            circular_buf_reset(connector->in_buffer);
-            circular_buf_reset(connector->out_buffer);
-
-            while (connector->connected == true)
-                usleep(100000);
-
-            usleep(1200000); // sleep for threads finish their jobs (more than 1s here)
+            // Only when the TNC ended a live session: a uucico still running
+            // then belongs to it (it holds the port lock, so no other can
+            // have started).  A session that ended on its own has nothing
+            // left, and a killall would take the next session's uucico,
+            // which a gateway may start within a second.
+            if (kill_session)
+            {
+                kill_session = false;
+                system("killall uucico");
+                system("killall uuport");
+            }
 
             fprintf(stderr, "Connection closed. Cleaning internal buffers.\n");
             circular_buf_reset(connector->in_buffer);
             circular_buf_reset(connector->out_buffer);
 
+            // Do not wait here for the TNC's DISCONNECTED: on HF its teardown
+            // can take tens of seconds, and a uucico started meanwhile must
+            // be able to queue its data (uuport stops while clean_buffers is
+            // set).  The CONNECT for it goes out once the old link is down.
             connector->clean_buffers = false;
 			connector->buffer_size = 0;
+        }
+
+        // A TNC that never confirms our DISCONNECT must not hold the link.
+        if (disconnect_pending &&
+            (long) time(NULL) - disconnect_sent > 90)
+        {
+            fprintf(stderr, "No DISCONNECTED from the TNC in 90 s, taking the link as down.\n");
+            circular_buf_reset(connector->out_buffer);
+            disconnect_pending = false;
+            connector->connected = false;
+            connector->waiting_for_connection = false;
         }
 
         // Logic to start a connection
