@@ -96,7 +96,100 @@ Example:
 * sbitx_controller
 
 
+# RADE Digital Voice Mode
+
+This software supports two native-C digital voice stacks over HF:
+
+- **RADEv2** from `Rhizomatica/radae`, installed at `/opt/radae`
+- **RADEv1** from `Rhizomatica/radae_nopy`, installed at `/opt/radae_nopy`
+
+The installer builds both side-by-side. The active stack is selected
+system-wide from `/etc/sbitx/user.ini`:
+
+```ini
+[main]
+rade_version=v2
+```
+
+Supported values are:
+
+- `v2` - default production path
+- `v1` - RADEv1 A/B comparison path
+
+Switching versions takes effect after restarting `sbitx`:
+
+```bash
+sudo systemctl restart sbitx
+```
+
+## Prerequisites
+
+The expected installer-built paths are:
+
+- `/opt/radae/build/src/lpcnet_demo`
+- `/opt/radae/build/src/radae_tx_v2`
+- `/opt/radae/build/src/radae_rx_v2`
+- `/opt/radae_nopy/build/src/lpcnet_demo`
+- `/opt/radae_nopy/build/src/radae_tx`
+- `/opt/radae_nopy/build/src/radae_rx`
+
+RADEv2 still requires its compiled-in checkpoint assets under `/opt/radae`
+(`250725/checkpoints/checkpoint_epoch_200.pth` and `250725a_ml_sync`).
+RADEv1 (`radae_nopy`) has built-in weights and needs no runtime model files.
+
+## Building with digital voice support
+
+Build as usual:
+
+```bash
+cd trx_v2-userland
+make
+```
+
+## Using digital voice mode
+
+Enable digital voice via the sbitx_client:
+```bash
+sbitx_client -c set_digital_voice -a 1 -p 0    # Enable digital voice on profile 0
+sbitx_client -c set_digital_voice -a 0 -p 0    # Disable digital voice
+sbitx_client -c get_digital_voice -p 0         # Check digital voice status
+```
+
+When digital voice is enabled:
+
+- **TX**: Speech from mic/loopback is encoded via LPCNet feature extraction,
+  processed through the selected RADE encoder, and the resulting modem waveform
+  is placed in the SSB passband.
+- **RX**: The received SSB signal is decoded by the selected RADE receiver and
+  synthesized back to speech via LPCNet FARGAN synthesis.
+
+At startup the controller logs the selected RADE version and the TX/RX command
+lines, so `journalctl -u sbitx` is the quickest way to confirm which stack is
+active.
+
+## Technical Details
+
+- Speech sample rate: 16 kHz (LPCNet / FARGAN)
+- Modem sample rate: 8 kHz (RADAE, complex baseband)
+- Radio sample rate: 96 kHz
+- RADEv2 waveform: OFDM with Nc=14 carriers, Ns=2 symbols/frame, M=128,
+  Ncp=32 (4 ms cyclic prefix), no pilots
+- RADEv2 ML parameters: latent_dim=56, Nzmf=1, w1_dec=128, auxdata enabled,
+  peak+bottleneck=3 hard clipper (constant-envelope output)
+- RADEv2 frame sync via the `250725a_ml_sync` ML classifier
+
+The digital voice subprocess pipelines are:
+
+- **RADEv2 TX**: `lpcnet_demo -features` -> `radae_tx_v2` -> modem IQ
+- **RADEv2 RX**: `radae_rx_v2` -> `lpcnet_demo -fargan-synthesis` -> speech
+- **RADEv1 TX**: `lpcnet_demo -features` -> `radae_tx` -> modem IQ
+- **RADEv1 RX**: `radae_rx` -> `lpcnet_demo -fargan-synthesis` -> speech
+
+EOO behavior is now aligned across both versions:
+
+- **RADEv2** uses the native `--pid_file` / `SIGUSR1` EOO contract
+- **RADEv1** now accepts the same `--pid_file` / `SIGUSR1` EOO contract
+
 # Author
 
 Rafael Diniz @ Rhizomatica
-

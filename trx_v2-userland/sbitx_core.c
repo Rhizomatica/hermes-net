@@ -449,10 +449,41 @@ void swr_protection_check(radio *radio_h)
     }
 }
 
+// Final hardware half of TX->RX. For digital voice this runs only after the
+// EOO frame has already been kicked into the TX pipeline and had time to drain
+// through DSP/ALSA. Keeping the PA drop here avoids duplicating the long tail
+// of tr_switch() between the immediate and deferred paths.
+static void tr_finish_switch_to_rx(radio *radio_h, bool dv_active)
+{
+    usleep(10000);
+
+    set_speaker_level(radio_h->profiles[radio_h->profile_active_idx].speaker_level);
+    set_tx_level(0);
+
+    usleep(1000);
+    lpf_off(radio_h);
+    usleep(1000);
+    set_drive(TX_LINE, DRIVE_LOW);
+    usleep(1000);
+    lpf_set(radio_h);
+
+    rx_starting = true;
+    radio_h->txrx_state = IN_RX;
+    radio_h->dv_rx_switch_pending = false;
+    radio_h->dv_rx_switch_delay_ticks = 0;
+
+    // Clear RADAE TX flow state only after the hardware is back in RX, so the
+    // next PTT-on cannot race the tail of the over that just finished.
+    if (dv_active)
+        dsp_radae_tx_end_over();
+}
+
 // TODO: all DSP and ALSA calls here or tr_switch? or not? lets keep things separate?
 void tr_switch(radio *radio_h, bool txrx_state)
 {
     if (txrx_state == radio_h->txrx_state)
+        return;
+    if (txrx_state == IN_RX && radio_h->dv_rx_switch_pending)
         return;
 
     if (radio_h->swr_protection_enabled)
@@ -465,6 +496,8 @@ void tr_switch(radio *radio_h, bool txrx_state)
     if (txrx_state == IN_TX)
     {
         // printf("IN_TX\n");
+        radio_h->dv_rx_switch_pending = false;
+        radio_h->dv_rx_switch_delay_ticks = 0;
         tx_starting = true;
         radio_h->txrx_state = IN_TX;
 
@@ -480,20 +513,25 @@ void tr_switch(radio *radio_h, bool txrx_state)
     else
     {
         // printf("IN_RX\n");
-        usleep(10000);
 
-        set_speaker_level(radio_h->profiles[radio_h->profile_active_idx].speaker_level);
-        set_tx_level(0);
+        // Digital-voice PTT-off is two-stage:
+        // 1) trigger EOO immediately and return to the caller
+        // 2) complete the actual TX->RX hardware drop a few io_tick periods
+        //    later, after the queued EOO IQ has had time to reach the DAC
+        //
+        // This keeps control-plane calls like `sbitx_client -c ptt_off`
+        // responsive without losing the explicit EOO marker that the far-end
+        // decoder needs to reset cleanly between overs.
+        bool dv_active = radio_h->profiles[radio_h->profile_active_idx].digital_voice;
+        bool dv_eoo_sent = dsp_radae_tx_emit_eoo_if_dv();
+        if (dv_eoo_sent) {
+            radio_h->dv_rx_switch_pending = true;
+            radio_h->dv_rx_switch_delay_ticks = 15;
+            radio_h->send_ws_update = true;
+            return;
+        }
 
-        usleep(1000);
-        lpf_off(radio_h);
-        usleep(1000);
-        set_drive(TX_LINE, DRIVE_LOW);
-        usleep(1000);
-        lpf_set(radio_h);
-
-        rx_starting = true;
-        radio_h->txrx_state = IN_RX;
+        tr_finish_switch_to_rx(radio_h, dv_active);
     }
 
     radio_h->send_ws_update = true;
@@ -511,6 +549,18 @@ void io_tick(radio *radio_h)
     bool set_dirty_ws = false;
 
     ticks++;
+
+    if (radio_h->dv_rx_switch_pending && radio_h->txrx_state == IN_TX)
+    {
+        if (radio_h->dv_rx_switch_delay_ticks > 0)
+            radio_h->dv_rx_switch_delay_ticks--;
+        if (radio_h->dv_rx_switch_delay_ticks == 0)
+        {
+            bool dv_active = radio_h->profiles[radio_h->profile_active_idx].digital_voice;
+            tr_finish_switch_to_rx(radio_h, dv_active);
+            radio_h->send_ws_update = true;
+        }
+    }
 
     if (last_key_state != radio_h->key_down)
     {
