@@ -1,0 +1,18 @@
+From operator@example.com  Tue Feb 27 13:23:54 2024
+Received: from [127.0.0.1] (unknown [10.0.0.65])
+	by hub.example.org (Postfix) with UTF8SMTPSA id 2E28F5DEA7;
+	Tue, 27 Feb 2024 13:23:54 +0100 (WAT)
+Subject:
+	=?utf-8?q?Re=3A_status?=
+From: <operator@example.com>
+To: <other@example.org>
+Date: Tue, 27 Feb 2024 12:23:53 +0000
+Message-ID: <Mr.abcdef@example.com>
+In-Reply-To: <Mr.uvwxyz@example.com>
+References: <Mr.first@example.org>
+	<Mr.uvwxyz@example.com>
+Chat-Version: 1.0
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed; delsp=no
+
+Roger, all received. Nothing further.

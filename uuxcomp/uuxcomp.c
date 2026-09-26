@@ -32,6 +32,15 @@
 // use Fraunhofer Neural End-2-End Speech Coder instead of LPCNet
 #define USE_NESC 0
 
+// 1: strip the e-mail to an allowlist of headers, transcode images and audio,
+//    and xz the result (the default).
+// 0: forward each e-mail as received, uncompressed; crmail passes an
+//    uncompressed payload through as it is.  SMS routing still applies.
+// Build with -DUUXCOMP_STRIP_COMPRESS=0, or make STRIP_COMPRESS=0.
+#ifndef UUXCOMP_STRIP_COMPRESS
+#define UUXCOMP_STRIP_COMPRESS 1
+#endif
+
 #define MAIL_SIZE_SCRIPT "mail_size_enforcement.sh"
 
 
@@ -46,6 +55,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <strings.h> // strcasecmp / strncasecmp
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -53,8 +63,6 @@
 #include <sys/stat.h>
 
 #include <b64/cdecode.h>
-
-#include <cmime.h>
 
 #include "xz_compression.h"
 #include "gz_compress.h"
@@ -67,6 +75,71 @@
 #if ((USE_GZ == 1) && (USE_XZ == 1)) || ((USE_GZ == 0) && (USE_XZ == 0))
 #error Wrong compression configuration
 #endif
+
+// case-insensitive compare of a header field name of known length against a
+// NUL-terminated literal
+static bool header_name_eq(const char *name, size_t name_len, const char *lit)
+{
+    return strlen(lit) == name_len && strncasecmp(name, lit, name_len) == 0;
+}
+
+// Headers we keep.  Everything else (Received, DKIM-Signature, ARC-*, Autocrypt,
+// Authentication-Results, Received-SPF, Return-Path, Delivered-To, every X-*, ...)
+// is dropped.  An allowlist is safer than chasing an ever-growing blocklist.
+static bool header_is_allowed(const char *name, size_t name_len)
+{
+    static const char *allow[] = {
+        "From", "To", "Cc", "Bcc", "Reply-To", "Subject", "Date",
+        "Message-ID", "In-Reply-To", "References", "MIME-Version",
+        "Content-Type", "Content-Transfer-Encoding", "Content-Disposition",
+        "Content-ID", "Content-Description", NULL
+    };
+
+    // DeltaChat control headers: Chat-Version, Chat-Group-ID, Chat-Content, ...
+    if (name_len >= 5 && strncasecmp(name, "Chat-", 5) == 0)
+        return true;
+
+    for (int i = 0; allow[i] != NULL; i++)
+        if (header_name_eq(name, name_len, allow[i]))
+            return true;
+
+    return false;
+}
+
+// Pull a bare e-mail address out of a header value such as
+//   "Display Name" <user@host>   /   <user@host>   /   user@host (comment)
+// The result is written NUL-terminated and whitespace-free into out.
+static void extract_email(const char *value, size_t value_len,
+                          char *out, size_t out_size)
+{
+    const char *start = value;
+    const char *end = value + value_len;
+    const char *lt, *gt;
+
+    out[0] = '\0';
+    if (out_size == 0)
+        return;
+
+    lt = memchr(start, '<', end - start);
+    if (lt != NULL)
+    {
+        gt = memchr(lt, '>', end - lt);
+        if (gt != NULL)
+        {
+            start = lt + 1;
+            end = gt;
+        }
+    }
+
+    size_t j = 0;
+    for (const char *p = start; p < end && j + 1 < out_size; p++)
+    {
+        if (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
+            continue;
+        out[j++] = *p;
+    }
+    out[j] = '\0';
+}
 
 int main (int argc, char *argv[])
 {
@@ -111,27 +184,34 @@ int main (int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    // read stdin
+    // dry-run mode: transform stdin and write the result to stdout, without
+    // daemonizing or invoking uux/compression.  Used by tests/run_tests.sh.
+    bool dry_run = (getenv("UUXCOMP_DRY_RUN") != NULL);
+
+    // read stdin (one extra byte so we can always NUL-terminate)
     message_size = fread(tmp_buffer, 1, BUF_SIZE, stdin);
-    message_payload = malloc(message_size);
+    message_payload = malloc(message_size + 1);
     memcpy(message_payload, tmp_buffer, message_size);
     while ( !feof(stdin) )
     {
         size_t needle = message_size;
         buffer_size = fread(tmp_buffer, 1, BUF_SIZE, stdin);
         message_size += buffer_size;
-        message_payload = realloc(message_payload, message_size);
+        message_payload = realloc(message_payload, message_size + 1);
         memcpy(message_payload + needle, tmp_buffer, buffer_size);
     }
+    // everything below treats message_payload as a C string (strstr etc.)
+    message_payload[message_size] = '\0';
+    output_message = message_payload;
 
     // daemonize and return the parent...
-    if (become_daemon() != 0)
+    if (!dry_run && become_daemon() != 0)
     {
         fprintf(stderr, "Error in daemon()\n");
     }
 
 #if DEBUG_MODE > 0
-    debug_output = fopen(DEBUG_FILENAME,"a");
+    debug_output = dry_run ? stderr : fopen(DEBUG_FILENAME,"a");
     if (debug_output == NULL)
     {
         fprintf(stderr, "Failed to open debug output\n");
@@ -141,156 +221,194 @@ int main (int argc, char *argv[])
     debug_output = stderr;
 #endif
 
-    fprintf(debug_output, "Daemon creation succeed!\n");
+    fprintf(debug_output, "uuxcomp %s starting.\n", VERSION);
 
-    /*  CHOP SOME HEADERS OFF */
-    // we skip the first like which seems like a UUCP stuff
+    /* -----------------------------------------------------------------------
+     * STRIP E-MAIL CRUFT
+     *
+     * Keep only an allowlist of headers plus the body, byte-for-byte.  We do
+     * NOT round-trip through a MIME parser: re-serialising headers changes
+     * their bytes (folding, address canonicalisation, auto-generated
+     * Message-ID) and leaves no reliable way to find where the body begins.
+     * --------------------------------------------------------------------- */
     char *line_break = uuxcomp_determine_linebreak(message_payload);
-    char first_line[512];
-    char *processed_msg_payload = strstr(message_payload, line_break) + strlen(line_break);
-    int first_line_size = strlen(message_payload) - strlen(processed_msg_payload);
-    strncpy(first_line, message_payload, first_line_size);
-    first_line[first_line_size] = 0;
-
-    CMimeMessage_T *message = cmime_message_new();
-    int ret_val = cmime_message_from_string(&message, processed_msg_payload, 1);
-    char *msg_header = cmime_message_to_string(message);
-    int old_header_size = strlen(msg_header);
-    free(msg_header);
-    if (ret_val != 0)
+    if (line_break == NULL)
+    {
+        fprintf(debug_output, "No line break found, forwarding as is.\n");
         goto compress;
-    CMimeListElem_T *elem = NULL, *elem_to_remove = NULL;
-    CMimeHeader_T *header = NULL;
-    CMimeHeader_T *header_deleted = NULL;
-    char *header_name = NULL;
-    int received_count = 0;
-
-    // Here we identify if it is SMS/Message
-    bool is_sms = false;
-    CMimeListElem_T *list_recv = cmime_list_head(message->recipients);
-    while(list_recv != NULL)
-    {
-        CMimeAddress_T *addr = list_recv->data;
-        printf("data: %s\n", addr->email);
-        for (size_t i = 0; i < strlen(addr->email); i++)
-        {
-            if (strstr(addr->email, HERMES_SMS))
-               is_sms = true;
-        }
-        list_recv = list_recv->next;
     }
-    // And we send the SMS/Message
-    if (is_sms)
+    size_t lb_len = strlen(line_break);
+
+    // Optional mbox "From " envelope line (RFC 4155): kept verbatim, it is not
+    // an RFC 5322 header.  Absent when uux is called without one.
+    char *env_line = message_payload;
+    size_t env_len = 0;
+    if (message_size >= 5 && strncmp(message_payload, "From ", 5) == 0)
     {
-        char *body = message_payload+first_line_size + old_header_size;
-        char *tmp_sender = cmime_message_get_sender_string(message);
-        char sender[BUF_SIZE];
-
-        // clean up sender
-        size_t tmp_pos = 0; size_t pos = 0;
-        while (tmp_sender[tmp_pos] != 0)
-        {
-            if (tmp_sender[tmp_pos] != ' ' && tmp_sender[tmp_pos] != '<' && tmp_sender[tmp_pos] != '>')
-            {
-                sender[pos] = tmp_sender[tmp_pos];
-                pos++;
-            }
-            tmp_pos++;
-        }
-        sender[pos] = '\n';
-        sender[++pos] = 0;
-        free(tmp_sender);
-
-        // sent over uux
-        char cmd_message[MAX_FILENAME];
-
-        sprintf(cmd_message, "uux -r - gw\\!dec_message");
-        FILE *msg_fp = popen(cmd_message, "w");
-        // write an email as first thing in a message
-        fwrite("From: ", 1, 6, msg_fp);
-        fwrite(sender, 1, strlen(sender), msg_fp);
-        fwrite(body, 1, strlen(body), msg_fp);
-        pclose(msg_fp);
-
-        // we could opt not to return... in the case, comment both lines below:
-        free(message_payload);
-        return EXIT_SUCCESS;
-
+        char *eol = uuxcomp_mem_find(message_payload, message_size, line_break, lb_len);
+        if (eol != NULL)
+            env_len = (size_t)(eol - message_payload) + lb_len;
     }
-    // END SMS
 
-    // Delete some fat headers
-    elem = cmime_list_head(message->headers);
-    while(elem != NULL)
+    char *hdr_start = message_payload + env_len;
+    size_t hdr_region = message_size - env_len;
+
+    // header/body boundary == the first blank line
+    char *sep = uuxcomp_find_blank_line(hdr_start, hdr_region, line_break);
+    char *body;
+    size_t body_len;
+    size_t hdr_len;
+    if (sep != NULL)
     {
-        header = (CMimeHeader_T *) cmime_list_data(elem);
-        header_name = cmime_header_get_name(header);
+        hdr_len  = (size_t)(sep - hdr_start) + lb_len;   // keep last header's EOL
+        body     = sep + (2 * lb_len);
+        body_len = (size_t)((message_payload + message_size) - body);
+    }
+    else
+    {
+        hdr_len  = hdr_region;
+        body     = message_payload + message_size;
+        body_len = 0;
+    }
 
-        elem_to_remove = elem;
-        elem = elem->next;
+    // Walk the header block one (possibly folded) header at a time, copying
+    // only allowlisted headers into new_headers.
+    char *new_headers = malloc(hdr_len + 1);
+    size_t new_headers_len = 0;
+    bool to_is_sms = false;
+    char sms_sender[256];
+    sms_sender[0] = '\0';
 
-        if ( !strcmp(header_name, "Chat-Version") )
+    char *cur = hdr_start;
+    char *hdr_end = hdr_start + hdr_len;
+    int hdr_kept = 0, hdr_dropped = 0;
+    while (cur < hdr_end)
+    {
+        char *hstart = cur;
+        char *nl = uuxcomp_mem_find(cur, hdr_end - cur, line_break, lb_len);
+        cur = (nl != NULL) ? nl + lb_len : hdr_end;
+        while (cur < hdr_end && (*cur == ' ' || *cur == '\t'))   // folded continuation
+        {
+            nl = uuxcomp_mem_find(cur, hdr_end - cur, line_break, lb_len);
+            cur = (nl != NULL) ? nl + lb_len : hdr_end;
+        }
+        size_t whole_len = (size_t)(cur - hstart);
+
+        char *colon = memchr(hstart, ':', whole_len);
+        if (colon == NULL)
+        {
+            hdr_dropped++;
+            continue;                       // not a header line - drop it
+        }
+
+        size_t name_len = (size_t)(colon - hstart);
+        while (name_len > 0 &&
+               (hstart[name_len - 1] == ' ' || hstart[name_len - 1] == '\t'))
+            name_len--;
+
+        const char *val = colon + 1;
+        size_t val_len = (size_t)(cur - (colon + 1));
+
+        if (header_name_eq(hstart, name_len, "Chat-Version"))
             is_deltachat = true;
 
-        if ( (!strcmp(header_name, "DKIM-Signature")) ||
-             (!strcmp(header_name, "Authentication-Results")) ||
-             (!strcmp(header_name, "X-Virus-Scanned")) ||
-             (!strcmp(header_name, "Autocrypt")) ||
-             (!strcmp(header_name, "X-Google-DKIM-Signature")) ||
-             (!strcmp(header_name, "X-Gm-Message-State")) ||
-             (!strcmp(header_name, "X-Google-Smtp-Source")) ||
-             (!strcmp(header_name, "X-Received")) )
-        {
-            cmime_list_remove(message->headers, elem_to_remove, (void *)&header_deleted);
-            cmime_header_free(header_deleted);
-        }
+        if (header_name_eq(hstart, name_len, "From") && sms_sender[0] == '\0')
+            extract_email(val, val_len, sms_sender, sizeof(sms_sender));
 
-        if (!strcmp(header_name, "Received"))
+        if ((header_name_eq(hstart, name_len, "To") ||
+             header_name_eq(hstart, name_len, "Cc")) &&
+            uuxcomp_mem_find(val, val_len, HERMES_SMS, strlen(HERMES_SMS)) != NULL)
+            to_is_sms = true;
+
+        if (header_is_allowed(hstart, name_len))
         {
-            received_count++;
+            memcpy(new_headers + new_headers_len, hstart, whole_len);
+            new_headers_len += whole_len;
+            hdr_kept++;
+        }
+        else
+        {
+            hdr_dropped++;
         }
     }
-    // then we remove all Received header apart of the last (which is the first to be added)
-    if (received_count > 1)
+    fprintf(debug_output, "Headers: kept %d, dropped %d.\n", hdr_kept, hdr_dropped);
+
+    // HERMES messaging / SMS: forward the body over uux and stop.
+    if (to_is_sms)
     {
-        int received_aux = 0;
-        elem = cmime_list_head(message->headers);
-        while(elem != NULL)
+        fprintf(debug_output, "SMS/message for '%s'.\n", sms_sender);
+        free(new_headers);
+
+        FILE *msg_fp = dry_run ? stdout : popen("uux -r - gw\\!dec_message", "w");
+        if (msg_fp != NULL)
         {
-            header = (CMimeHeader_T *) cmime_list_data(elem);
-            header_name = cmime_header_get_name(header);
-            elem_to_remove = elem;
-            elem = elem->next;
-            if (!strcmp(header_name, "Received"))
-            {
-                received_aux++;
-                if (received_aux < received_count)
-                {
-                    cmime_list_remove(message->headers, elem_to_remove, (void *)&header_deleted);
-                    cmime_header_free(header_deleted);
-                }
-            }
+            fprintf(msg_fp, "From: %s\n", sms_sender);
+            fwrite(body, 1, body_len, msg_fp);
+            if (!dry_run)
+                pclose(msg_fp);
         }
+        free(message_payload);
+        return EXIT_SUCCESS;
     }
-    // printing the headers for debug purpose...
-    char *msg_header_stripped = cmime_message_to_string(message);
-    int new_header_size = strlen(msg_header_stripped);
 
-    size_t new_message_size = message_size - old_header_size + new_header_size;
-    char *tmp_msg_payload = malloc(new_message_size);
-    strcpy(tmp_msg_payload, first_line);
-    strcat(tmp_msg_payload, msg_header_stripped);
-    strcat(tmp_msg_payload, message_payload + first_line_size + old_header_size);
+    if (!UUXCOMP_STRIP_COMPRESS)
+    {
+        fprintf(debug_output, "Strip/compression off: forwarding the e-mail as received.\n");
+        free(new_headers);
+        if (dry_run)
+        {
+            fwrite(output_message, 1, message_size, stdout);
+            free(message_payload);
+            return EXIT_SUCCESS;
+        }
+        goto compress;
+    }
 
-    free(msg_header_stripped);
+    // Reassemble: [envelope] + kept headers + blank line + body.  Trailing
+    // whitespace (MIME epilogue, stray blank lines) is dropped; one final
+    // line break is guaranteed.
+    while (body_len > 0)
+    {
+        char c = body[body_len - 1];
+        if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
+            break;
+        body_len--;
+    }
+
+    size_t rebuilt_size = env_len + new_headers_len + lb_len + body_len + lb_len;
+    char *rebuilt = malloc(rebuilt_size + 1);
+    size_t off = 0;
+    if (env_len > 0)
+    {
+        memcpy(rebuilt + off, env_line, env_len);
+        off += env_len;
+    }
+    memcpy(rebuilt + off, new_headers, new_headers_len);
+    off += new_headers_len;
+    memcpy(rebuilt + off, line_break, lb_len);       // blank line after headers
+    off += lb_len;
+    if (body_len > 0)
+    {
+        memcpy(rebuilt + off, body, body_len);
+        off += body_len;
+        memcpy(rebuilt + off, line_break, lb_len);   // final EOL
+        off += lb_len;
+    }
+    rebuilt[off] = '\0';
+
+    free(new_headers);
     free(message_payload);
-
-    message_payload = tmp_msg_payload;
-    message_size = new_message_size;
+    message_payload = rebuilt;
+    message_size = off;
     output_message = message_payload;
 
-    // printf("%s",message_payload);
-    /* END CHOP SOME HEADERS OFF */
+    if (dry_run)
+    {
+        fwrite(output_message, 1, message_size, stdout);
+        free(message_payload);
+        return EXIT_SUCCESS;
+    }
+    /* END STRIP E-MAIL CRUFT */
 
     // our parser only works for DC at the moment, skip this is not a DC message
     if (is_deltachat == false)
@@ -346,7 +464,8 @@ int main (int argc, char *argv[])
     if ((char_ptr2 > original_filename) && (char_ptr2 > char_ptr3))
         char_ptr3 = original_filename;
 
-    char_ptr4 = strstr(char_ptr3, "\n\n");
+    // start of the base64 payload: right after the part's header/body blank line
+    char_ptr4 = uuxcomp_find_blank_line(char_ptr3, strlen(char_ptr3), line_break);
 
     if (char_ptr4 == NULL)
     {
@@ -354,9 +473,10 @@ int main (int argc, char *argv[])
         goto compress;
     }
 
-    char_ptr4++; char_ptr4++;
+    char_ptr4 += 2 * lb_len;
 
-    char_ptr5 = strstr(char_ptr4, "\n\n");
+    // end of the base64 payload: the blank line before the next MIME boundary
+    char_ptr5 = uuxcomp_find_blank_line(char_ptr4, strlen(char_ptr4), line_break);
 
     if (char_ptr5 == NULL)
     {
@@ -491,19 +611,31 @@ int main (int argc, char *argv[])
     // othewise just compress with gzip
 
  compress:
-    fprintf(debug_output, "Compressing now.\n");
+    ;
+    char *compressed_message = NULL;
+    size_t compressed_size = 0;
+    if (!UUXCOMP_STRIP_COMPRESS)
+    {
+        fprintf(debug_output, "Sending %zu bytes uncompressed.\n", message_size);
+    }
+    else
+    {
+        fprintf(debug_output, "Compressing now.\n");
 
-    char *compressed_message = malloc(message_size * 1.5);
-    size_t compressed_size = message_size * 1.5;
+        compressed_message = malloc(message_size * 1.5);
+        compressed_size = message_size * 1.5;
 #if USE_XZ == 1
-    xz_compress((uint8_t *) compressed_message, &compressed_size, (uint8_t *) output_message, message_size);
+        xz_compress((uint8_t *) compressed_message, &compressed_size, (uint8_t *) output_message, message_size);
 #endif
 
 #if USE_GZ == 1
-    gz_compress((uint8_t *) output_message, message_size, (uint8_t *) compressed_message, &compressed_size);
+        gz_compress((uint8_t *) output_message, message_size, (uint8_t *) compressed_message, &compressed_size);
 #endif
 
-    printf("compressed size =  %lu\n", compressed_size);
+        printf("compressed size =  %lu\n", compressed_size);
+    }
+    const char *send_buf = UUXCOMP_STRIP_COMPRESS ? compressed_message : output_message;
+    size_t send_size = UUXCOMP_STRIP_COMPRESS ? compressed_size : message_size;
 
     char uux_cmd[BUF_SIZE];
     sprintf(uux_cmd, "uux");
@@ -570,14 +702,14 @@ int main (int argc, char *argv[])
 #if USE_XZ == 1
     FILE *test = fopen("/var/log/uucp/uuxcomp-message.xz", "w");
 #endif
-    fwrite(compressed_message, 1, compressed_size, test);
+    fwrite(send_buf, 1, send_size, test);
     fclose(test);
 
 #endif
 
     uux_fp = popen(uux_cmd, "w");
-    // write the compressed message
-    fwrite(compressed_message, 1, compressed_size, uux_fp);
+    // write the (compressed) message
+    fwrite(send_buf, 1, send_size, uux_fp);
     pclose(uux_fp);
 
     if (output_message != message_payload)

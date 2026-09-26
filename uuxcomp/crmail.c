@@ -93,7 +93,7 @@ int main (int argc, char *argv[])
     size_t buffer_size;
 
     message_size = fread(tmp_buffer, 1, BUF_SIZE, stdin);
-    message_payload = malloc(message_size);
+    message_payload = malloc(message_size + 1);
     memcpy(message_payload, tmp_buffer, message_size);
 
     // read the compressed email from stdin
@@ -102,9 +102,12 @@ int main (int argc, char *argv[])
         size_t needle = message_size;
         buffer_size = fread(tmp_buffer, 1, BUF_SIZE, stdin);
         message_size += buffer_size;
-        message_payload = realloc(message_payload, message_size);
+        message_payload = realloc(message_payload, message_size + 1);
         memcpy(message_payload + needle, tmp_buffer, buffer_size);
     }
+    // the "forward as is" path aliases blob to message_payload and runs strstr
+    // over it; keep it NUL-terminated
+    message_payload[message_size] = '\0';
 
     // prepare the rmail command
     sprintf(rmail_cmd, "(rmail ");
@@ -150,19 +153,20 @@ int main (int argc, char *argv[])
 
         fprintf(debug_output, "decompressed size = %lu\n", file_size);
 
-        blob = malloc(file_size);
+        blob = malloc(file_size + 1);
 
         xz_decompress((uint8_t *) blob, &file_size, message_payload, message_size);
+        blob[file_size] = '\0';                 // decompressed mail is parsed as a string
     }
     else if (message_payload[0] == 0x1f && message_payload[1] == 0x8B)
     {
         // the uncompressed size of of the gunzip is expressed in the last 4 bytes of the file...
         file_size = ((size_t)(message_payload[message_size - 1]) << 24 | (size_t)(message_payload[message_size - 2] << 16) | (size_t)(message_payload[message_size - 3] << 8) | (size_t)(message_payload[message_size - 4]));
 
-        blob = malloc(file_size);
+        blob = malloc(file_size + 1);
 
         gz_decompress(message_payload, message_size, (uint8_t *) blob, &file_size);
-
+        blob[file_size] = '\0';                 // decompressed mail is parsed as a string
     }
     else
     {
@@ -188,10 +192,11 @@ int main (int argc, char *argv[])
         char *msg_payload = strstr(blob, line_break) + strlen(line_break);
         int first_line_size = file_size - strlen(msg_payload);
 
-        char *edited_message = malloc(file_size + new_header_size);
+        char *edited_message = malloc(file_size + new_header_size + 1);
         memcpy(edited_message, blob, first_line_size);
         memcpy(edited_message + first_line_size, new_header, new_header_size);
         memcpy(edited_message + first_line_size + new_header_size, msg_payload, strlen(msg_payload));
+        edited_message[file_size + new_header_size] = '\0';
         free(blob);
         blob = edited_message;
         file_size += new_header_size;

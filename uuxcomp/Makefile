@@ -21,7 +21,13 @@
 CC=gcc
 prefix=/usr
 CFLAGS=-g -Wall -pedantic -Wno-format-overflow -std=gnu11 -pthread -fstack-protector
-LDFLAGS=-lb64 -llzma -lz -lcmime
+LDFLAGS=-lb64 -llzma -lz
+
+# make STRIP_COMPRESS=0: uuxcomp forwards e-mails as received, uncompressed
+# (see UUXCOMP_STRIP_COMPRESS in uuxcomp.c)
+ifeq ($(STRIP_COMPRESS),0)
+CFLAGS += -DUUXCOMP_STRIP_COMPRESS=0
+endif
 
 all: uuxcomp crmail
 
