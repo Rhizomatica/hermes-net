@@ -3,7 +3,7 @@ Section: network
 Priority: optional
 Maintainer: Rafael Diniz <rafael@rhizomatica.org>
 Build-Depends: debhelper-compat (= 12),
-               libb64-dev, liblzma-dev, zlib1g-dev, libcmime,
+               libb64-dev, liblzma-dev, zlib1g-dev,
                libiniparser-dev, libi2c-dev, libssl-dev, libasound2-dev,
                libfftw3-dev, csdr
 Standards-Version: 4.5.0
