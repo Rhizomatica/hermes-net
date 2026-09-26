@@ -43,6 +43,9 @@
 
 #define MAIL_SIZE_SCRIPT "mail_size_enforcement.sh"
 
+// NNCP spool, where the log and our job index live
+#define NNCP_SPOOL_DEFAULT "/var/spool/nncp"
+
 
 #define MAX_FILENAME 4096
 #define S_BUF 128
@@ -61,6 +64,9 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <sysexits.h>
 
 #include <b64/cdecode.h>
 
@@ -141,8 +147,152 @@ static void extract_email(const char *value, size_t value_len,
     out[j] = '\0';
 }
 
+// Builds "nncp-exec -quiet NODE HANDLER RCPT..." from the uux-style arguments we
+// get from Postfix, eg: -r -n -z -asender - node!crmail (rcpt@domain)
+static void build_nncp_cmd(char *cmd, size_t cmd_size, int argc, char *argv[], int arg_start)
+{
+    char node[S_BUF] = "";
+    char handler[S_BUF] = "";
+    size_t used;
+
+    snprintf(cmd, cmd_size, "nncp-exec -quiet");
+
+    for (int i = arg_start; i < argc; i++)
+    {
+        char *bang = strchr(argv[i], '!');
+
+        if (bang == NULL || node[0] != 0)
+            continue;
+
+        size_t node_size = bang - argv[i];
+        if (node_size >= sizeof(node))
+            node_size = sizeof(node) - 1;
+        memcpy(node, argv[i], node_size);
+        node[node_size] = 0;
+        snprintf(handler, sizeof(handler), "%s", bang + 1);
+    }
+
+    used = strlen(cmd);
+    snprintf(cmd + used, cmd_size - used, " %s %s", node, handler);
+
+    // the recipients are the arguments in parentheses
+    for (int i = arg_start; i < argc; i++)
+    {
+        char rcpt[S_BUF];
+        char *close_par;
+
+        if (argv[i][0] != '(')
+            continue;
+
+        snprintf(rcpt, sizeof(rcpt), "%s", argv[i] + 1);
+        close_par = strchr(rcpt, ')');
+        if (close_par)
+            *close_par = 0;
+
+        used = strlen(cmd);
+        snprintf(cmd + used, cmd_size - used, " '%s'", rcpt);
+    }
+}
+
+// NNCP packets are encrypted, so the queue tells us nothing about the mail
+// inside them. Record what the mail scripts and the GUI need, keyed by the
+// packet id NNCP just wrote to its log.
+static void write_nncp_job_index(const char *node, const char *from,
+                                 const char *to, const char *subject)
+{
+    const char *spool = getenv("NNCP_SPOOL");
+    char log_path[MAX_FILENAME];
+    char job_path[MAX_FILENAME + S_BUF + 16];
+    char jobs_dir[MAX_FILENAME];
+    char line[BUF_SIZE];
+    char pkt[S_BUF] = "";
+    char size[S_BUF] = "";
+    char when[S_BUF] = "";
+    FILE *log_fp;
+    FILE *job_fp;
+
+    if (spool == NULL)
+        spool = NNCP_SPOOL_DEFAULT;
+
+    snprintf(log_path, sizeof(log_path), "%s/log", spool);
+    log_fp = fopen(log_path, "r");
+    if (log_fp == NULL)
+        return;
+
+    // the last "Pkt:" in the log is the packet we have just queued
+    while (fgets(line, sizeof(line), log_fp) != NULL)
+    {
+        line[strcspn(line, "\r\n")] = 0;
+
+        if (!strncmp(line, "Pkt: ", 5))
+            snprintf(pkt, sizeof(pkt), "%s", line + 5);
+        else if (!strncmp(line, "Size: ", 6))
+            snprintf(size, sizeof(size), "%s", line + 6);
+        else if (!strncmp(line, "When: ", 6))
+            snprintf(when, sizeof(when), "%s", line + 6);
+    }
+    fclose(log_fp);
+
+    if (pkt[0] == 0)
+        return;
+
+    snprintf(jobs_dir, sizeof(jobs_dir), "%s/hermes-jobs", spool);
+    mkdir(jobs_dir, 0770);
+
+    snprintf(job_path, sizeof(job_path), "%s/%s", jobs_dir, pkt);
+    job_fp = fopen(job_path, "w");
+    if (job_fp == NULL)
+        return;
+
+    fprintf(job_fp, "Pkt: %s\n", pkt);
+    fprintf(job_fp, "Node: %s\n", node);
+    fprintf(job_fp, "Handler: crmail\n");
+    fprintf(job_fp, "From: %s\n", from);
+    fprintf(job_fp, "To: %s\n", to);
+    fprintf(job_fp, "Subject: %s\n", subject);
+    fprintf(job_fp, "Size: %s\n", size);
+    fprintf(job_fp, "When: %s\n", when);
+    fclose(job_fp);
+}
+
+/* Hand one message to the transport (uux or nncp-exec). Only a clean exit
+ * of the transport counts as sent: anything else returns false, and the
+ * caller exits EX_TEMPFAIL, which Postfix's pipe(8) turns into "defer and
+ * retry". The exit status used to be ignored, so a message nncp-exec had
+ * refused was reported as delivered and lost. */
+static bool feed_transport(const char *cmd, const char *head,
+                           const void *data, size_t len)
+{
+    FILE *fp = popen(cmd, "w");
+    if (fp == NULL)
+    {
+        fprintf(stderr, "uuxcomp: cannot run: %s\n", cmd);
+        return false;
+    }
+
+    bool ok = true;
+    size_t head_len = head ? strlen(head) : 0;
+    if (head_len && fwrite(head, 1, head_len, fp) != head_len)
+        ok = false;
+    if (len && fwrite(data, 1, len, fp) != len)
+        ok = false;
+
+    int status = pclose(fp);
+    if (status == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0)
+    {
+        fprintf(stderr, "uuxcomp: transport failed (status %d): %s\n", status, cmd);
+        ok = false;
+    }
+    if (!ok)
+        fprintf(stderr, "uuxcomp: message not sent, leaving it to the MTA to retry\n");
+    return ok;
+}
+
 int main (int argc, char *argv[])
 {
+    // a transport that exits early shows up as a failed write, not a kill
+    signal(SIGPIPE, SIG_IGN);
+
     char *message_payload; // dynamic size, read from stdin
     size_t message_size;
     size_t buffer_size;
@@ -150,7 +300,6 @@ int main (int argc, char *argv[])
 
     char *output_message;
 
-    FILE *uux_fp;
 
     FILE *tmp_media;
     char tmp_media_filename[MAX_FILENAME];
@@ -180,8 +329,18 @@ int main (int argc, char *argv[])
     {
         fprintf(stderr, "-- uuxcomp version %s by rhizomatica --\n\n", VERSION);
         fprintf(stderr, "Usage:\n");
-        fprintf(stderr, "uuxcomp [uux parameters]\n");
+        fprintf(stderr, "uuxcomp [-T uucp|nncp] [uux parameters]\n");
         return EXIT_FAILURE;
+    }
+
+    // transport: uux (default) or nncp-exec
+    bool use_nncp = false;
+    int arg_start = 1;
+
+    if (argc > 2 && !strcmp(argv[1], "-T"))
+    {
+        use_nncp = !strcmp(argv[2], "nncp");
+        arg_start = 3;
     }
 
     // dry-run mode: transform stdin and write the result to stdout, without
@@ -204,8 +363,11 @@ int main (int argc, char *argv[])
     message_payload[message_size] = '\0';
     output_message = message_payload;
 
-    // daemonize and return the parent...
-    if (!dry_run && become_daemon() != 0)
+    // daemonize and return the parent... except over NNCP. A daemonized
+    // uuxcomp always reports success to Postfix, so a message nncp-exec
+    // refused was silently lost. NNCP queues locally and quickly: let the
+    // MTA wait for the real result, and retry on EX_TEMPFAIL.
+    if (!dry_run && !use_nncp && become_daemon() != 0)
     {
         fprintf(stderr, "Error in daemon()\n");
     }
@@ -278,6 +440,10 @@ int main (int argc, char *argv[])
     bool to_is_sms = false;
     char sms_sender[256];
     sms_sender[0] = '\0';
+    char mail_to[256];
+    mail_to[0] = '\0';
+    char mail_subject[256];
+    mail_subject[0] = '\0';
 
     char *cur = hdr_start;
     char *hdr_end = hdr_start + hdr_len;
@@ -315,6 +481,25 @@ int main (int argc, char *argv[])
         if (header_name_eq(hstart, name_len, "From") && sms_sender[0] == '\0')
             extract_email(val, val_len, sms_sender, sizeof(sms_sender));
 
+        // kept for the NNCP job index: the encrypted queue cannot be read back
+        if (header_name_eq(hstart, name_len, "To") && mail_to[0] == '\0')
+            extract_email(val, val_len, mail_to, sizeof(mail_to));
+
+        if (header_name_eq(hstart, name_len, "Subject") && mail_subject[0] == '\0')
+        {
+            size_t copy_len = val_len;
+            while (copy_len > 0 && (val[0] == ' ' || val[0] == '\t'))
+            {
+                val++;
+                copy_len--;
+            }
+            if (copy_len >= sizeof(mail_subject))
+                copy_len = sizeof(mail_subject) - 1;
+            memcpy(mail_subject, val, copy_len);
+            mail_subject[copy_len] = '\0';
+            mail_subject[strcspn(mail_subject, "\r\n")] = '\0';
+        }
+
         if ((header_name_eq(hstart, name_len, "To") ||
              header_name_eq(hstart, name_len, "Cc")) &&
             uuxcomp_mem_find(val, val_len, HERMES_SMS, strlen(HERMES_SMS)) != NULL)
@@ -339,16 +524,20 @@ int main (int argc, char *argv[])
         fprintf(debug_output, "SMS/message for '%s'.\n", sms_sender);
         free(new_headers);
 
-        FILE *msg_fp = dry_run ? stdout : popen("uux -r - gw\\!dec_message", "w");
-        if (msg_fp != NULL)
+        const char *sms_cmd = use_nncp ? "nncp-exec -quiet gw dec_message"
+                                       : "uux -r - gw\\!dec_message";
+        char sms_head[sizeof(sms_sender) + 8];
+        snprintf(sms_head, sizeof(sms_head), "From: %s\n", sms_sender);
+        bool sent = true;
+        if (dry_run)
         {
-            fprintf(msg_fp, "From: %s\n", sms_sender);
-            fwrite(body, 1, body_len, msg_fp);
-            if (!dry_run)
-                pclose(msg_fp);
+            fputs(sms_head, stdout);
+            fwrite(body, 1, body_len, stdout);
         }
+        else
+            sent = feed_transport(sms_cmd, sms_head, body, body_len);
         free(message_payload);
-        return EXIT_SUCCESS;
+        return sent ? EXIT_SUCCESS : EX_TEMPFAIL;
     }
 
     if (!UUXCOMP_STRIP_COMPRESS)
@@ -680,6 +869,9 @@ int main (int argc, char *argv[])
 
 
 
+    if (use_nncp)
+        build_nncp_cmd(uux_cmd, sizeof(uux_cmd), argc, argv, arg_start);
+
 #if DEBUG_MODE > 1
     // parse command lines
     for (int i = 1; i < argc; i++)
@@ -707,10 +899,36 @@ int main (int argc, char *argv[])
 
 #endif
 
-    uux_fp = popen(uux_cmd, "w");
-    // write the (compressed) message
-    fwrite(send_buf, 1, send_size, uux_fp);
-    pclose(uux_fp);
+    // write the (compressed) message; on failure the MTA keeps it and retries
+    if (!feed_transport(uux_cmd, NULL, send_buf, send_size))
+    {
+        if (output_message != message_payload)
+            free(output_message);
+        free(message_payload);
+        free(compressed_message);
+        return EX_TEMPFAIL;
+    }
+
+    if (use_nncp)
+    {
+        char node[S_BUF] = "";
+
+        for (int i = arg_start; i < argc; i++)
+        {
+            char *bang = strchr(argv[i], '!');
+
+            if (bang == NULL || node[0] != 0)
+                continue;
+
+            size_t node_size = bang - argv[i];
+            if (node_size >= sizeof(node))
+                node_size = sizeof(node) - 1;
+            memcpy(node, argv[i], node_size);
+            node[node_size] = 0;
+        }
+
+        write_nncp_job_index(node, sms_sender, mail_to, mail_subject);
+    }
 
     if (output_message != message_payload)
         free(output_message);

@@ -328,11 +328,30 @@ void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile)
 {
     _Atomic uint32_t *radio_freq = &radio_h->profiles[profile].freq;
 
-    if (*radio_freq == frequency)
-        return;
-
     if ( (frequency > 30000000) || (frequency < 500000) )
         return;
+
+    /* Whether the CACHED value moved. This used to gate the whole function,
+     * which had two consequences:
+     *
+     *  - set_profile() calls us with the frequency the profile already holds,
+     *    so the early return fired and switching profiles never actually
+     *    retuned the synthesiser. The radio stayed on the previous profile's
+     *    frequency while every interface reported the new one.
+     *
+     *  - Once the synthesiser diverged from our cache -- another process
+     *    driving the same hardware, which happens on a bench -- asking for the
+     *    frequency the cache already held did nothing, so the divergence could
+     *    not be corrected through the API at all. Recovery needed a detour to
+     *    a different frequency and back, which is not something a caller
+     *    should have to know.
+     *
+     * So program the hardware whenever the call targets the active profile,
+     * and use this flag only to decide whether the config needs rewriting.
+     * Redundant programming is cheap and rare: the callers are operator
+     * actions, the tuning knob (which only calls us when it has actually
+     * moved), and set_profile. */
+    const bool value_changed = (*radio_freq != frequency);
 
     *radio_freq = frequency;
 
@@ -343,6 +362,9 @@ void set_frequency(radio *radio_h, uint32_t frequency, uint32_t profile)
         else
             si5351bx_setfreq(2, *radio_freq + radio_h->bfo_frequency - 24000); // 24 kHz offset to provide the user the "real" dial frequency after the DSP processing (just "- 24000")
     }
+
+    if (!value_changed)
+        return;             /* hardware re-asserted above; nothing to persist */
 
     char tmp1[64]; char tmp2[64];
     sprintf(tmp1, "profile%u:freq", profile);
@@ -358,8 +380,14 @@ void set_mode(radio *radio_h, uint16_t mode, uint32_t profile)
 {
     _Atomic uint16_t *radio_mode = &radio_h->profiles[profile].mode;
 
-    if (*radio_mode == mode)
-        return;
+    /* Same reasoning as set_frequency(): apply to the DSP whenever the call
+     * targets the active profile, and use the cached comparison only to decide
+     * whether the config needs rewriting. set_profile() passes the mode the
+     * profile already holds, so gating on the cache meant the filters were
+     * never re-tuned for it -- harmless only because set_profile() calls
+     * dsp_set_filters() itself straight afterwards. Any other caller asking
+     * for the mode already cached got nothing applied. */
+    const bool value_changed = (*radio_mode != mode);
 
     *radio_mode = mode;
 
@@ -368,7 +396,13 @@ void set_mode(radio *radio_h, uint16_t mode, uint32_t profile)
         dsp_set_filters();
     }
 
-    char tmp1[64]; char tmp2[64];
+    if (!value_changed)
+        return;             /* filters re-applied above; nothing to persist */
+
+    /* tmp2 is initialised because the chain below covers only the three modes
+     * this tree defines: an out-of-range mode would otherwise write
+     * uninitialised stack into the config file. */
+    char tmp1[64]; char tmp2[64] = "USB";
     sprintf(tmp1, "profile%u:mode", profile);
     if (mode == MODE_USB)
         sprintf(tmp2, "USB");
