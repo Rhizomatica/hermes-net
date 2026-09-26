@@ -32,6 +32,15 @@
 // use Fraunhofer Neural End-2-End Speech Coder instead of LPCNet
 #define USE_NESC 0
 
+// 1: strip the e-mail to an allowlist of headers, transcode images and audio,
+//    and xz the result (the default).
+// 0: forward each e-mail as received, uncompressed; crmail passes an
+//    uncompressed payload through as it is.  SMS routing still applies.
+// Build with -DUUXCOMP_STRIP_COMPRESS=0, or make STRIP_COMPRESS=0.
+#ifndef UUXCOMP_STRIP_COMPRESS
+#define UUXCOMP_STRIP_COMPRESS 1
+#endif
+
 #define MAIL_SIZE_SCRIPT "mail_size_enforcement.sh"
 
 
@@ -342,6 +351,19 @@ int main (int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
+    if (!UUXCOMP_STRIP_COMPRESS)
+    {
+        fprintf(debug_output, "Strip/compression off: forwarding the e-mail as received.\n");
+        free(new_headers);
+        if (dry_run)
+        {
+            fwrite(output_message, 1, message_size, stdout);
+            free(message_payload);
+            return EXIT_SUCCESS;
+        }
+        goto compress;
+    }
+
     // Reassemble: [envelope] + kept headers + blank line + body.  Trailing
     // whitespace (MIME epilogue, stray blank lines) is dropped; one final
     // line break is guaranteed.
@@ -589,19 +611,31 @@ int main (int argc, char *argv[])
     // othewise just compress with gzip
 
  compress:
-    fprintf(debug_output, "Compressing now.\n");
+    ;
+    char *compressed_message = NULL;
+    size_t compressed_size = 0;
+    if (!UUXCOMP_STRIP_COMPRESS)
+    {
+        fprintf(debug_output, "Sending %zu bytes uncompressed.\n", message_size);
+    }
+    else
+    {
+        fprintf(debug_output, "Compressing now.\n");
 
-    char *compressed_message = malloc(message_size * 1.5);
-    size_t compressed_size = message_size * 1.5;
+        compressed_message = malloc(message_size * 1.5);
+        compressed_size = message_size * 1.5;
 #if USE_XZ == 1
-    xz_compress((uint8_t *) compressed_message, &compressed_size, (uint8_t *) output_message, message_size);
+        xz_compress((uint8_t *) compressed_message, &compressed_size, (uint8_t *) output_message, message_size);
 #endif
 
 #if USE_GZ == 1
-    gz_compress((uint8_t *) output_message, message_size, (uint8_t *) compressed_message, &compressed_size);
+        gz_compress((uint8_t *) output_message, message_size, (uint8_t *) compressed_message, &compressed_size);
 #endif
 
-    printf("compressed size =  %lu\n", compressed_size);
+        printf("compressed size =  %lu\n", compressed_size);
+    }
+    const char *send_buf = UUXCOMP_STRIP_COMPRESS ? compressed_message : output_message;
+    size_t send_size = UUXCOMP_STRIP_COMPRESS ? compressed_size : message_size;
 
     char uux_cmd[BUF_SIZE];
     sprintf(uux_cmd, "uux");
@@ -668,14 +702,14 @@ int main (int argc, char *argv[])
 #if USE_XZ == 1
     FILE *test = fopen("/var/log/uucp/uuxcomp-message.xz", "w");
 #endif
-    fwrite(compressed_message, 1, compressed_size, test);
+    fwrite(send_buf, 1, send_size, test);
     fclose(test);
 
 #endif
 
     uux_fp = popen(uux_cmd, "w");
-    // write the compressed message
-    fwrite(compressed_message, 1, compressed_size, uux_fp);
+    // write the (compressed) message
+    fwrite(send_buf, 1, send_size, uux_fp);
     pclose(uux_fp);
 
     if (output_message != message_payload)
