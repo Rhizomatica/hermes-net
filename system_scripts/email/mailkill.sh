@@ -50,7 +50,7 @@ else
   fullC=/var/spool/uucp/$host/C./C.$uuidwh
   if [ ! -f $fullC ] ;  then
     echo "error - no C file... exiting"
-    exit
+    exit 1
   fi
 
   #filter crmail from C and get D
@@ -63,7 +63,7 @@ else
   fullD="/var/spool/uucp/$host/D./$D"
   if [ ! -f $fullD ] ; then
     echo "error - no D file... exiting"
-    exit
+    exit 1
   fi
   echo "FullD " = $fullD
 
