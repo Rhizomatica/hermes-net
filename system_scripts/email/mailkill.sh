@@ -25,14 +25,13 @@ uuidwh=$(echo $uuid | cut -d "." -f2)
 NNCP_SPOOL=${NNCP_SPOOL:=/var/spool/nncp}
 NNCP_JOBS=${NNCP_SPOOL}/hermes-jobs
 
-if [ -f /etc/nncp.hjson ]; then
+# NNCP or UUCP is decided per mail, not per station: a station that ran
+# NNCP and went back to UUCP keeps /etc/nncp.hjson, and its UUCP mail must
+# still be cancelled. A mail uuxcomp queued over NNCP has a job index entry
+# (uuid is <node>.<packet id>); anything else is a UUCP job.
+job=${NNCP_JOBS}/${uuidwh}
+if [ -f "${job}" ]; then
   # NNCP: the packet is encrypted, so the details come from the job index
-  # written by uuxcomp. uuid is <node>.<packet id>.
-  job=${NNCP_JOBS}/${uuidwh}
-  if [ ! -f $job ] ; then
-    echo "error - no job index for ${uuidwh}... exiting"
-    exit
-  fi
 
   to=$(grep '^To: ' $job | cut -d ' ' -f 2-)
   from=$(grep '^From: ' $job | cut -d ' ' -f 2-)
@@ -68,9 +67,12 @@ else
   fi
   echo "FullD " = $fullD
 
-  from=$(zcat $fullD | head -n1 | awk '{print $2;}')
+  # uuxcomp compresses with xz; older queued mail may be gzip, or plain
+  unpack() { if xz -t "$1" 2> /dev/null; then xzcat "$1"; else zcat -f "$1"; fi; }
 
-  subject=$(zcat $fullD | head -n20 |grep Subject| awk '{print $2;}')
+  from=$(unpack $fullD | head -n1 | awk '{print $2;}')
+
+  subject=$(unpack $fullD | head -n20 |grep Subject| awk '{print $2;}')
 
   local_time="$(date -d @$(stat -c %W ${fullC}) '+%H:%M %d/%m/%Y' )"
 

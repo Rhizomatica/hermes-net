@@ -48,11 +48,14 @@ get_uucp_queue_size_for_host ()
 }
 
 # NNCP: the queued packets are encrypted, so sizes and destinations come from
-# the job index that uuxcomp writes (one file per packet id).
-if [ -f /etc/nncp.hjson ]; then
+# the job index that uuxcomp writes (one file per packet id). Checked
+# whenever there are NNCP jobs, and followed by the UUCP checks in any case:
+# a station that ran NNCP and went back to UUCP keeps /etc/nncp.hjson, and
+# its UUCP queue must still be kept in bounds.
+NNCP_SPOOL=${NNCP_SPOOL:=/var/spool/nncp}
+NNCP_JOBS=${NNCP_SPOOL}/hermes-jobs
 
-  NNCP_SPOOL=${NNCP_SPOOL:=/var/spool/nncp}
-  NNCP_JOBS=${NNCP_SPOOL}/hermes-jobs
+if ls ${NNCP_JOBS}/* > /dev/null 2>&1; then
 
   get_nncp_queue_size_for_host ()
   {
@@ -118,9 +121,10 @@ if [ -f /etc/nncp.hjson ]; then
     done
     syslog "Total NNCP email queue size ${total_size} to ${HOST} is good"
   done
-
-  exit 0
 fi
+
+# the UUCP checks, where there is a UUCP spool
+[ -d /var/spool/uucp ] || exit 0
 
 # check if there is any email which exceeds the maximum size
 for i in $(ls -1 /var/spool/uucp/)
