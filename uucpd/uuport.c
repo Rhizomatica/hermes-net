@@ -54,7 +54,12 @@ FILE *log_fd;
 atomic_bool running_read;
 atomic_bool running_write;
 
-#define TIMEOUT 40
+// How long uucico's line may wait for the link to come up.  Only a backstop:
+// a connect the modem gives up on reaches uucpd as DISCONNECTED and ends this
+// at once (clean_buffers).  40 s cut off Mercury's deep connect, which falls
+// back to 13.5 s MFSK CALLs after two DATAC16 ones and on a weak link connects
+// 50-100 s into the call.
+#define TIMEOUT 120
 
 void *read_thread(void *conn)
 {
