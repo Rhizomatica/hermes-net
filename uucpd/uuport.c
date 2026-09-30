@@ -58,8 +58,9 @@ atomic_bool running_write;
 // a connect the modem gives up on reaches uucpd as DISCONNECTED and ends this
 // at once (clean_buffers).  40 s cut off Mercury's deep connect, which falls
 // back to 13.5 s MFSK CALLs after two DATAC16 ones and on a weak link connects
-// 50-100 s into the call.
-#define TIMEOUT 120
+// 50-100 s into the call, and more.  uucico waits as long for the Shere
+// (CTIMEOUT, Rhizomatica/uucp 1.07-39): both run from the call's start.
+#define TIMEOUT 180
 
 void *read_thread(void *conn)
 {
