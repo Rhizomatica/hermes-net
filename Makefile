@@ -79,6 +79,7 @@ install_common:
 	IS_SBITX=1 $(MAKE) -C uucpd install
 	install -m 644 -D system_services/init/uucpd.service $(DESTDIR)$(unitdir)/uucpd.service
 	install -D system_scripts/radio/set_radio_controller.sh $(DESTDIR)$(prefix)/lib/hermes-net/set_radio_controller.sh
+	install -D system_scripts/radio/switch_radio_controller.sh $(DESTDIR)$(prefix)/bin/switch_radio_controller.sh
 	test -f $(DESTDIR)/etc/default/uucpd || install -m 644 -D system_services/default/uucpd $(DESTDIR)/etc/default/uucpd
 	install -D system_scripts/compression/compress_image.sh $(DESTDIR)$(prefix)/bin/compress_image.sh
 	install -D system_scripts/compression/compress_audio.sh $(DESTDIR)$(prefix)/bin/compress_audio.sh
