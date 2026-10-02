@@ -205,6 +205,11 @@ typedef struct
     dictionary *cfg_user;
     _Atomic bool cfg_user_dirty;
     _Atomic bool send_ws_update;
+    // DV TX->RX handoff is split in two phases: after PTT-off we trigger EOO
+    // immediately, then finish the hardware drop a few io_tick periods later
+    // so the queued IQ tail reaches the DAC before PA drive is removed.
+    _Atomic bool dv_rx_switch_pending;
+    _Atomic uint32_t dv_rx_switch_delay_ticks;
 
     _Atomic uint32_t bytes_transmitted;
     _Atomic uint32_t bytes_received;

@@ -421,7 +421,6 @@ void *process_radio_command_thread(void *arg)
 
     while(!shutdown_)
     {
-
         pthread_cond_wait(&conn->cmd_condition, &conn->cmd_mutex);
 
         if(shutdown_)
