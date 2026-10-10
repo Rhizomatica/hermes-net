@@ -25,6 +25,10 @@
 #include <time.h>
 #include <stdbool.h>
 #include <stdatomic.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "sbitx_alsa.h"
 #include "sbitx_dsp.h"
@@ -35,6 +39,10 @@ char *radio_playback_dev = "hw:0,0";
 char *loop_capture_dev = "hw:2,1";
 char *loop_playback_dev = "hw:1,0";
 
+#define MIC_INJECT_PATH "/tmp/sbitx_mic_inject.s32"
+#define RX_SPEAKER_DUMP_TRIGGER "/tmp/sbitx_rx_speaker_dump"
+#define RX_SPEAKER_DUMP_PATH "/tmp/sbitx_rx_speaker_dump.s32"
+
 // mixer device
 char *radio_ctl = "hw:0";
 
@@ -42,6 +50,10 @@ snd_pcm_t *pcm_capture_handle;
 snd_pcm_t *pcm_play_handle;
 snd_pcm_t *loopback_capture_handle;
 snd_pcm_t *loopback_play_handle;
+
+static int mic_inject_fd = -1;
+static bool mic_inject_missing_logged = false;
+static FILE *rx_speaker_dump_fp = NULL;
 
 unsigned int hw_rate = 96000; /* Sample rate */
 snd_pcm_uframes_t hw_period_size = 512; // in frames
@@ -60,6 +72,103 @@ extern _Atomic bool shutdown_;
 
 // should we allow level control even in IO-ONLY mode?
 #define ALLOW_ALSA_LEVELS_IN_IO_ONLY 1
+
+static void close_mic_inject(void)
+{
+    if (mic_inject_fd >= 0)
+        close(mic_inject_fd);
+
+    mic_inject_fd = -1;
+}
+
+static void close_rx_speaker_dump(void)
+{
+    if (rx_speaker_dump_fp)
+        fclose(rx_speaker_dump_fp);
+
+    rx_speaker_dump_fp = NULL;
+}
+
+// Optional test hook: if /tmp/sbitx_mic_inject.s32 exists, use it as the TX
+// source for the normal mic path. Format must be raw S32_LE, 96 kHz, mono.
+static bool read_mic_inject(uint8_t *buffer, uint32_t size)
+{
+    size_t offset = 0;
+
+    while (offset < size)
+    {
+        if (mic_inject_fd < 0)
+        {
+            struct stat st;
+
+            mic_inject_fd = open(MIC_INJECT_PATH, O_RDONLY | O_CLOEXEC);
+            if (mic_inject_fd < 0)
+            {
+                if (!mic_inject_missing_logged && errno != ENOENT)
+                    fprintf(stderr, "Could not open mic inject file %s (%s)\n", MIC_INJECT_PATH, strerror(errno));
+
+                mic_inject_missing_logged = true;
+                return false;
+            }
+
+            if (fstat(mic_inject_fd, &st) == 0 && S_ISREG(st.st_mode) && st.st_size == 0)
+            {
+                fprintf(stderr, "Mic inject file %s is empty\n", MIC_INJECT_PATH);
+                close_mic_inject();
+                mic_inject_missing_logged = true;
+                return false;
+            }
+
+            fprintf(stderr, "Mic inject active: %s\n", MIC_INJECT_PATH);
+            mic_inject_missing_logged = false;
+        }
+
+        ssize_t n = read(mic_inject_fd, buffer + offset, size - offset);
+        if (n > 0)
+        {
+            offset += (size_t) n;
+            continue;
+        }
+
+        if (n == 0)
+        {
+            if (lseek(mic_inject_fd, 0, SEEK_SET) >= 0)
+                continue;
+
+            fprintf(stderr, "Mic inject stream ended for %s\n", MIC_INJECT_PATH);
+            close_mic_inject();
+            return false;
+        }
+
+        fprintf(stderr, "Mic inject read failed for %s (%s)\n", MIC_INJECT_PATH, strerror(errno));
+        close_mic_inject();
+        return false;
+    }
+
+    return true;
+}
+
+// Optional test hook: if /tmp/sbitx_rx_speaker_dump exists, dump the exact
+// 96 kHz mono S32_LE speaker buffer sent to the audio output.
+static void maybe_dump_rx_speaker(const uint8_t *buffer, uint32_t size, bool active_rx)
+{
+    if (!active_rx || !buffer || size == 0)
+        return;
+
+    if (!rx_speaker_dump_fp && access(RX_SPEAKER_DUMP_TRIGGER, F_OK) == 0)
+    {
+        rx_speaker_dump_fp = fopen(RX_SPEAKER_DUMP_PATH, "wb");
+        if (!rx_speaker_dump_fp)
+            fprintf(stderr, "Could not open RX speaker dump file %s (%s)\n", RX_SPEAKER_DUMP_PATH, strerror(errno));
+        else
+            fprintf(stderr, "RX speaker dump active: %s\n", RX_SPEAKER_DUMP_PATH);
+    }
+
+    if (!rx_speaker_dump_fp)
+        return;
+
+    fwrite(buffer, 1, size, rx_speaker_dump_fp);
+}
 
 void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
 {
@@ -907,6 +1016,7 @@ void *control_thread(void *device_ptr)
 
     uint8_t *buffer_radio_to_dsp = malloc(buffer_size);
     uint8_t *buffer_mic_to_dsp = malloc(buffer_size);
+    uint8_t *buffer_mic_inject = malloc(buffer_size);
     uint8_t *buffer_loop_to_dsp = malloc(buffer_size);
 
     uint8_t *signal_to_tx;
@@ -947,12 +1057,16 @@ void *control_thread(void *device_ptr)
         else
         {
             clear_buffer(loopback_to_dsp);
-            signal_to_tx = buffer_mic_to_dsp;
+            if (radio_h_snd->txrx_state == IN_TX && read_mic_inject(buffer_mic_inject, buffer_size))
+                signal_to_tx = buffer_mic_inject;
+            else
+                signal_to_tx = buffer_mic_to_dsp;
         }
 
         if (radio_h_snd->txrx_state == IN_RX)
         {
             dsp_process_rx(buffer_radio_to_dsp, output_speaker, output_loopback, output_tx, block_size);
+            maybe_dump_rx_speaker(output_speaker, buffer_size, true);
         }
         else
         {
@@ -982,6 +1096,9 @@ void *control_thread(void *device_ptr)
     free(output_tx);
     free(output_speaker);
     free(output_loopback);
+    free(buffer_mic_inject);
+    close_mic_inject();
+    close_rx_speaker_dump();
 
     return NULL;
 }
