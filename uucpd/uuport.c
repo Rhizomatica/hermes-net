@@ -300,6 +300,15 @@ int main (int argc, char *argv[])
         strcpy(connector->remote_call_sign, remote_system);
     }
 
+    // The session before may still be ending: its uucico just exited and
+    // uucpd has not yet sent DISCONNECT and reset the buffers (2-3 s).  Its
+    // last bytes ("OOOOOO") are still in out_buffer, and a uuport running
+    // while clean_buffers is set stops at once ("Line disconnected").  Start
+    // once that is done, waiting no longer than the link may take to come up.
+    int wait_counter = TIMEOUT * 10;
+    while ((connector->clean_buffers || connector->uucico_active) && wait_counter--)
+        usleep(100000); // 0.1s
+
     pthread_t tid;
     pthread_create(&tid, NULL, write_thread, (void *) connector);
 
