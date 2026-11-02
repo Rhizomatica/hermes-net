@@ -53,6 +53,7 @@ rhizo_conn *connector_aux = NULL;
 FILE *log_fd;
 atomic_bool running_read;
 atomic_bool running_write;
+atomic_bool started; // past the wait for the session before
 
 // How long uucico's line may wait for the link to come up.  Only a backstop:
 // a connect the modem gives up on reaches uucpd as DISCONNECTED and ends this
@@ -205,8 +206,9 @@ void finish(int s){
         sleep(1);
     }
 
-    // some house keeping here?
-    if (connector_aux)
+    // some house keeping here?  Only for a session of ours: one still
+    // waiting for the link would end another uucico's session.
+    if (connector_aux && started)
         connector_aux->clean_buffers = true;
 
     fclose(log_fd);
@@ -294,6 +296,24 @@ int main (int argc, char *argv[])
     {
         log_fd = stderr;
     }
+
+    // The session before may still be ending: its uucico just exited and
+    // uucpd has not yet sent DISCONNECT and reset the buffers (2-3 s).  Its
+    // last bytes ("OOOOOO") are still in out_buffer, and a uuport running
+    // while clean_buffers is set stops at once ("Line disconnected").  Start
+    // once that is done, waiting no longer than the link may take to come up.
+    // A called session (uucico_active) holds the link for its whole length:
+    // give up rather than run inside it, and leave it alone (started).
+    int wait_counter = TIMEOUT * 10;
+    while ((connector->clean_buffers || connector->uucico_active) && wait_counter--)
+        usleep(100000); // 0.1s
+    if (connector->clean_buffers || connector->uucico_active)
+    {
+        fprintf(log_fd, "uuport: another session still holds the link. Exiting.\n");
+        fclose(log_fd);
+        return EXIT_FAILURE;
+    }
+    started = true;
 
     if (remote_system[0])
     {
