@@ -23,6 +23,7 @@
 #define SBITX_ALSA_H_
 
 #include <alsa/asoundlib.h>
+#include <stdbool.h>
 
 #include "sbitx_core.h"
 
@@ -37,6 +38,12 @@ void show_alsa(snd_pcm_t *handle, snd_pcm_hw_params_t *params);
 
 
 void setup_audio_codec();
+
+/* Both codec capture channels' DC offset, in dBFS, measured over a short
+ * window once the capture has settled (the left channel is the receiver,
+ * the right the microphone).  False when no measurement came within
+ * timeout_ms. */
+bool sound_codec_probe_dc(double *left_dbfs, double *right_dbfs, int timeout_ms);
 
 // individual settings
 void set_rx_level(uint32_t speaker_level);

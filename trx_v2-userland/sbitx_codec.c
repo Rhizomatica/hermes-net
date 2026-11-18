@@ -18,7 +18,7 @@
 #include <unistd.h>
 
 #include <stdio.h>
-
+#include "sbitx_alsa.h"
 
 
 /* Where the kernel lists I2C devices, as <bus>-<4-digit hex address>. */
@@ -33,6 +33,17 @@
 /* How long the interface stays inactive: what cured a deaf codec on the
  * bench (2026-11-18). */
 #define CODEC_INACTIVE_MS   200
+
+/* How far the microphone's DC must lead the receiver's to call the order
+ * (bench: 20 dB apart, either way). */
+#define CODEC_ORDER_MARGIN_DB 10.0
+
+/* Reactivations tried before giving up: each lands in the right order
+ * about one time in four, so 40 fail together about once in 10^5. */
+#define CODEC_REACTIVATE_MAX  40
+
+/* How long one DC probe may take (its settle and window are in sbitx_alsa.c). */
+#define CODEC_PROBE_TIMEOUT_MS 2000
 
 bool sbitx_codec_find(const char *devices_dir, int *bus, int *addr)
 {
@@ -85,6 +96,35 @@ static int codec_write(int fd, int addr, int reg, unsigned value)
     return ioctl(fd, I2C_RDWR, &data) < 0 ? -errno : 0;
 }
 
+codec_order sbitx_codec_order(double left_dc_dbfs, double right_dc_dbfs)
+{
+    if (right_dc_dbfs - left_dc_dbfs >= CODEC_ORDER_MARGIN_DB)
+        return CODEC_ORDER_RIGHT;
+    if (left_dc_dbfs - right_dc_dbfs >= CODEC_ORDER_MARGIN_DB)
+        return CODEC_ORDER_SWAPPED;
+    return CODEC_ORDER_UNKNOWN;
+}
+
+/* ACTIVE cleared, CODEC_INACTIVE_MS, set again.  0, or a negative errno. */
+static int codec_cycle(int fd, int addr)
+{
+    int e = codec_write(fd, addr, WM8731_REG_ACTIVE, WM8731_INACTIVE);
+    if (e == 0)
+    {
+        struct timespec ts = { CODEC_INACTIVE_MS / 1000, (CODEC_INACTIVE_MS % 1000) * 1000000L };
+        nanosleep(&ts, NULL);
+        e = codec_write(fd, addr, WM8731_REG_ACTIVE, WM8731_ACTIVE);
+    }
+    return e;
+}
+
+static codec_order probe_order(double *l, double *r)
+{
+    if (!sound_codec_probe_dc(l, r, CODEC_PROBE_TIMEOUT_MS))
+        return CODEC_ORDER_UNKNOWN;
+    return sbitx_codec_order(*l, *r);
+}
+
 bool sbitx_codec_reactivate(void)
 {
     int bus, addr;
@@ -92,6 +132,16 @@ bool sbitx_codec_reactivate(void)
     {
         fprintf(stderr, "codec: no %s under %s: the codec's interface is not reactivated\n",
               CODEC_DRIVER_NAME, I2C_SYSFS_DEVICES);
+        return false;
+    }
+
+    /* The order must be readable before anything is cycled: a cycle that
+     * cannot be checked lands swapped more often than not. */
+    double l, r;
+    if (probe_order(&l, &r) == CODEC_ORDER_UNKNOWN)
+    {
+        fprintf(stderr, "codec: %s at %d-%04x: channel order not readable from the DC (receiver %.1f, "
+              "microphone %.1f dBFS): the interface is not reactivated\n", CODEC_DRIVER_NAME, bus, addr, l, r);
         return false;
     }
 
@@ -104,21 +154,34 @@ bool sbitx_codec_reactivate(void)
         return false;
     }
 
-    int e = codec_write(fd, addr, WM8731_REG_ACTIVE, WM8731_INACTIVE);
-    if (e == 0)
+    int swapped = 0, unreadable = 0;
+    for (int n = 1; n <= CODEC_REACTIVATE_MAX; n++)
     {
-        struct timespec ts = { CODEC_INACTIVE_MS / 1000, (CODEC_INACTIVE_MS % 1000) * 1000000L };
-        nanosleep(&ts, NULL);
-        e = codec_write(fd, addr, WM8731_REG_ACTIVE, WM8731_ACTIVE);
+        int e = codec_cycle(fd, addr);
+        if (e < 0)
+        {
+            close(fd);
+            fprintf(stderr, "codec: %s at %d-%04x: writing ACTIVE failed (%s); the receiver may stay deaf until a restart\n",
+                  CODEC_DRIVER_NAME, bus, addr, strerror(-e));
+            return false;
+        }
+        codec_order o = probe_order(&l, &r);
+        if (o == CODEC_ORDER_RIGHT)
+        {
+            close(fd);
+            fprintf(stderr, "codec: %s at %d-%04x: interface reactivated, channels in order after %d cycle%s "
+                  "(%d swapped, %d unreadable; receiver DC %.1f, microphone %.1f dBFS)\n",
+                  CODEC_DRIVER_NAME, bus, addr, n, n == 1 ? "" : "s", swapped, unreadable, l, r);
+            return true;
+        }
+        if (o == CODEC_ORDER_SWAPPED)
+            swapped++;
+        else
+            unreadable++;
     }
     close(fd);
-
-    if (e < 0)
-    {
-        fprintf(stderr, "codec: %s at %d-%04x: writing ACTIVE failed (%s); the receiver may stay deaf until a restart\n",
-              CODEC_DRIVER_NAME, bus, addr, strerror(-e));
-        return false;
-    }
-    fprintf(stderr, "codec: %s at %d-%04x: interface reactivated once both streams were up\n", CODEC_DRIVER_NAME, bus, addr);
-    return true;
+    fprintf(stderr, "codec: %s at %d-%04x: channels not in order after %d reactivations (%d swapped, %d unreadable); "
+          "the receiver may be deaf until a restart\n", CODEC_DRIVER_NAME, bus, addr, CODEC_REACTIVATE_MAX,
+          swapped, unreadable);
+    return false;
 }

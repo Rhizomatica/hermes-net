@@ -30,6 +30,7 @@
 #include "sbitx_dsp.h"
 #include "sbitx_buffer.h"
 #include "sbitx_codec.h"
+#include "capture_levels.h"
 
 char *radio_capture_dev = "hw:0,0";
 char *radio_playback_dev = "hw:0,0";
@@ -62,6 +63,36 @@ extern _Atomic bool shutdown_;
 /* The codec's capture and playback streams, configured: once both are, its
  * interface is activated again, last (sbitx_codec.h).  Bounded, so a stream
  * that never comes up does not hold the helper thread forever. */
+/* An on-demand measurement of both capture channels' DC (sound_codec_probe_dc,
+ * sbitx_codec.h): the codec helper asks, the capture thread skips
+ * CODEC_PROBE_SETTLE_MS, measures CODEC_PROBE_MS and publishes the result.
+ * Atomics only, so the capture thread neither locks nor waits. */
+#define CODEC_PROBE_SETTLE_MS   300
+#define CODEC_PROBE_MS          500
+#define CODEC_PROBE_POLL_MS     20
+enum { PROBE_IDLE, PROBE_REQUESTED, PROBE_DONE };
+static _Atomic int    codec_probe_state = PROBE_IDLE;
+static _Atomic double codec_probe_dc[CAPTURE_LEVELS_CHANNELS];
+
+bool sound_codec_probe_dc(double *left_dbfs, double *right_dbfs, int timeout_ms)
+{
+    atomic_store(&codec_probe_state, PROBE_REQUESTED);
+    for (int waited = 0; waited < timeout_ms; waited += CODEC_PROBE_POLL_MS)
+    {
+        if (atomic_load(&codec_probe_state) == PROBE_DONE)
+        {
+            *left_dbfs = atomic_load(&codec_probe_dc[0]);
+            *right_dbfs = atomic_load(&codec_probe_dc[1]);
+            atomic_store(&codec_probe_state, PROBE_IDLE);
+            return true;
+        }
+        struct timespec ts = { 0, CODEC_PROBE_POLL_MS * 1000000L };
+        nanosleep(&ts, NULL);
+    }
+    atomic_store(&codec_probe_state, PROBE_IDLE);
+    return false;
+}
+
 #define CODEC_STREAMS           2
 #define CODEC_READY_TIMEOUT_MS  15000
 static pthread_mutex_t codec_ready_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -518,6 +549,39 @@ void *radio_capture_thread(void *device_ptr)
             }
             snd_pcm_prepare (pcm_capture_handle);
             continue;
+        }
+
+        if (channels == CAPTURE_LEVELS_CHANNELS)
+        {
+            static capture_levels probe;
+            static uint64_t probe_skip;
+            static bool probe_running;
+            if (!probe_running && atomic_load(&codec_probe_state) == PROBE_REQUESTED)
+            {
+                capture_levels_reset(&probe);
+                probe_skip = (uint64_t) hw_rate * CODEC_PROBE_SETTLE_MS / 1000;
+                probe_running = true;
+            }
+            if (probe_running)
+            {
+                if (probe_skip)
+                    probe_skip -= probe_skip < (uint64_t) hw_period_size ? probe_skip : (uint64_t) hw_period_size;
+                else
+                {
+                    capture_levels_add(&probe, (const int32_t *) buffer, hw_period_size);
+                    if (probe.frames >= (uint64_t) hw_rate * CODEC_PROBE_MS / 1000)
+                    {
+                        for (int ch = 0; ch < CAPTURE_LEVELS_CHANNELS; ch++)
+                        {
+                            capture_channel_level l;
+                            capture_levels_get(&probe, ch, &l);
+                            atomic_store(&codec_probe_dc[ch], l.dc_dbfs);
+                        }
+                        probe_running = false;
+                        atomic_store(&codec_probe_state, PROBE_DONE);
+                    }
+                }
+            }
         }
 
         for (int j = 0; j < hw_period_size; j++)
