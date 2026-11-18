@@ -45,8 +45,8 @@ GPIOLIB_OBJS=gpiolib/gpiolib.o gpiolib/gpiochip_bcm2712.o gpiolib/gpiochip_bcm28
 
 all: sbitx_controller sbitx_client
 
-sbitx_controller: sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o sbitx_dsp.o ring_buffer.o $(GPIOLIB_OBJS)
-	$(CC) -o sbitx_controller sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o sbitx_dsp.o ring_buffer.o  $(GPIOLIB_OBJS) $(LDFLAGS)
+sbitx_controller: capture_levels.o sbitx_codec.o sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o sbitx_dsp.o ring_buffer.o $(GPIOLIB_OBJS)
+	$(CC) -o sbitx_controller capture_levels.o sbitx_codec.o sbitx_i2c.o sbitx_core.o sbitx_gpio.o sbitx_si5351.o sbitx_websocket.o sbitx_shm.o shm_utils.o cfg_utils.o mongoose.o sbitx_controller.o sbitx_alsa.o sbitx_buffer.o sbitx_dsp.o ring_buffer.o  $(GPIOLIB_OBJS) $(LDFLAGS)
 
 sbitx_client: sbitx_client.c shm_utils.c sbitx_io.c help.h
 	$(CC) $(CFLAGS) sbitx_client.c sbitx_io.c shm_utils.c -o sbitx_client -lpthread
@@ -84,7 +84,13 @@ mongoose.o: mongoose.c mongoose.h
 	$(CC) -c $(CFLAGS) -DMG_ENABLE_OPENSSL -DMG_TLS=MG_TLS_OPENSSL -DMG_ARCH=1 mongoose.c -o mongoose.o
 
 # sound system
-sbitx_alsa.o: sbitx_alsa.c sbitx_alsa.h
+capture_levels.o: capture_levels.c capture_levels.h
+	$(CC) -c $(CFLAGS) capture_levels.c -o capture_levels.o
+
+sbitx_codec.o: sbitx_codec.c sbitx_codec.h sbitx_alsa.h
+	$(CC) -c $(CFLAGS) sbitx_codec.c -o sbitx_codec.o
+
+sbitx_alsa.o: sbitx_alsa.c sbitx_alsa.h sbitx_codec.h capture_levels.h
 	$(CC) -c $(CFLAGS) -Wno-deprecated-declarations sbitx_alsa.c -o sbitx_alsa.o
 
 sbitx_dsp.o: sbitx_dsp.c sbitx_dsp.h
