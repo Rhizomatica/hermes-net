@@ -29,6 +29,7 @@
 #include "sbitx_alsa.h"
 #include "sbitx_dsp.h"
 #include "sbitx_buffer.h"
+#include "sbitx_codec.h"
 
 char *radio_capture_dev = "hw:0,0";
 char *radio_playback_dev = "hw:0,0";
@@ -57,6 +58,43 @@ uint32_t channels = 2;
 // local radio handle used to easy parameter passing
 static radio *radio_h_snd;
 extern _Atomic bool shutdown_;
+
+/* The codec's capture and playback streams, configured: once both are, its
+ * interface is activated again, last (sbitx_codec.h).  Bounded, so a stream
+ * that never comes up does not hold the helper thread forever. */
+#define CODEC_STREAMS           2
+#define CODEC_READY_TIMEOUT_MS  15000
+static pthread_mutex_t codec_ready_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t  codec_ready_cond = PTHREAD_COND_INITIALIZER;
+static int codec_ready_count;
+
+static void codec_stream_ready(void)
+{
+    pthread_mutex_lock(&codec_ready_lock);
+    codec_ready_count++;
+    pthread_cond_broadcast(&codec_ready_cond);
+    pthread_mutex_unlock(&codec_ready_lock);
+}
+
+static void *codec_reactivate_thread(void *arg)
+{
+    (void) arg;
+    struct timespec dl;
+    clock_gettime(CLOCK_REALTIME, &dl);
+    dl.tv_sec += CODEC_READY_TIMEOUT_MS / 1000;
+    pthread_mutex_lock(&codec_ready_lock);
+    while (codec_ready_count < CODEC_STREAMS &&
+           pthread_cond_timedwait(&codec_ready_cond, &codec_ready_lock, &dl) == 0)
+        ;
+    bool ready = codec_ready_count >= CODEC_STREAMS;
+    pthread_mutex_unlock(&codec_ready_lock);
+    if (ready && !shutdown_)
+        sbitx_codec_reactivate();
+    else if (!ready)
+        fprintf(stderr, "codec: its streams not configured in %d s; the interface is not reactivated\n",
+                CODEC_READY_TIMEOUT_MS / 1000);
+    return NULL;
+}
 
 // should we allow level control even in IO-ONLY mode?
 #define ALLOW_ALSA_LEVELS_IN_IO_ONLY 1
@@ -459,6 +497,7 @@ void *radio_capture_thread(void *device_ptr)
     snd_pcm_prepare(pcm_capture_handle);
     snd_pcm_drop(pcm_capture_handle);
     snd_pcm_prepare(pcm_capture_handle);
+    codec_stream_ready();
 
     while (!shutdown_)
     {
@@ -595,6 +634,7 @@ void *radio_playback_thread(void *device_ptr)
     snd_pcm_prepare(pcm_play_handle);
     snd_pcm_drop(pcm_play_handle);
     snd_pcm_prepare(pcm_play_handle);
+    codec_stream_ready();
 
     while (!shutdown_)
     {
@@ -1017,6 +1057,10 @@ void sound_system_init(radio *radio_h, pthread_t *control_tid, pthread_t *radio_
 
     pthread_create(radio_capture, NULL, radio_capture_thread, (void*)radio_capture_dev);
     pthread_create(loop_capture, NULL, loop_capture_thread, (void*)loop_capture_dev);
+
+    pthread_t codec_tid;
+    if (pthread_create(&codec_tid, NULL, codec_reactivate_thread, NULL) == 0)
+        pthread_detach(codec_tid);
 
 
     struct sched_param sch;
